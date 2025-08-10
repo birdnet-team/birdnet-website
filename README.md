@@ -1,18 +1,18 @@
 # birdnet-website
-BirdNET website (Materil for MKDocs)
+BirdNET website (Material for MKDocs)
 
 ## Setup
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/birdnet-team/birdnet-website.git
-    cd birdnet-website
-    ```
+   cd birdnet-website
+   ```
 
 2. Create a virtual environment (optional but recommended):
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   source venv/bin/activate
    ```
 
 3. Install the required packages:
