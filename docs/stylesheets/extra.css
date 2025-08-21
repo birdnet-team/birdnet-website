@@ -38,3 +38,20 @@
 .md-footer a:focus {
   color: var(--footer-link-fg-hover);
 }
+
+
+/* Tab styling to look like the header aka not in red */
+.md-tabs {
+  background-color: var(--md-header-bg-color);
+  color: var(--md-header-font-color);
+}
+
+/* Hide Title as its included in the Logo */
+.md-header__topic {
+  display: none;
+}
+
+.md-nav__title {
+  font-size: 0 !important;
+  height: 4rem !important;
+}

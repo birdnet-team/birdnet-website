@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block tabs %}
+
+  {{ super() }}
+
+  {% if page.title == "Home" %}
+    <!-- Image it the top -->
+    <div style="width:100vw; height:100vh; overflow:hidden; position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw;">
+      <img src="assets/amic_about_header_1.jpg" style="width:100vw; height:100vh; object-fit:cover; display:block;">
+    </div>
+  {% endif %}
+
+
+  {% endblock %}

@@ -10,8 +10,22 @@ extra_css:
 theme:
   name: material
   logo: assets/clo_birdnet_horizontal.png
-  palette:    
+  favicon: assets/clo_sapsucker.png
+  palette:
       scheme: default
   font:
     text: Roboto
     code: Roboto Mono
+  features:
+    - navigation.tabs
+  icon:
+    annotation: material/arrow-right-circle-outline
+  custom_dir: overrides
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      
