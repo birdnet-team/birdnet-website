@@ -1,0 +1,40 @@
+  <div class="top-accent-line"></div>
+  <div class="top-navbar">
+    <a href="#" class="logo">
+      <img src="clo_birdnet_horizontal.png" alt="BirdNET Page Logo" style="height: 40px; padding-top: .5rem; vertical-align:middle;">
+    </a>
+     @if(mobileSize()){
+      <!-- Burger menu for mobile navigation -->
+      <div class="burger-menu">
+        <button class="burger-icon" aria-label="Open navigation menu" (click)="toggleSideMenu()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        @if(sideMenuOpen()) {
+          <!-- Backdrop overlay to close menu when clicking outside -->
+          <div class="menu-backdrop" (click)="sideMenuOpen.set(false)"></div>
+          <nav class="mobile-nav">
+            <a routerLink="" (click)="sideMenuOpen.set(false)">Home</a>
+            <a routerLink="analyzer" (click)="sideMenuOpen.set(false)">Analyzer</a>
+            <a href="#about" (click)="sideMenuOpen.set(false)">About</a>
+            <a href="#contact" (click)="sideMenuOpen.set(false)">Contact</a>
+          </nav>
+        }
+      </div>
+     } @else {
+      <nav>
+        <a routerLink="">Home</a>
+        <a routerLink="analyzer">Analyzer</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </nav>
+     }
+  </div>
+
+<router-outlet />
+
+
+<footer class="footer">
+  &copy; 2025 BirdNET Page. All rights reserved.
+</footer>

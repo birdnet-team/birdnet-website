@@ -1,0 +1,35 @@
+.header {
+    width:100vw;
+    height:100vh; 
+    overflow:hidden;
+    position:relative;
+    left:50%;
+    right:50%;
+    margin-left:-50vw;
+    margin-right:-50vw;
+}
+
+.header-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45%;
+    height: 100%;
+    background: rgba(34, 34, 34, 0.4);
+    border-right: 2px solid white;
+    backdrop-filter: blur(3px);
+    color: white;
+    display: flex;
+    justify-content: center;
+}
+
+.header-title {
+    margin-top: 10rem;
+    text-align: center;
+    h1 {
+        font-size: 5rem;
+    }
+    h2 {
+        font-size: 3rem;
+    }
+}

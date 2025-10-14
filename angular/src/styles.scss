@@ -1,0 +1,120 @@
+/* Top 5px Accent Line */
+.top-accent-line {
+  width: 100vw;
+  height: 5px;
+  background: var(--primary-fg-color);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+}
+/* You can add global styles to this file, and also import other style files */
+
+:root > * {
+  /* Global footer colors */
+  --footer-bg-color: #333333;
+  --footer-fg-color: #ffffff;
+  --primary-fg-color: #b31b1b;
+  --accent-fg-color: #006699;
+  --header-bg-color: #F7F7F7;
+  --header-font-color: #444444;
+  --primary-fg-color--light: #FFFFFF;
+  --primary-fg-color--dark:  #CCCCCC;
+}
+
+/* Top Navigation Bar */
+.top-navbar {
+  width: 100%;
+  background: var(--header-bg-color);
+  color: var(--header-font-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  font-size: 1.1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-navbar .logo {
+  font-weight: bold;
+  color: var(--primary-fg-color);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  text-decoration: none;
+}
+
+.top-navbar nav {
+  display: flex;
+  gap: 1.5rem;
+  transition: right 0.3s;
+}
+
+.top-navbar nav a {
+  color: var(--header-font-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.top-navbar nav a:hover {
+  color: var(--accent-fg-color);
+}
+
+/* Footer */
+.footer {
+  width: 100%;
+  background: var(--footer-bg-color);
+  color: var(--footer-fg-color);
+  text-align: center;
+  padding: 1.2rem 0 1rem 0;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+}
+
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #fafbfc;
+}
+
+app-root {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.top-navbar, .footer {
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+.top-navbar {
+  padding-left: max(2rem, env(safe-area-inset-left));
+  padding-right: max(2rem, env(safe-area-inset-right));
+}
+
+.footer {
+  position: static;
+  margin-top: auto;
+}
