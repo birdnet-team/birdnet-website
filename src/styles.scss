@@ -3,10 +3,32 @@
     --text-color: #2E261F;
 }
 
+app-root {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
     margin: 0;
     accent-color: #457999;
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fafbfc;
 }
 
 *, *::before, *::after {

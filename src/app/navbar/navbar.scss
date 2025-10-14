@@ -1,6 +1,7 @@
 @media print, screen and (min-width: 47.9375em) {
     #main-navbar {
         min-height: 110px;
+        display: flex;
     }
     #website-identity {
         padding-top: 1.1rem;
@@ -11,9 +12,37 @@
     #website-name {
         font-size: 1.6rem;
     }
+
+    .website-nav-container {
+        align-self: flex-end;
+        flex-grow: 1;
+        padding-top: .5rem;
+    }
+
+    .website-nav {
+        justify-content: flex-end;
+    }
 }
 #main-navbar {
     padding: 0;
+}
+
+#primary-nav {
+    list-style: none;
+    display: flex;
+    justify-self: flex-end;
+
+    li {
+        margin-left: 2rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        border-bottom: 4px solid transparent;
+        cursor: pointer;
+    }
+    
+    li:hover {
+        border-bottom: 4px solid #ffbc10 !important;
+    }
 }
 
 :host {
