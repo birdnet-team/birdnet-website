@@ -1,0 +1,26 @@
+:root {
+    --red-shade: #B31B1B;
+    --text-color: #2E261F;
+}
+
+body {
+    margin: 0;
+    accent-color: #457999;
+    -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+
+html {
+    box-sizing: border-box;
+    font-size: 100%;
+}
+
+@font-face {
+    font-family: Gibson;
+    src: url(../public/Gibson-Regular.woff2) format('woff2');
+    font-weight: 400;
+    font-style: normal
+}

@@ -1,0 +1,18 @@
+header {
+    border-top: 4px solid var(--red-shade);
+    width: 100%;
+    font-family: Gibson, Helvetica, Arial, sans-serif;
+}
+
+birdnet-navbar {
+    max-width: 80rem;
+    margin: 0 auto;
+}
+
+@media print,
+screen and (min-width: 47.9375em) {
+
+    birdnet-navbar {
+        padding: 0 1rem;
+    }
+}
