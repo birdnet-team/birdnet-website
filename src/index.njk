@@ -1,0 +1,275 @@
+---
+title: BirdNET – AI-Powered Bird Sound Identification
+layout: layouts/base.njk
+permalink: "/"
+---
+
+<section class="hero-landing">
+  <div class="hero-overlay"></div>
+  <div class="container hero-landing-content">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h1 class="hero-title mb-5 mt-5">
+          Identify birds by sound, at scale.
+        </h1>
+        <p class="hero-subtitle mb-5">
+          BirdNET uses deep learning to recognize thousands of bird species from their vocalizations, powering research,
+          monitoring, and citizen science around the world.
+        </p>
+        <div class="d-flex flex-wrap gap-2 mb-5">
+          <a class="btn btn-primary btn-lg" href="https://birdnet.cornell.edu/api/">
+            Try BirdNET Sound ID
+          </a>
+          <a class="btn btn-outline-light btn-lg" href="/analyzer/">
+            BirdNET-Analyzer
+          </a>
+          <a class="btn btn-outline-light btn-lg" href="/donate/">
+            Support the project
+          </a>
+        </div>
+        <p class="mb-5 small text-light text-opacity-75 col-lg-8">
+          BirdNET is a collaboration between the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of
+          Ornithology and Chemnitz University of Technology.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-4">
+        <h2 class="section-title">What is BirdNET?</h2>
+        <p class="text-muted">
+          BirdNET is a research platform and family of tools that make it possible to detect, classify, and explore bird
+          sounds using state-of-the-art neural networks.
+        </p>
+        <p class="text-muted">
+          From smartphone apps to large passive acoustic monitoring arrays, BirdNET supports workflows for birders,
+          conservationists, and scientists.
+        </p>
+      </div>
+      <div class="col-lg-8">
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+          <div class="col">
+            <div class="card card-feature h-100">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">For everyone</h3>
+                <h4 class="h5">Mobile & web apps</h4>
+                <p class="text-muted mb-3">
+                  Record a bird and get instant identification suggestions on iOS, Android, or the BirdNET Sound ID
+                  website.
+                </p>
+                <a class="small" href="https://birdnet.cornell.edu/">Learn more</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card card-feature h-100">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">For research</h3>
+                <h4 class="h5">BirdNET-Analyzer</h4>
+                <p class="text-muted mb-3">
+                  Process large acoustic datasets, extract detections, and build workflows for long-term biodiversity
+                  monitoring.
+                </p>
+                <a class="small" href="/analyzer/">Explore Analyzer</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card card-feature h-100">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">For developers</h3>
+                <h4 class="h5">Open-source tools</h4>
+                <p class="text-muted mb-3">
+                  Python, R, embedded, and web tools let you integrate BirdNET models into your own hardware and
+                  analysis pipelines.
+                </p>
+                <a class="small" href="/projects/">View projects</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Global CTA -->
+<section class="py-5">
+  <div class="container">
+    <div class="text-center">
+      <h2 class="h4 mb-3">Explore the BirdNET ecosystem</h2>
+      <p class="text-muted mb-4">Tools, datasets, publications, and community projects driving acoustic biodiversity insights.</p>
+      <div class="d-flex flex-wrap justify-content-center gap-2">
+        <a href="/analyzer/" class="btn btn-primary btn-sm">BirdNET-Analyzer</a>
+        <a href="/projects/" class="btn btn-outline-secondary btn-sm">Open-source tools</a>
+        <a href="/publications/" class="btn btn-outline-secondary btn-sm">Publications</a>
+        <a href="/showroom/" class="btn btn-outline-secondary btn-sm">Showroom</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Analyzer teaser -->
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-5">
+        <h2 class="section-title">BirdNET-Analyzer</h2>
+        <p class="text-muted mb-3">
+          The workhorse engine for applying BirdNET models to large audio datasets. Built for scientific workflows and
+          long-term monitoring.
+        </p>
+        <ul class="small text-muted mb-4">
+          <li>Scales from pilot studies to multi-year deployments.</li>
+          <li>Detections with timestamps, species labels, confidence scores.</li>
+          <li>Geographic + temporal filters for realistic species lists.</li>
+          <li>CLI and GUI workflows.</li>
+        </ul>
+        <a class="btn btn-outline-secondary btn-sm" href="/analyzer/">Learn more</a>
+      </div>
+      <div class="col-lg-7">
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Large-scale processing</h3>
+                <p class="small text-muted mb-0">Handles thousands of hours from passive acoustic networks.</p>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Latest models</h3>
+                <p class="small text-muted mb-0">Recognizes thousands of species worldwide.</p>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Flexible outputs</h3>
+                <p class="small text-muted mb-0">CSV and other formats for Python / R / GIS workflows.</p>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Community ecosystem</h3>
+                <p class="small text-muted mb-0">Growing scripts and guides for monitoring pipelines.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured tools -->
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-4">
+        <h2 class="section-title">Open-source tools</h2>
+        <p class="text-muted">
+          BirdNET models power a suite of libraries and platforms across Python, R, embedded systems, and field devices.
+        </p>
+        <a href="/projects/" class="btn btn-outline-secondary btn-sm">Explore tools</a>
+      </div>
+      <div class="col-lg-8">
+        <div class="row row-cols-1 row-cols-md-3 g-3">          
+          <div class="col">
+            <div class="card h-100 shadow-sm card-feature">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">Python</h3>
+                <h4 class="h6">birdnet</h4>
+                <p class="small text-muted mb-2">Library for ecological sound workflows.</p>
+                <a href="https://github.com/birdnet-team/birdnet" class="small">GitHub</a>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 shadow-sm card-feature">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">R</h3>
+                <h4 class="h6">birdnetR</h4>
+                <p class="small text-muted mb-2">R wrapper for BirdNET processing & results.</p>
+                <a href="https://github.com/birdnet-team/birdnetR" class="small">GitHub</a>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 shadow-sm card-feature">
+              <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-2">Embedded devices</h3>
+                <h4 class="h6">BirdNET-Tiny-Forge</h4>
+                <p class="small text-muted mb-2">Create and deploy lightweight models.</p>
+                <a href="https://github.com/birdnet-team/BirdNET-Tiny-Forge" class="small">GitHub</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Showroom preview -->
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-4">
+        <h2 class="section-title">Community showroom</h2>
+        <p class="text-muted">
+          BirdNET powers devices, apps, and creative platforms built by a growing community.
+        </p>
+        <a href="/showroom/" class="btn btn-outline-secondary btn-sm">Explore showroom</a>
+      </div>
+      <div class="col-lg-8">
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+          <div class="col">
+            <div class="card h-100 shadow-sm showroom-card">
+              <div class="card-body d-flex flex-column">
+                <img src="https://birdnet-team.github.io/BirdNET-Analyzer/_images/haikubox.png" class="showroom-logo" alt="HaikuBox logo">
+                <h3 class="h6 mt-2">HaikuBox</h3>
+                <p class="small text-muted flex-grow-1 mb-2">Backyard station sharing clips & IDs.</p>
+                <a href="https://haikubox.com" class="small">Learn more</a>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 shadow-sm showroom-card">
+              <div class="card-body d-flex flex-column">
+                <img src="https://birdnet-team.github.io/BirdNET-Analyzer/_images/birdnet-pi.png" class="showroom-logo" alt="BirdNET-Pi logo">
+                <h3 class="h6 mt-2">BirdNET-Pi</h3>
+                <p class="small text-muted flex-grow-1 mb-2">Raspberry Pi real-time detections.</p>
+                <a href="https://birdnetpi.com" class="small">Learn more</a>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100 shadow-sm showroom-card">
+              <div class="card-body d-flex flex-column">
+                <img src="https://birdnet-team.github.io/BirdNET-Analyzer/_images/birdweather.png" class="showroom-logo" alt="BirdWeather logo">
+                <h3 class="h6 mt-2">BirdWeather</h3>
+                <p class="small text-muted flex-grow-1 mb-2">Global real-time station map.</p>
+                <a href="https://app.birdweather.com" class="small">Learn more</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">More projects featured on the showroom page.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+

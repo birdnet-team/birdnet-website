@@ -1,0 +1,16 @@
+{
+  "name": "birdnet-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "eleventy",
+    "serve": "eleventy --serve --port=8080",
+    "watch": "eleventy --watch"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.0.0"
+  },
+  "dependencies": {
+    "bibtex-parse-js": "^0.0.24"
+  }
+}

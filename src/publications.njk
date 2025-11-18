@@ -1,0 +1,74 @@
+---
+title: Publications
+layout: layouts/base.njk
+permalink: "/publications/"
+---
+
+<section class="page-header">
+  <div class="container">
+    <h1 class="page-title">Publications</h1>
+    <p class="lead text-muted mb-0">
+      Selected peer-reviewed publications using BirdNET, BirdNET-derived embeddings, or BirdNET-based workflows.
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+
+    {# Loop over groups by year (already grouped in _data/publications.js) #}
+    {% for group in publications.byYear %}
+      <div class="mb-4">
+        <h2 class="h5 text-uppercase text-muted mb-3">{{ group.year }}</h2>
+        <div class="row g-3">
+          {% for p in group.items %}
+            <div class="col-12">
+              <div class="card card-publication shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+                    {# very simple type badge; you can refine this test later #}
+                    {% if "Guidelines" in p.title %}
+                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Guidelines</span>
+                    {% elseif "BirdSet" in p.title %}
+                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Datasets</span>
+                    {% elseif "embedding" in p.title | lower %}
+                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Embeddings</span>
+                    {% else %}
+                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Article</span>
+                    {% endif %}
+
+                    {% if p.journal %}
+                      <span class="badge rounded-pill bg-light text-muted pub-badge">
+                        {{ p.journal }}
+                      </span>
+                    {% endif %}
+                  </div>
+
+                  <h3 class="h5 mb-1">
+                    {{ p.title | safe }}
+                  </h3>
+
+                  {% if p.authors and p.authors.length %}
+                    <p class="pub-authors mb-1 text-muted">
+                      {{ p.authors | join(", ") }}{% if p.year %} ({{ p.year }}){% endif %}
+                    </p>
+                  {% elseif p.year %}
+                    <p class="pub-authors mb-1 text-muted">({{ p.year }})</p>
+                  {% endif %}
+
+                  <p class="pub-meta mb-0 text-muted small">
+                    {% if p.journal %}<em>{{ p.journal }}</em>{% endif %}
+                    {% if p.volume %}, {{ p.volume }}{% endif %}
+                    {% if p.number %}({{ p.number }}){% endif %}
+                    {% if p.pages %}, {{ p.pages }}{% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+
+  </div>
+</section>

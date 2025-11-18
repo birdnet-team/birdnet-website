@@ -1,0 +1,120 @@
+---
+title: BirdNET-Analyzer
+layout: layouts/base.njk
+permalink: "/analyzer/"
+---
+
+<section class="page-header">
+  <div class="container">
+    <h1 class="page-title">BirdNET-Analyzer</h1>
+    <p class="lead text-muted mb-0">
+      BirdNET-Analyzer is the workhorse tool for large-scale bird sound analysis, built for scientific workflows and
+      long-term monitoring.
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <h2 class="section-title h4">What it does</h2>
+        <p class="text-muted">
+          BirdNET-Analyzer applies BirdNET models to audio recordings to detect bird vocalizations and assign species
+          labels. It supports both interactive use and scripted batch processing, making it suitable for everything from
+          small pilot studies to multi-year monitoring projects.
+        </p>
+        <ul class="text-muted">
+          <li>Processes single files or entire directories of recordings.</li>
+          <li>Outputs detections with timestamps, species labels, and confidence scores.</li>
+          <li>Supports geographic and temporal constraints for more realistic species lists.</li>
+          <li>Provides a GUI and command-line workflows.</li>
+        </ul>
+      </div>
+      <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted mb-2">Get BirdNET-Analyzer</h3>
+            <ul class="list-unstyled small mb-0">
+              <li class="mb-2">
+                <strong>Documentation:</strong><br>
+                <a href="https://birdnet-team.github.io/BirdNET-Analyzer/" target="_blank">
+                  BirdNET-Analyzer documentation
+                </a>
+              </li>
+              <li class="mb-2">
+                <strong>Source code:</strong><br>
+                <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank">
+                  github.com/birdnet-team/BirdNET-Analyzer
+                </a>
+              </li>
+              <li class="mb-2">
+                <strong>Python package:</strong><br>
+                <a href="https://pypi.org/project/birdnet-analyzer/" target="_blank">
+                  birdnet-analyzer on PyPI
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-5">
+
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <h2 class="section-title h5">Key features</h2>
+      </div>
+      <div class="col-lg-8">
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Large-scale processing</h3>
+                <p class="small text-muted mb-0">
+                  Designed to handle large deployments of passive acoustic recorders and thousands of hours of audio.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Advanced models</h3>
+                <p class="small text-muted mb-0">
+                  Uses the latest BirdNET models, capable of recognizing thousands of bird species worldwide.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Flexible outputs</h3>
+                <p class="small text-muted mb-0">
+                  Export detections as CSV or other formats for downstream analysis in R, Python, or GIS tools.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card h-100 card-feature">
+              <div class="card-body">
+                <h3 class="h6">Community workflows</h3>
+                <p class="small text-muted mb-0">
+                  A growing set of guides and scripts from the community show how to integrate BirdNET-Analyzer into
+                  existing monitoring pipelines.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
