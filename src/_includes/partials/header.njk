@@ -1,7 +1,15 @@
 <header class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
-    <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="/">
-      <img src="/img/logo-birdnet-circle.png"
+    {% set homeUrl = '/' | url %}
+    {% set analyzerUrl = '/analyzer/' | url %}
+    {% set toolsUrl = '/tools/' | url %}
+    {% set publicationsUrl = '/publications/' | url %}
+    {% set showroomUrl = '/showroom/' | url %}
+    {% set aboutUrl = '/about/' | url %}
+    {% set donateUrl = '/donate/' | url %}
+
+    <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="{{ homeUrl }}">
+      <img src="{{ '/img/logo-birdnet-circle.png' | url }}"
            alt="BirdNET logo"
            class="navbar-logo">
       <span>BirdNET</span>
@@ -16,26 +24,26 @@
     <nav class="collapse navbar-collapse" id="mainNav">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/' %} active{% endif %}" href="/">Home</a>
-        </li>        
-        <li class="nav-item">
-          <a class="nav-link{% if page.url == '/analyzer/' %} active{% endif %}" href="/analyzer/">Analyzer</a>
+          <a class="nav-link{% if page.url == homeUrl %} active{% endif %}" href="{{ homeUrl }}">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/tools/' %} active{% endif %}" href="/tools/">Tools</a>
+          <a class="nav-link{% if page.url == analyzerUrl %} active{% endif %}" href="{{ analyzerUrl }}">Analyzer</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/publications/' %} active{% endif %}" href="/publications/">Publications</a>
+          <a class="nav-link{% if page.url == toolsUrl %} active{% endif %}" href="{{ toolsUrl }}">Tools</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/showroom/' %} active{% endif %}" href="/showroom/">Showroom</a>
+          <a class="nav-link{% if page.url == publicationsUrl %} active{% endif %}" href="{{ publicationsUrl }}">Publications</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/about/' %} active{% endif %}" href="/about/">About</a>
+          <a class="nav-link{% if page.url == showroomUrl %} active{% endif %}" href="{{ showroomUrl }}">Showroom</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if page.url == '/donate/' %} active{% endif %}" href="/donate/">Donate</a>
-        </li>        
+          <a class="nav-link{% if page.url == aboutUrl %} active{% endif %}" href="{{ aboutUrl }}">About</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if page.url == donateUrl %} active{% endif %}" href="{{ donateUrl }}">Donate</a>
+        </li>
       </ul>
     </nav>
   </div>

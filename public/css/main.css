@@ -29,7 +29,7 @@ body {
 
 
 .hero-landing {
-  background-image: url("/img/blue_jay_2.jpg");
+  background-image: url("../img/blue_jay_2.jpg");
 }
 
 .hero-overlay {
