@@ -1,5 +1,5 @@
 # birdnet-website
-BirdNET website (Material for MKDocs)
+BirdNET website (Eleventry)
 
 ## Setup
 
@@ -9,20 +9,6 @@ BirdNET website (Material for MKDocs)
    cd birdnet-website
    ```
 
-2. Create a virtual environment (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
 
-3. Install the required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Start the development server:
-   ```bash
-   mkdocs serve
-   ```
 
 
