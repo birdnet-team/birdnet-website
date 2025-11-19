@@ -8,6 +8,7 @@
     {% set aboutUrl = '/about/' | url %}
     {% set k12Url = '/k12/' | url %}
     {% set donateUrl = '/donate/' | url %}
+    {% set appUrl = '/app/' | url %}
 
     <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="{{ homeUrl }}">
       <img src="{{ '/img/logo-birdnet-circle.png' | url }}"
@@ -30,8 +31,17 @@
         <li class="nav-item">
           <a class="nav-link{% if page.url == analyzerUrl %} active{% endif %}" href="{{ analyzerUrl }}">Analyzer</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link{% if page.url == toolsUrl %} active{% endif %}" href="{{ toolsUrl }}">Tools</a>
+        <!-- Tools dropdown: Analyzer, App, Open source -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if page.url == analyzerUrl or page.url == appUrl or page.url == toolsUrl %} active{% endif %}"
+             href="{{ toolsUrl }}" id="toolsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Tools
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="toolsDropdown">
+            <li><a class="dropdown-item{% if page.url == analyzerUrl %} active{% endif %}" href="{{ analyzerUrl }}">Analyzer</a></li>
+            <li><a class="dropdown-item{% if page.url == appUrl %} active{% endif %}" href="{{ appUrl }}">App</a></li>
+            <li><a class="dropdown-item{% if page.url == toolsUrl %} active{% endif %}" href="{{ toolsUrl }}">Open source</a></li>
+          </ul>
         </li>
 
         <!-- Projects dropdown (external links) -->
