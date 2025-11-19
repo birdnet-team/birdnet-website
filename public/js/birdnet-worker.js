@@ -94,13 +94,29 @@ async function main(){
   postMessage({ message:'loaded' });
 
   onmessage = async ({ data }) => {
-    if(data.message === 'predict'){
-      const total = data.pcmAudio.length;
-      const windowSize = 144000;
-      const batches = total / windowSize;
-      const audioTensor = tf.tensor(data.pcmAudio, [batches, windowSize]);
+    if (data.message === 'predict') {
+      const SAMPLE_RATE = 48000;
+      const windowSize = 144000; // 3s
+      const overlapSecRaw = parseFloat(data.overlapSec ?? 1.5);
+      const overlapSec = Math.min(2.5, Math.max(0.0, Math.round(overlapSecRaw * 2) / 2));
+      const overlapSamples = Math.round(overlapSec * SAMPLE_RATE);
+      const hopSamples = Math.max(1, windowSize - overlapSamples);
+
+      const pcm = data.pcmAudio || new Float32Array(0);
+      const total = pcm.length;
+
+      // Compute integer frame count and zero-pad last frame
+      const numFrames = Math.max(1, Math.ceil(Math.max(0, total - windowSize) / hopSamples) + 1);
+      const framed = new Float32Array(numFrames * windowSize);
+      for (let f = 0; f < numFrames; f++) {
+        const start = f * hopSamples;
+        const srcEnd = Math.min(start + windowSize, total);
+        framed.set(pcm.subarray(start, srcEnd), f * windowSize); // tail stays zero-padded
+      }
+
+      const audioTensor = tf.tensor2d(framed, [numFrames, windowSize]);
       const resTensor = birdModel.predict(audioTensor);
-      const predictionList = await resTensor.array();
+      const predictionList = await resTensor.array(); // [numFrames, numClasses]
       resTensor.dispose(); audioTensor.dispose();
 
       // DEBUG: top-10 per batch

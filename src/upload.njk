@@ -86,11 +86,26 @@ permalink: "/upload/"
           <label for="lonInput" class="form-label small mb-1">Longitude</label>
           <input type="number" step="0.0001" id="lonInput" class="form-control form-control-sm" placeholder="-73.9665">
         </div>
+        <div class="col-6 col-md-2">
+          <label for="overlapSelect" class="form-label small mb-1">Overlap (s)</label>
+          <select id="overlapSelect" class="form-select form-select-sm">
+            <option value="0.0" selected>0.0</option>
+            <option value="0.5">0.5</option>
+            <option value="1.0">1.0</option>
+            <option value="1.5">1.5</option>
+            <option value="2.0">2.0</option>
+            <option value="2.5">2.5</option>
+          </select>
+        </div>
         <div class="col-12 col-md-2 d-grid">
+          <label class="form-label small mb-1 invisible">.</label>
           <button type="button" id="runBtn" class="btn btn-sm btn-primary">Run analysis</button>
         </div>
       </div>
-      <div class="small text-muted mt-2">Scores are mean-pooled across all segments. If geo is set, species with geo score ≤ 0.05 are hidden (set to 0).</div>
+      <div class="small text-muted mt-2">
+        Pooling: mean exponential (smooth-max). Overlap controls hop size of 3s windows.
+        Species with geo score ≤ 0.05 are hidden (set to 0).
+      </div>
     </div>
 
     <!-- Separate status area -->
@@ -323,12 +338,9 @@ async function fileToPCMWindows(file){
     : audio.getChannelData(0);
   let max = 0; for(let i=0;i<chan.length;i++){ const v=Math.abs(chan[i]); if(v>max) max=v; }
   const norm = max || 1;
-  const windows = Math.max(1, Math.floor(chan.length / WINDOW_SAMPLES));
-  const totalSamples = windows * WINDOW_SAMPLES;
-  const pcm = new Float32Array(totalSamples);
-  pcm.set(chan.slice(0,totalSamples));
-  for(let i=0;i<pcm.length;i++) pcm[i] = pcm[i]/norm;
-  return { pcm, windows };
+  const pcm = new Float32Array(chan.length);
+  for(let i=0;i<pcm.length;i++) pcm[i] = chan[i]/norm; // full-length, no truncation (worker frames with overlap)
+  return { pcm };
 }
 
 // --- Init and handlers ---
@@ -339,18 +351,17 @@ $('#fileupload').on('change', async e => {
   const file = e.currentTarget.files[0];
   if(!file) return;
 
-  // Clear previous results/chart on new upload
   clearChart();
 
   $('#fileInfo').text(file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)');
   initWaveSurfer(URL.createObjectURL(file));
   $('#statusLine').text('Decoding audio...');
-  const { pcm, windows } = await fileToPCMWindows(file);
+  const { pcm } = await fileToPCMWindows(file);
   lastPCM = pcm;
-  $('#statusLine').text('Audio ready ('+windows+' segment'+(windows>1?'s':'')+'). Adjust settings, then click "Run analysis".');
+  $('#statusLine').text('Audio ready. Adjust settings, then click "Run analysis".');
 });
 
-// Manual run: lazily create/load worker on first run or when language changes
+// Manual run
 $('#runBtn').on('click', async () => {
   if (!lastPCM) { $('#statusLine').text('Please load audio first.'); return; }
   const selectedLang = $('#langSelect').val() || 'auto';
@@ -365,8 +376,9 @@ $('#runBtn').on('click', async () => {
     $('#statusLine').text('Applying geo scores...');
     worker.postMessage({ message:'area-scores', latitude: lat, longitude: lon });
   }
+  const overlapSec = parseFloat($('#overlapSelect').val() || '1.5');
   $('#statusLine').text('Running prediction...');
-  worker.postMessage({ message:'predict', pcmAudio: lastPCM });
+  worker.postMessage({ message:'predict', pcmAudio: lastPCM, overlapSec });
 });
 
 $('#ws-container').on('mousedown',function(e){
