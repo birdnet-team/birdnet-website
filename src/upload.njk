@@ -1,0 +1,212 @@
+---
+title: BirdNET Demo – Upload & Analyze
+layout: layouts/base.njk
+permalink: "/upload/"
+---
+
+<section class="page-header">
+  <div class="container">
+    <h1 class="page-title">BirdNET Demo</h1>
+    <p class="lead text-muted mb-0">
+      Upload an audio file (WAV / MP3), view the spectrogram, and see BirdNET model predictions.
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+
+    <form id="fileform" class="mb-4" enctype="multipart/form-data">
+      <div id="dropzone" class="upload-dropzone text-center p-4 border border-dashed rounded bg-light">
+        <p class="mb-2 small text-muted">Drag & drop audio here or choose a file (max ~50 MB)</p>
+        <input id="fileupload" name="file" type="file" accept="audio/*" hidden>
+        <button type="button" id="chooseBtn" class="btn btn-sm btn-outline-secondary">Choose file</button>
+        <div class="small mt-2 text-muted" id="fileInfo"></div>
+      </div>
+    </form>
+
+    <div id="player" class="mb-4">
+      <div class="spectro-wrapper" id="spectro-wrapper">
+        <div id="ws-container" class="ws-container position-relative">
+          <div id="playCursor"></div>
+        </div>
+        <!-- Hidden until audio loaded -->
+        <div id="spectro-controls" class="spectro-controls d-none align-items-center gap-2 mt-3 flex-wrap">
+          <button id="playBtn" class="btn btn-sm btn-primary" title="Play" aria-label="Play">▶</button>
+          <button id="pauseBtn" class="btn btn-sm btn-primary btn-control" title="Pause" aria-label="Pause">❚❚</button>
+          <button id="restartBtn" class="btn btn-sm btn-primary btn-control" title="Restart" aria-label="Restart">↺</button>
+          <div id="timeDisplay" class="small text-white-50 ms-2">0:00 / 0:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="birdnet" class="mb-4"></div>
+
+    <div class="alert alert-secondary small mb-0">
+      Upload is analyzed server-side. If analysis fails you can still explore the spectrogram. Human speech is ignored.
+    </div>
+
+  </div>
+</section>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/minimap.min.js"></script>
+
+<script>
+const endpointUrl = 'https://birdnet.cornell.edu/api/upload';
+const duration_chunk = 3.0;
+
+let ws = null;
+let analysis = {};
+let barChart = null;
+const overall_time = (-duration_chunk).toString();
+let current_time = overall_time;
+
+function fmtTime(sec){ if(!sec||isNaN(sec)) return '0:00'; const m=Math.floor(sec/60); const s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
+
+function createBarChart(el,data,labels){
+  return new Chart(document.getElementById(el).getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Species probability',data,backgroundColor:'rgba(0,191,255,.5)',borderColor:'rgba(0,172,229,1)',borderWidth:1}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{min:0,max:1}},plugins:{legend:{display:false}}}
+  });
+}
+
+function plotPrediction(start=null){
+  if(!analysis.predictions) return;
+  start=parseFloat(start); if(isNaN(start)||start<0||start>=analysis.duration) start=0;
+  let selected_time=overall_time;
+  if(start>0){
+    let distmax=duration_chunk;
+    for(let time in analysis.predictions){
+      if(parseFloat(time)<=start && start<parseFloat(time)+duration_chunk){
+        const dist=Math.abs(start - parseFloat(time) - (duration_chunk/2));
+        if(dist<distmax){ distmax=dist; selected_time=time; }
+      }
+    }
+  }
+  if(current_time!==selected_time){
+    current_time=selected_time;
+    $('#chart-headline').text(
+      current_time===overall_time ? 'Average species probabilities for entire file.' :
+        'Species probabilities for '+parseFloat(current_time).toFixed(1)+'–'+Math.min(parseFloat(current_time)+duration_chunk,analysis.duration).toFixed(1)+' s'
+    );
+    const species=[]; const scores=[];
+    for(let pos in analysis.predictions[current_time]){
+      const entry=analysis.predictions[current_time][pos];
+      if(!scores.length || entry.score>=0.015){
+        species.push(entry.species.split(';').join(' (')+')');
+        scores.push(entry.score);
+      }
+    }
+    $('#chart-container').css({height:(species.length*30)+50});
+    if(barChart) barChart.destroy();
+    barChart=createBarChart('analysis-chart',scores,species);
+  }
+}
+
+function initWaveSurfer(dataUrl){
+  if(ws){ try{ws.destroy()}catch{} ws=null; }
+  $('#spectro-controls').addClass('d-none'); // keep hidden until ready
+  const SpectrogramPlugin=window.WaveSurfer && window.WaveSurfer.Spectrogram;
+  const MinimapPlugin=window.WaveSurfer && window.WaveSurfer.Minimap;
+
+  ws=WaveSurfer.create({
+    container:'#ws-container',
+    url:dataUrl,
+    height:0,
+    sampleRate:48000,
+    waveColor:'transparent',
+    progressColor:'transparent',
+    cursorWidth:0
+  });
+
+  if(MinimapPlugin){
+    ws.registerPlugin(MinimapPlugin.create({
+      height:30,waveColor:'#a89f98',progressColor:'#2E261F',normalize:true
+    }));
+  }
+  if(SpectrogramPlugin){
+    ws.registerPlugin(SpectrogramPlugin.create({
+      frequencyMax:12000,frequencyMin:300,fftSamples:512,labels:false,splitChannels:false,
+      height:150,scale:'linear',colorMap:'roseus',gainDB:35,rangeDB:100
+    }));
+  } else {
+    $('#ws-container').append('<div class="small text-muted">Spectrogram plugin unavailable.</div>');
+  }
+
+  ws.on('ready',()=>{
+    $('#timeDisplay').text('0:00 / '+fmtTime(ws.getDuration()));
+    $('#spectro-controls').removeClass('d-none').addClass('d-flex');
+  });
+  ws.on('audioprocess',t=>updatePlaybackUI(t));
+  ws.on('seek',()=>updatePlaybackUI(ws.getCurrentTime()));
+}
+
+function updatePlaybackUI(t){
+  if(!ws) return;
+  const dur=ws.getDuration()||0;
+  $('#timeDisplay').text(fmtTime(t)+' / '+fmtTime(dur));
+  plotPrediction(t);
+}
+
+function displayStatus(msg){ $('#birdnet').html('<div class="message small text-muted">'+msg+'</div>'); }
+
+function displayAnalysis(data){
+  analysis=data;
+  analysis.predictions[overall_time]=analysis.prediction;
+  $('#birdnet').html(
+    '<div id="chart-headline" class="small fw-semibold mb-2"></div>'+
+    '<div id="chart-container"><canvas id="analysis-chart"></canvas></div>'+
+    '<div id="statistics" class="mt-2 small text-muted">Model: '+analysis.model+' · Processing '+Number((parseInt(analysis.timespan)/1000).toFixed(1))+' s</div>'
+  );
+  current_time='';
+  plotPrediction();
+}
+
+function handleFiles(files){
+  if(!files||!files.length) return;
+  const file=files[0];
+  if(!file.type.startsWith('audio')){ displayStatus('Unsupported file type.'); return; }
+  $('#fileInfo').text(file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)');
+  const reader=new FileReader();
+  reader.onload=e=>initWaveSurfer(e.target.result);
+  reader.readAsDataURL(file);
+  const formData=new FormData();
+  formData.append('file',file);
+  displayStatus('Uploading & analyzing...');
+  $.ajax({
+    url:endpointUrl,type:'POST',data:formData,processData:false,contentType:false,dataType:'json',
+    success:data=>{ data.response==='success' ? displayAnalysis(data) : displayStatus('Server returned no predictions (spectrogram available).'); },
+    error:e=>{ console.log(e); displayStatus('Analysis failed (spectrogram available).'); }
+  });
+}
+
+$(function(){
+  $('#chooseBtn').on('click',()=>$('#fileupload').trigger('click'));
+  $('#fileupload').on('change',e=>handleFiles(e.currentTarget.files));
+
+  $('#ws-container').on('mousedown',function(e){
+    if(!ws) return;
+    const x=e.clientX+$(window).scrollLeft()-$(this).offset().left;
+    const pct=x/$(this).width();
+    ws.seekTo(Math.min(Math.max(pct,0),1));
+  });
+
+  $('#playBtn').on('click',()=>{ if(!ws) return; ws.play(); });
+  $('#pauseBtn').on('click',()=>{ if(!ws) return; ws.pause(); });
+  $('#restartBtn').on('click',()=>{ if(!ws) return; ws.seekTo(0); ws.play(); });
+
+  const dz=$('#dropzone');
+  dz.on('dragenter dragover',e=>{ e.preventDefault(); e.stopPropagation(); dz.addClass('upload-dropzone-hover'); });
+  dz.on('dragleave',e=>{ e.preventDefault(); e.stopPropagation(); dz.removeClass('upload-dropzone-hover'); });
+  dz.on('drop',e=>{
+    e.preventDefault(); e.stopPropagation();
+    dz.removeClass('upload-dropzone-hover');
+    handleFiles(e.originalEvent.dataTransfer.files);
+  });
+});
+</script>

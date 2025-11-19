@@ -3,6 +3,7 @@
     {% set homeUrl = '/' | url %}
     {% set analyzerUrl = '/analyzer/' | url %}
     {% set toolsUrl = '/tools/' | url %}
+    {% set uploadUrl = '/upload/' | url %}
     {% set showroomUrl = '/showroom/' | url %}
     {% set publicationsUrl = '/publications/' | url %}
     {% set aboutUrl = '/about/' | url %}
@@ -39,6 +40,7 @@
           </a>
           <ul class="dropdown-menu" aria-labelledby="toolsDropdown">
             <li><a class="dropdown-item{% if page.url == analyzerUrl %} active{% endif %}" href="{{ analyzerUrl }}">Analyzer</a></li>
+            <li><a class="dropdown-item{% if page.url == uploadUrl %} active{% endif %}" href="{{ uploadUrl }}">Upload</a></li>
             <li><a class="dropdown-item{% if page.url == appUrl %} active{% endif %}" href="{{ appUrl }}">App</a></li>
             <li><a class="dropdown-item{% if page.url == toolsUrl %} active{% endif %}" href="{{ toolsUrl }}">Open source</a></li>
           </ul>
