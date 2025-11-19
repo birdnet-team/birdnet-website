@@ -89,14 +89,18 @@ async function main(){
     };
   }
 
-  let lastMeans = null; // pooled scores
+  let lastMeans = null;
+  let lastPredictionList = null;
+  let lastHopSamples = null;
+  let lastNumFrames = 0;
+  let lastWindowSize = 144000;
 
   postMessage({ message:'loaded' });
 
   onmessage = async ({ data }) => {
     if (data.message === 'predict') {
       const SAMPLE_RATE = 48000;
-      const windowSize = 144000; // 3s
+      const windowSize = 144000;
       const overlapSecRaw = parseFloat(data.overlapSec ?? 1.5);
       const overlapSec = Math.min(2.5, Math.max(0.0, Math.round(overlapSecRaw * 2) / 2));
       const overlapSamples = Math.round(overlapSec * SAMPLE_RATE);
@@ -105,50 +109,60 @@ async function main(){
       const pcm = data.pcmAudio || new Float32Array(0);
       const total = pcm.length;
 
-      // Compute integer frame count and zero-pad last frame
       const numFrames = Math.max(1, Math.ceil(Math.max(0, total - windowSize) / hopSamples) + 1);
       const framed = new Float32Array(numFrames * windowSize);
       for (let f = 0; f < numFrames; f++) {
         const start = f * hopSamples;
         const srcEnd = Math.min(start + windowSize, total);
-        framed.set(pcm.subarray(start, srcEnd), f * windowSize); // tail stays zero-padded
+        framed.set(pcm.subarray(start, srcEnd), f * windowSize);
       }
 
       const audioTensor = tf.tensor2d(framed, [numFrames, windowSize]);
       const resTensor = birdModel.predict(audioTensor);
-      const predictionList = await resTensor.array(); // [numFrames, numClasses]
+      const predictionList = await resTensor.array();
       resTensor.dispose(); audioTensor.dispose();
 
-      // DEBUG: top-10 per batch
+      lastPredictionList = predictionList;
+      lastHopSamples = hopSamples;
+      lastNumFrames = numFrames;
+      lastWindowSize = windowSize;
+
+      // DEBUG (first 3 frames)
       try {
-        const top10PerBatch = predictionList.map((arr, b) => {
+        const dbg = predictionList.slice(0, Math.min(3, predictionList.length)).map((arr, b) => {
           const top = arr.map((v,i)=>({i,v})).sort((a,b)=>b.v-a.v).slice(0,10)
                         .map(({i,v}) => ({ index:i, name: birds[i].nameI18n || birds[i].name, confidence:v }));
-          const max = Math.max(...arr);
-          const mean = arr.reduce((a,c)=>a+c,0) / arr.length;
-          return { batch:b, max, mean, top10: top };
+          return { frame:b, max:Math.max(...arr), mean:arr.reduce((a,c)=>a+c,0)/arr.length, top10: top };
         });
-        console.group('[birdnet-worker] prediction debug');
-        console.log('batches:', batches, 'windowSize:', windowSize, 'labels:', birds.length);
-        top10PerBatch.forEach(({ batch, max, mean, top10 }) => {
-          console.groupCollapsed(`batch ${batch} · max=${max.toFixed(4)} · mean=${mean.toExponential(2)}`);
-          console.table(top10.map(t => ({ name: t.name, confidence: +t.confidence.toFixed(4) })));
-          console.groupEnd();
-        });
-        console.groupEnd();
-        postMessage({ message:'predict_debug', top10PerBatch });
+        postMessage({ message:'predict_debug', top10PerBatch: dbg });
       } catch {}
 
-      // Mean pool across batches per class
-      const numClasses = predictionList[0]?.length || 0;
-      const sums = new Float32Array(numClasses);
-      for (let b=0;b<predictionList.length;b++) {
-        const row = predictionList[b];
-        for (let i=0;i<numClasses;i++) sums[i] += row[i];
+      // Segment-wise predictions (raw, for CSV)
+      const segments = [];
+      for (let f=0; f<numFrames; f++) {
+        const startSec = (f * hopSamples) / SAMPLE_RATE;
+        const endSec = startSec + windowSize / SAMPLE_RATE;
+        const preds = predictionList[f].map((conf,i)=> ({
+          index: i,
+          confidence: conf,
+          geoscore: birds[i].geoscore,
+          name: birds[i].name,
+          nameI18n: birds[i].nameI18n
+        }));
+        segments.push({ start: startSec, end: endSec, preds });
       }
-      lastMeans = Array.from(sums, s => s / (predictionList.length || 1));
+      postMessage({ message:'segments', segments });
 
-      // Build pooled records (include current geo)
+      // Mean exponential pooling
+      const numClasses = predictionList[0]?.length || 0;
+      const ALPHA = 5.0;
+      const sumsExp = new Float64Array(numClasses);
+      for (let f = 0; f < numFrames; f++) {
+        const row = predictionList[f];
+        for (let i = 0; i < numClasses; i++) sumsExp[i] += Math.exp(ALPHA * row[i]);
+      }
+      lastMeans = Array.from(sumsExp, s => Math.log(s / numFrames) / ALPHA);
+
       const pooled = new Array(numClasses);
       for (let i=0;i<numClasses;i++) {
         pooled[i] = {
@@ -162,7 +176,7 @@ async function main(){
       postMessage({ message:'pooled', pooled });
     }
 
-    if(data.message === 'area-scores' && areaModel){
+    if (data.message === 'area-scores' && areaModel) {
       tf.engine().startScope();
       const startOfYear = new Date(new Date().getFullYear(),0,1);
       startOfYear.setDate(startOfYear.getDate() + (1 - (startOfYear.getDay() % 7)));
@@ -173,11 +187,31 @@ async function main(){
       for(let i=0;i<birds.length;i++){ birds[i].geoscore = areaScores[i]; }
       postMessage({ message:'area-scores' });
 
-      // Re-emit pooled with updated geo scores if we have means
+      // Re-emit segments with updated geo scores
+      if (lastPredictionList && lastHopSamples != null) {
+        const segments = [];
+        for (let f=0; f<lastNumFrames; f++) {
+          const startSec = (f * lastHopSamples) / 48000;
+            const endSec = startSec + lastWindowSize / 48000;
+          const preds = lastPredictionList[f].map((conf,i)=> ({
+            index: i,
+            confidence: conf,
+            geoscore: birds[i].geoscore,
+            name: birds[i].name,
+            nameI18n: birds[i].nameI18n
+          }));
+          segments.push({ start: startSec, end: endSec, preds });
+        }
+        postMessage({ message:'segments', segments });
+      }
+
       if (lastMeans) {
         const pooled = lastMeans.map((m, i) => ({
-          index: i, name: birds[i].name, nameI18n: birds[i].nameI18n,
-          confidence: m, geoscore: birds[i].geoscore
+          index: i,
+          name: birds[i].name,
+          nameI18n: birds[i].nameI18n,
+          confidence: m,
+          geoscore: birds[i].geoscore
         }));
         postMessage({ message:'pooled', pooled });
       }

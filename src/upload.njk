@@ -113,7 +113,10 @@ permalink: "/upload/"
       <div id="statusLine" class="small text-muted">Waiting for audio…</div>
     </div>
 
-    <div id="results" class="mb-4"></div>
+    <div id="results" class="mb-3"></div>
+    <div class="mb-4">
+      <button id="downloadCsvBtn" class="btn btn-sm btn-outline-secondary d-none" disabled>Download pre-segment results</button>
+    </div>
     
   </div>
 </section>
@@ -188,6 +191,11 @@ function attachWorker() {
       });
       console.groupEnd();
     }
+    if(data.message === 'segments'){
+      // raw segment predictions stored for CSV export
+      segmentPredictions = data.segments; // [{start,end,preds:[{index,confidence,geoscore,name,nameI18n}]}]
+      $('#downloadCsvBtn').prop('disabled', false).removeClass('d-none');
+    }
     if(data.message === 'pooled'){
       const useGeo = areaModelLoaded;
       const GEO_THRESH = 0.05;
@@ -197,7 +205,7 @@ function attachWorker() {
           return { ...x, filtered };
         })
         .sort((a,b) => b.filtered - a.filtered)
-        .slice(0, 10); // top 10
+        .slice(0, 10);
       drawChart(items, useGeo ? 'filtered' : 'confidence');
       $('#statusLine').text('Top 10 results');
     }
@@ -324,9 +332,12 @@ function drawChart(list, valueKey='confidence'){
 }
 
 // Add: helper to clear chart/results
+let segmentPredictions = null; // segment-wise raw predictions
+
 function clearChart() {
   if (chart) { try { chart.destroy(); } catch{} chart = null; }
   $('#results').empty();
+  $('#downloadCsvBtn').prop('disabled', true).addClass('d-none');
 }
 
 async function fileToPCMWindows(file){
@@ -399,5 +410,43 @@ dz.on('drop',async e=>{
   dz.removeClass('upload-dropzone-hover');
   $('#fileupload')[0].files = e.originalEvent.dataTransfer.files;
   $('#fileupload').trigger('change');
+});
+
+// CSV download
+$('#downloadCsvBtn').on('click', () => {
+  if(!segmentPredictions){ return; }
+  const MIN_CONF = 0.1;
+  const GEO_THRESH = 0.05;
+  const useGeo = areaModelLoaded;
+  let rows = ['start,end,label,score'];
+  segmentPredictions.forEach(seg => {
+    // filter predictions for this segment
+    const filtered = seg.preds
+      .filter(p => {
+        if (p.confidence < MIN_CONF) return false;
+        if (useGeo && !(p.geoscore > GEO_THRESH)) return false;
+        return true;
+      })
+      .sort((a,b)=> b.confidence - a.confidence);
+    filtered.forEach(p => {
+      rows.push(
+        `${seg.start.toFixed(3)},${seg.end.toFixed(3)},"${(p.nameI18n||p.name).replace(/"/g,'""')}",${p.confidence.toFixed(4)}`
+      );
+    });
+  });
+  if(rows.length === 1){
+    rows.push('0,0,"(no detections)",0');
+  }
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ($('#fileupload')[0].files[0]?.name || 'audio').replace(/\.[^/.]+$/,'') + '_BirdNET_Results.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=> {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 100);
 });
 </script>
