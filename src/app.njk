@@ -1,0 +1,188 @@
+---
+title: BirdNET App – Identify Birds by Sound
+layout: layouts/base.njk
+permalink: "/app/"
+---
+
+<section class="page-header">
+  <div class="container">
+    <h1 class="page-title">BirdNET App</h1>
+    <p class="lead text-muted mb-0">
+      Identify birds around you by recording a short snippet of song or call. Fast, free, and powered by BirdNET AI.
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+
+    <!-- Download buttons -->
+    <div class="mb-4">
+      <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet"
+         class="btn btn-dark btn-sm me-2" target="_blank" rel="noopener">
+        Android (Google Play) ↗
+      </a>
+      <a href="https://apps.apple.com/us/app/birdnet/id1541842885"
+         class="btn btn-dark btn-sm" target="_blank" rel="noopener">
+        iOS (App Store) ↗
+      </a>
+    </div>
+
+    <div class="row g-4 mb-5">
+      <div class="col-lg-6">
+        <h2 class="h5 section-title">Overview</h2>
+        <p class="text-muted">
+          The BirdNET mobile app lets you hold up your phone, record a few seconds of sound, and get instant
+          identification suggestions. It uses the same core neural network models that power research-grade
+          monitoring tools, simplified for everyday use.
+        </p>
+        <ul class="text-muted small mb-3">
+          <li>Real-time bird sound identification.</li>
+          <li>Confidence scores and alternative suggestions.</li>
+          <li>Optional contribution of observations for research.</li>
+          <li>Works in many regions worldwide (model updates expand coverage).</li>
+        </ul>
+        <p class="text-muted small mb-0">
+          Designed for birders, learners, educators, and anyone curious about the sounds they hear outdoors.
+        </p>
+      </div>
+      <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <img src="{{ '/img/birdnet_app_screenshots.png' | url }}"
+                 alt="BirdNET app interface screenshots"
+                 class="img-fluid rounded">
+            <p class="small text-muted mt-2 mb-0">Representative interface screenshots.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="row g-4 mb-5">
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted mb-2">Simple capture</h3>
+            <p class="small text-muted mb-0">Tap record, wait for the birds to call, select a clip, and submit for analysis. No external microphone needed.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted mb-2">Instant results</h3>
+            <p class="small text-muted mb-0">Top species suggestions with confidence help you learn local birds faster.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted mb-2">Learning tools</h3>
+            <p class="small text-muted mb-0">Link detections to species info and improve recognition through repetition.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="mb-5">
+      <h2 class="h5 section-title">How it works</h2>
+      <div class="row g-4">
+        <div class="col-sm-6 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h3 class="h6 text-muted text-uppercase mb-2">1. Record</h3>
+              <p class="small text-muted mb-0">Phone microphone captures ambient sound (short clip).</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h3 class="h6 text-muted text-uppercase mb-2">2. Analyze</h3>
+              <p class="small text-muted mb-0">Clip converted to a spectrogram; BirdNET model scores species.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h3 class="h6 text-muted text-uppercase mb-2">3. Suggest</h3>
+              <p class="small text-muted mb-0">Top matches returned with confidence and alternate options.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <h3 class="h6 text-muted text-uppercase mb-2">4. Learn</h3>
+              <p class="small text-muted mb-0">Users explore species info, improving recognition over time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data & privacy -->
+    <div class="row g-4 mb-5">
+      <div class="col-lg-6">
+        <h2 class="h5 section-title">Data & privacy</h2>
+        <p class="text-muted small mb-2">
+          Your recordings help improve BirdNET. Submissions are used for research (e.g., to train and evaluate models)
+          and are licensed under
+          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY‑NC‑SA 4.0</a>.
+        </p>
+        <ul class="small text-muted mb-3">
+          <li>Human speech is filtered; we do not publish clips containing speech. Published examples are anonymized.</li>
+          <li>Location is optional and user‑controlled; when provided, it helps track species diversity and change over time.</li>
+          <li>Data are stored securely to prevent unauthorized access.</li>
+          <li>Used for non‑commercial research and model development only.</li>
+        </ul>
+        <p class="small text-muted mb-0">
+          See the in‑app policy screen for additional details.
+        </p>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="h5 section-title">Tips</h2>
+        <ul class="small text-muted mb-0">
+          <li>Move closer to the singing bird when possible.</li>
+          <li>Avoid handling noise (hold device steady while recording).</li>
+          <li>Limit overlapping sounds (traffic, voices) for better accuracy.</li>
+          <li>Try multiple short recordings if the first is uncertain.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Support -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-8">
+        <h2 class="h5 section-title">Support & feedback</h2>
+        <p class="small text-muted mb-2">
+          If you encounter issues or have improvement suggestions, please use the feedback option in the app or contact the team.
+        </p>
+        <p class="small text-muted mb-0">
+          Email: <a href="mailto:ccb-birdnet@cornell.edu">ccb-birdnet@cornell.edu</a>
+        </p>
+      </div>
+      <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h3 class="h6 text-uppercase text-muted mb-2">Get the app</h3>
+            <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet"
+               class="btn btn-dark btn-sm w-100 mb-2" target="_blank" rel="noopener">
+              Android ↗
+            </a>
+            <a href="https://apps.apple.com/us/app/birdnet/id1541842885"
+               class="btn btn-dark btn-sm w-100" target="_blank" rel="noopener">
+              iOS ↗
+            </a>
+            <p class="small text-muted mt-2 mb-0">Free download. Requires microphone access.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
