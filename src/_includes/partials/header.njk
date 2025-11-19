@@ -6,6 +6,7 @@
     {% set publicationsUrl = '/publications/' | url %}
     {% set showroomUrl = '/showroom/' | url %}
     {% set aboutUrl = '/about/' | url %}
+    {% set k12Url = '/k12/' | url %}
     {% set donateUrl = '/donate/' | url %}
 
     <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="{{ homeUrl }}">
@@ -34,6 +35,9 @@
         </li>
         <li class="nav-item">
           <a class="nav-link{% if page.url == publicationsUrl %} active{% endif %}" href="{{ publicationsUrl }}">Publications</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if page.url == k12Url %} active{% endif %}" href="{{ k12Url }}">K‑12</a>
         </li>
         <li class="nav-item">
           <a class="nav-link{% if page.url == showroomUrl %} active{% endif %}" href="{{ showroomUrl }}">Showroom</a>
