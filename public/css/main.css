@@ -133,13 +133,13 @@ body {
   font-size: 0.7rem;
 }
 
-
-
 /* Footer tweaks */
 
 footer {
   font-size: 0.85rem;
 }
+
+/* Upload page specific */
 
 .upload-dropzone {
   cursor: pointer;

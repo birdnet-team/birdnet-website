@@ -1,14 +1,14 @@
 ---
-title: BirdNET Demo – Upload & Analyze
+title: BirdNET Demo – Client-Side BirdNET
 layout: layouts/base.njk
 permalink: "/upload/"
 ---
 
 <section class="page-header">
   <div class="container">
-    <h1 class="page-title">BirdNET Demo</h1>
+    <h1 class="page-title">BirdNET Demo (Browser Inference)</h1>
     <p class="lead text-muted mb-0">
-      Upload an audio file (WAV / MP3), view the spectrogram, and see BirdNET model predictions.
+      Run BirdNET locally with TensorFlow.js. Optionally refine with geo (lat / lon).
     </p>
   </div>
 </section>
@@ -18,19 +18,18 @@ permalink: "/upload/"
 
     <form id="fileform" class="mb-4" enctype="multipart/form-data">
       <div id="dropzone" class="upload-dropzone text-center p-4 border border-dashed rounded bg-light">
-        <p class="mb-2 small text-muted">Drag & drop audio here or choose a file (max ~50 MB)</p>
+        <p class="mb-2 small text-muted">Drag & drop audio or choose a file (48 kHz preferred, WAV/MP3)</p>
         <input id="fileupload" name="file" type="file" accept="audio/*" hidden>
         <button type="button" id="chooseBtn" class="btn btn-sm btn-outline-secondary">Choose file</button>
         <div class="small mt-2 text-muted" id="fileInfo"></div>
       </div>
     </form>
 
-    <div id="player" class="mb-4">
+    <div id="player" class="mb-3">
       <div class="spectro-wrapper" id="spectro-wrapper">
         <div id="ws-container" class="ws-container position-relative">
           <div id="playCursor"></div>
         </div>
-        <!-- Hidden until audio loaded -->
         <div id="spectro-controls" class="spectro-controls d-none align-items-center gap-2 mt-3 flex-wrap">
           <button id="playBtn" class="btn btn-sm btn-primary" title="Play" aria-label="Play">▶</button>
           <button id="pauseBtn" class="btn btn-sm btn-primary btn-control" title="Pause" aria-label="Pause">❚❚</button>
@@ -40,10 +39,65 @@ permalink: "/upload/"
       </div>
     </div>
 
-    <div id="birdnet" class="mb-4"></div>
+    <!-- Settings BELOW spectrogram; hidden until audio is loaded -->
+    <div id="settingsPanel" class="card card-body mb-3 d-none">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+          <label for="langSelect" class="form-label small mb-1">Labels language</label>
+          <select id="langSelect" class="form-select form-select-sm">
+            <option value="auto" selected>Auto (browser)</option>
+            <option value="en_us">English (US)</option>
+            <option value="en_uk">English (UK)</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="it">Italiano</option>
+            <option value="nl">Nederlands</option>
+            <option value="pt">Português</option>
+            <option value="fi">Suomi</option>
+            <option value="sv">Svenska</option>
+            <option value="da">Dansk</option>
+            <option value="no">Norsk</option>
+            <option value="pl">Polski</option>
+            <option value="cs">Čeština</option>
+            <option value="sk">Slovenčina</option>
+            <option value="ro">Română</option>
+            <option value="sl">Slovenščina</option>
+            <option value="hu">Magyar</option>
+            <option value="ru">Русский</option>
+            <option value="uk">Українська</option>
+            <option value="tr">Türkçe</option>
+            <option value="ar">العربية</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="th">ไทย</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="latInput" class="form-label small mb-1">Latitude</label>
+          <input type="number" step="0.0001" id="latInput" class="form-control form-control-sm" placeholder="e.g. 40.7812">
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="lonInput" class="form-label small mb-1">Longitude</label>
+          <input type="number" step="0.0001" id="lonInput" class="form-control form-control-sm" placeholder="-73.9665">
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+          <button type="button" id="runBtn" class="btn btn-sm btn-primary">Run analysis</button>
+        </div>
+      </div>
+      <div class="small text-muted mt-2">Scores are mean-pooled across all segments. If geo is set, species with geo score ≤ 0.05 are hidden (set to 0).</div>
+    </div>
+
+    <!-- Separate status area -->
+    <div id="statusArea" class="mb-3">
+      <div id="statusLine" class="small text-muted">Waiting for audio…</div>
+    </div>
+
+    <div id="results" class="mb-4"></div>
 
     <div class="alert alert-secondary small mb-0">
-      Upload is analyzed server-side. If analysis fails you can still explore the spectrogram. Human speech is ignored.
+      All inference occurs locally. Provide latitude / longitude to load geo model for region-specific ranking.
     </div>
 
   </div>
@@ -55,75 +109,93 @@ permalink: "/upload/"
 <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
 <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/minimap.min.js"></script>
 
-<script>
-const endpointUrl = 'https://birdnet.cornell.edu/api/upload';
-const duration_chunk = 3.0;
-
+<script type="module">
+// Worker lifecycle (language is applied when you click Run)
+const workerBase = '{{ "/js/birdnet-worker.js" | url }}';
+const modelsRoot = '{{ "/models" | url }}';
+let worker = null;
+let workerLoaded = false;
+let resolveWhenLoaded = null;
+let currentWorkerLang = null; // track which language the current worker uses
 let ws = null;
-let analysis = {};
-let barChart = null;
-const overall_time = (-duration_chunk).toString();
-let current_time = overall_time;
+let chart = null;
+let areaModelLoaded = false;
+let lastPCM = null;  // last audio buffer
+
+const WINDOW_SAMPLES = 144000; // 3s @ 48kHz
+
+function makeWorkerUrl(selectedLang) {
+  const qs = new URLSearchParams({ root: modelsRoot });
+  if (selectedLang && selectedLang !== 'auto') qs.set('lang', selectedLang);
+  return workerBase + '?' + qs.toString();
+}
+function attachWorker() {
+  worker.onmessage = ({ data }) => {
+    if(['load_model','warmup','load_geomodel','load_labels'].includes(data.message)){
+      $('#statusLine').text('Loading model... '+(data.progress ?? '')+'%');
+    }
+    if(data.message === 'loaded'){
+      workerLoaded = true;
+      $('#statusLine').text('Model ready.');
+      if (resolveWhenLoaded) { resolveWhenLoaded(); resolveWhenLoaded = null; }
+    }
+    if(data.message === 'predict_debug'){
+      console.groupCollapsed('[birdnet] top-10 per batch');
+      data.top10PerBatch.forEach(({ batch, max, mean, top10 }) => {
+        console.groupCollapsed(`batch ${batch} · max=${max.toFixed(4)} · mean=${mean.toExponential(2)}`);
+        console.table(top10.map(t => ({ name: t.name, confidence: +t.confidence.toFixed(4) })));
+        console.groupEnd();
+      });
+      console.groupEnd();
+    }
+    if(data.message === 'pooled'){
+      const useGeo = areaModelLoaded;
+      const GEO_THRESH = 0.05;
+      const items = data.pooled
+        .map(x => {
+          const filtered = useGeo ? (x.geoscore > GEO_THRESH ? x.confidence : 0) : x.confidence;
+          return { ...x, filtered };
+        })
+        .sort((a,b) => b.filtered - a.filtered)
+        .slice(0, 10); // top 10
+      drawChart(items, useGeo ? 'filtered' : 'confidence');
+      $('#statusLine').text('Top 10 results');
+    }
+    if(data.message === 'area-scores'){
+      areaModelLoaded = true;
+      $('#statusLine').text('Geo scores applied');
+    }
+  };
+}
+function newWorker(selectedLang) {
+  if (worker) { try { worker.terminate(); } catch{} }
+  workerLoaded = false;
+  areaModelLoaded = false;
+  currentWorkerLang = selectedLang || 'auto';
+  worker = new Worker(makeWorkerUrl(currentWorkerLang));
+  attachWorker();
+}
+function waitForLoaded(){
+  if (workerLoaded) return Promise.resolve();
+  return new Promise(res => { resolveWhenLoaded = res; });
+}
 
 function fmtTime(sec){ if(!sec||isNaN(sec)) return '0:00'; const m=Math.floor(sec/60); const s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
 
-function createBarChart(el,data,labels){
-  return new Chart(document.getElementById(el).getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[{label:'Species probability',data,backgroundColor:'rgba(0,191,255,.5)',borderColor:'rgba(0,172,229,1)',borderWidth:1}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{min:0,max:1}},plugins:{legend:{display:false}}}
-  });
-}
-
-function plotPrediction(start=null){
-  if(!analysis.predictions) return;
-  start=parseFloat(start); if(isNaN(start)||start<0||start>=analysis.duration) start=0;
-  let selected_time=overall_time;
-  if(start>0){
-    let distmax=duration_chunk;
-    for(let time in analysis.predictions){
-      if(parseFloat(time)<=start && start<parseFloat(time)+duration_chunk){
-        const dist=Math.abs(start - parseFloat(time) - (duration_chunk/2));
-        if(dist<distmax){ distmax=dist; selected_time=time; }
-      }
-    }
-  }
-  if(current_time!==selected_time){
-    current_time=selected_time;
-    $('#chart-headline').text(
-      current_time===overall_time ? 'Average species probabilities for entire file.' :
-        'Species probabilities for '+parseFloat(current_time).toFixed(1)+'–'+Math.min(parseFloat(current_time)+duration_chunk,analysis.duration).toFixed(1)+' s'
-    );
-    const species=[]; const scores=[];
-    for(let pos in analysis.predictions[current_time]){
-      const entry=analysis.predictions[current_time][pos];
-      if(!scores.length || entry.score>=0.015){
-        species.push(entry.species.split(';').join(' (')+')');
-        scores.push(entry.score);
-      }
-    }
-    $('#chart-container').css({height:(species.length*30)+50});
-    if(barChart) barChart.destroy();
-    barChart=createBarChart('analysis-chart',scores,species);
-  }
-}
-
-function initWaveSurfer(dataUrl){
-  if(ws){ try{ws.destroy()}catch{} ws=null; }
-  $('#spectro-controls').addClass('d-none'); // keep hidden until ready
-  const SpectrogramPlugin=window.WaveSurfer && window.WaveSurfer.Spectrogram;
-  const MinimapPlugin=window.WaveSurfer && window.WaveSurfer.Minimap;
-
-  ws=WaveSurfer.create({
+function initWaveSurfer(url){
+  if(ws){ try{ ws.destroy(); } catch{} ws=null; }
+  $('#spectro-controls').addClass('d-none');
+  const SpectrogramPlugin = WaveSurfer.Spectrogram;
+  const MinimapPlugin = WaveSurfer.Minimap;
+  ws = WaveSurfer.create({
     container:'#ws-container',
-    url:dataUrl,
+    url,
     height:0,
     sampleRate:48000,
     waveColor:'transparent',
     progressColor:'transparent',
     cursorWidth:0
   });
-
   if(MinimapPlugin){
     ws.registerPlugin(MinimapPlugin.create({
       height:30,waveColor:'#a89f98',progressColor:'#2E261F',normalize:true
@@ -131,82 +203,108 @@ function initWaveSurfer(dataUrl){
   }
   if(SpectrogramPlugin){
     ws.registerPlugin(SpectrogramPlugin.create({
-      frequencyMax:12000,frequencyMin:300,fftSamples:512,labels:false,splitChannels:false,
-      height:150,scale:'linear',colorMap:'roseus',gainDB:35,rangeDB:100
+      frequencyMax:12000,frequencyMin:300,fftSamples:512,labels:false,
+      splitChannels:false,height:150,scale:'linear',colorMap:'roseus',gainDB:35,rangeDB:100
     }));
-  } else {
-    $('#ws-container').append('<div class="small text-muted">Spectrogram plugin unavailable.</div>');
   }
-
   ws.on('ready',()=>{
     $('#timeDisplay').text('0:00 / '+fmtTime(ws.getDuration()));
     $('#spectro-controls').removeClass('d-none').addClass('d-flex');
+    $('#settingsPanel').removeClass('d-none'); // show settings once audio is ready
   });
-  ws.on('audioprocess',t=>updatePlaybackUI(t));
-  ws.on('seek',()=>updatePlaybackUI(ws.getCurrentTime()));
+  ws.on('audioprocess',t=>$('#timeDisplay').text(fmtTime(t)+' / '+fmtTime(ws.getDuration())));
+  ws.on('seek',()=>$('#timeDisplay').text(fmtTime(ws.getCurrentTime())+' / '+fmtTime(ws.getDuration())));
 }
 
-function updatePlaybackUI(t){
-  if(!ws) return;
-  const dur=ws.getDuration()||0;
-  $('#timeDisplay').text(fmtTime(t)+' / '+fmtTime(dur));
-  plotPrediction(t);
+function drawChart(list, valueKey='confidence'){
+  const labels = list.map(b => b.nameI18n || b.name);
+  const data = list.map(b => b[valueKey] || 0);
+  $('#results').html('<canvas id="predictionChart" height="'+(labels.length*18+60)+'"></canvas>');
+  if(chart) chart.destroy();
+  const labelText =
+    valueKey === 'filtered' ? 'Confidence (geo-filtered)' :
+    'Confidence';
+  chart = new Chart(document.getElementById('predictionChart').getContext('2d'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label: labelText, data, backgroundColor:'rgba(0,191,255,.5)', borderColor:'#0ab0ff', borderWidth:1 }] },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      scales:{ x:{ min:0, max:1 } },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:ctx => ctx.raw.toFixed(3) } } }
+    }
+  });
 }
 
-function displayStatus(msg){ $('#birdnet').html('<div class="message small text-muted">'+msg+'</div>'); }
-
-function displayAnalysis(data){
-  analysis=data;
-  analysis.predictions[overall_time]=analysis.prediction;
-  $('#birdnet').html(
-    '<div id="chart-headline" class="small fw-semibold mb-2"></div>'+
-    '<div id="chart-container"><canvas id="analysis-chart"></canvas></div>'+
-    '<div id="statistics" class="mt-2 small text-muted">Model: '+analysis.model+' · Processing '+Number((parseInt(analysis.timespan)/1000).toFixed(1))+' s</div>'
-  );
-  current_time='';
-  plotPrediction();
+async function fileToPCMWindows(file){
+  const buf = await file.arrayBuffer();
+  const ctx = new AudioContext({ sampleRate:48000 });
+  const audio = await ctx.decodeAudioData(buf);
+  const chan = audio.numberOfChannels > 1
+    ? (()=>{ const l = audio.getChannelData(0), r = audio.getChannelData(1); const m = new Float32Array(audio.length); for(let i=0;i<audio.length;i++) m[i] = 0.5*(l[i] + r[i]); return m; })()
+    : audio.getChannelData(0);
+  let max = 0; for(let i=0;i<chan.length;i++){ const v=Math.abs(chan[i]); if(v>max) max=v; }
+  const norm = max || 1;
+  const windows = Math.max(1, Math.floor(chan.length / WINDOW_SAMPLES));
+  const totalSamples = windows * WINDOW_SAMPLES;
+  const pcm = new Float32Array(totalSamples);
+  pcm.set(chan.slice(0,totalSamples));
+  for(let i=0;i<pcm.length;i++) pcm[i] = pcm[i]/norm;
+  return { pcm, windows };
 }
 
-function handleFiles(files){
-  if(!files||!files.length) return;
-  const file=files[0];
-  if(!file.type.startsWith('audio')){ displayStatus('Unsupported file type.'); return; }
+// --- Init and handlers ---
+// Removed eager model load at page load (no newWorker() here)
+
+$('#chooseBtn').on('click',()=>$('#fileupload').trigger('click'));
+$('#fileupload').on('change', async e => {
+  const file = e.currentTarget.files[0];
+  if(!file) return;
   $('#fileInfo').text(file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)');
-  const reader=new FileReader();
-  reader.onload=e=>initWaveSurfer(e.target.result);
-  reader.readAsDataURL(file);
-  const formData=new FormData();
-  formData.append('file',file);
-  displayStatus('Uploading & analyzing...');
-  $.ajax({
-    url:endpointUrl,type:'POST',data:formData,processData:false,contentType:false,dataType:'json',
-    success:data=>{ data.response==='success' ? displayAnalysis(data) : displayStatus('Server returned no predictions (spectrogram available).'); },
-    error:e=>{ console.log(e); displayStatus('Analysis failed (spectrogram available).'); }
-  });
-}
+  initWaveSurfer(URL.createObjectURL(file));
+  $('#statusLine').text('Decoding audio...');
+  const { pcm, windows } = await fileToPCMWindows(file);
+  lastPCM = pcm;
+  $('#statusLine').text('Audio ready ('+windows+' segment'+(windows>1?'s':'')+'). Adjust settings, then click "Run analysis".');
+});
 
-$(function(){
-  $('#chooseBtn').on('click',()=>$('#fileupload').trigger('click'));
-  $('#fileupload').on('change',e=>handleFiles(e.currentTarget.files));
+// Manual run: lazily create/load worker on first run or when language changes
+$('#runBtn').on('click', async () => {
+  if (!lastPCM) { $('#statusLine').text('Please load audio first.'); return; }
+  const selectedLang = $('#langSelect').val() || 'auto';
+  if (!worker || !workerLoaded || selectedLang !== currentWorkerLang) {
+    $('#statusLine').text('Loading model...');
+    newWorker(selectedLang);
+    await waitForLoaded();
+  }
+  const lat = parseFloat($('#latInput').val());
+  const lon = parseFloat($('#lonInput').val());
+  if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+    $('#statusLine').text('Applying geo scores...');
+    worker.postMessage({ message:'area-scores', latitude: lat, longitude: lon });
+  }
+  $('#statusLine').text('Running prediction...');
+  worker.postMessage({ message:'predict', pcmAudio: lastPCM });
+});
 
-  $('#ws-container').on('mousedown',function(e){
-    if(!ws) return;
-    const x=e.clientX+$(window).scrollLeft()-$(this).offset().left;
-    const pct=x/$(this).width();
-    ws.seekTo(Math.min(Math.max(pct,0),1));
-  });
+$('#ws-container').on('mousedown',function(e){
+  if(!ws) return;
+  const x = e.clientX + window.scrollX - $(this).offset().left;
+  ws.seekTo(Math.min(Math.max(x/$(this).width(),0),1));
+});
 
-  $('#playBtn').on('click',()=>{ if(!ws) return; ws.play(); });
-  $('#pauseBtn').on('click',()=>{ if(!ws) return; ws.pause(); });
-  $('#restartBtn').on('click',()=>{ if(!ws) return; ws.seekTo(0); ws.play(); });
-
-  const dz=$('#dropzone');
-  dz.on('dragenter dragover',e=>{ e.preventDefault(); e.stopPropagation(); dz.addClass('upload-dropzone-hover'); });
-  dz.on('dragleave',e=>{ e.preventDefault(); e.stopPropagation(); dz.removeClass('upload-dropzone-hover'); });
-  dz.on('drop',e=>{
-    e.preventDefault(); e.stopPropagation();
-    dz.removeClass('upload-dropzone-hover');
-    handleFiles(e.originalEvent.dataTransfer.files);
-  });
+$('#playBtn').on('click',()=> ws && ws.play());
+$('#pauseBtn').on('click',()=> ws && ws.pause());
+$('#restartBtn').on('click',()=> { if(ws){ ws.seekTo(0); ws.play(); } });
+// Drag & drop
+const dz=$('#dropzone');
+dz.on('dragenter dragover',e=>{ e.preventDefault(); e.stopPropagation(); dz.addClass('upload-dropzone-hover'); });
+dz.on('dragleave',e=>{ e.preventDefault(); e.stopPropagation(); dz.removeClass('upload-dropzone-hover'); });
+dz.on('drop',async e=>{
+  e.preventDefault(); e.stopPropagation();
+  dz.removeClass('upload-dropzone-hover');
+  $('#fileupload')[0].files = e.originalEvent.dataTransfer.files;
+  $('#fileupload').trigger('change');
 });
 </script>
