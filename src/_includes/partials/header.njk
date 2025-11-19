@@ -33,6 +33,27 @@
         <li class="nav-item">
           <a class="nav-link{% if page.url == toolsUrl %} active{% endif %}" href="{{ toolsUrl }}">Tools</a>
         </li>
+
+        <!-- Projects dropdown (external links) -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="projectsDropdown" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            Projects
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="projectsDropdown">
+            <li>
+              <a class="dropdown-item" href="https://birdnet.cornell.edu/swamp" target="_blank" rel="noopener">
+                SWAMP
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="https://birdnet.cornell.edu/amic" target="_blank" rel="noopener">
+                AMiC
+              </a>
+            </li>
+          </ul>
+        </li>
+
         <li class="nav-item">
           <a class="nav-link{% if page.url == publicationsUrl %} active{% endif %}" href="{{ publicationsUrl }}">Publications</a>
         </li>
