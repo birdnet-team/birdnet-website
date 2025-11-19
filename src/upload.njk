@@ -1,5 +1,5 @@
 ---
-title: BirdNET Demo – Client-Side BirdNET
+title: BirdNET Demo
 layout: layouts/base.njk
 permalink: "/upload/"
 ---
@@ -10,6 +10,10 @@ permalink: "/upload/"
     <p class="lead text-muted mb-0">
       Run BirdNET locally with TensorFlow.js. Optionally refine with geo (lat / lon).
     </p>
+    <div class="text-muted small mt-4">
+      Code adapted from
+      <a href="https://github.com/georg95/birdnet-web" target="_blank" rel="noopener">georg95/birdnet-web</a>.
+    </div>
   </div>
 </section>
 
@@ -95,11 +99,7 @@ permalink: "/upload/"
     </div>
 
     <div id="results" class="mb-4"></div>
-
-    <div class="alert alert-secondary small mb-0">
-      All inference occurs locally. Provide latitude / longitude to load geo model for region-specific ranking.
-    </div>
-
+    
   </div>
 </section>
 
@@ -123,6 +123,31 @@ let areaModelLoaded = false;
 let lastPCM = null;  // last audio buffer
 
 const WINDOW_SAMPLES = 144000; // 3s @ 48kHz
+
+// Pretty labels on bars (no extra plugin dependency)
+const ValueLabelPlugin = {
+  id: 'valueLabel',
+  afterDatasetsDraw(chart, args, opts) {
+    const { ctx, scales } = chart;
+    const meta = chart.getDatasetMeta(0);
+    const data = chart.data.datasets[0].data;
+    ctx.save();
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.fillStyle = '#444';
+    ctx.textBaseline = 'middle';
+    meta.data.forEach((bar, i) => {
+      const val = data[i];
+      if (val == null) return;
+      const label = val.toFixed(3);
+      const padding = 6;
+      const x = Math.min(bar.x + 24, scales.x.getPixelForValue(1) - 4); // keep inside chart
+      const y = bar.y;
+      ctx.fillText(label, x, y);
+    });
+    ctx.restore();
+  }
+};
+Chart.register(ValueLabelPlugin);
 
 function makeWorkerUrl(selectedLang) {
   const qs = new URLSearchParams({ root: modelsRoot });
@@ -219,22 +244,74 @@ function initWaveSurfer(url){
 function drawChart(list, valueKey='confidence'){
   const labels = list.map(b => b.nameI18n || b.name);
   const data = list.map(b => b[valueKey] || 0);
-  $('#results').html('<canvas id="predictionChart" height="'+(labels.length*18+60)+'"></canvas>');
+  $('#results').html('<canvas id="predictionChart" height="'+Math.max(220, (labels.length*24+80))+'"></canvas>');
   if(chart) chart.destroy();
-  const labelText =
-    valueKey === 'filtered' ? 'Confidence (geo-filtered)' :
-    'Confidence';
-  chart = new Chart(document.getElementById('predictionChart').getContext('2d'), {
+  const ctx = document.getElementById('predictionChart').getContext('2d');
+
+  const bgColor = (c) => {
+    const { chart } = c;
+    const area = chart.chartArea;
+    if (!area) return '#7dd3fc';
+    const grad = chart.ctx.createLinearGradient(area.left, 0, area.right, 0);
+    grad.addColorStop(0, '#22d3ee');   // cyan
+    grad.addColorStop(0.5, '#60a5fa'); // sky
+    grad.addColorStop(1, '#a78bfa');   // violet
+    return grad;
+  };
+
+  chart = new Chart(ctx, {
     type:'bar',
-    data:{ labels, datasets:[{ label: labelText, data, backgroundColor:'rgba(0,191,255,.5)', borderColor:'#0ab0ff', borderWidth:1 }] },
+    data:{
+      labels,
+      datasets:[{
+        label: valueKey === 'filtered' ? 'Confidence (geo-filtered)' : 'Confidence',
+        data,
+        backgroundColor: bgColor,
+        borderColor: '#0ea5e9',
+        borderWidth: 1,
+        borderSkipped: false,
+        borderRadius: 8,
+        barPercentage: 0.85,
+        categoryPercentage: 0.9
+      }]
+    },
     options:{
       indexAxis:'y',
       responsive:true,
       maintainAspectRatio:false,
-      scales:{ x:{ min:0, max:1 } },
-      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:ctx => ctx.raw.toFixed(3) } } }
+      animation: {
+        duration: 900,
+        easing: 'easeOutQuart',
+        delay: (ctx) => ctx.dataIndex * 30
+      },
+      scales:{
+        x:{
+          min:0, max:1,
+          grid:{ color: 'rgba(0,0,0,0.06)' },
+          ticks:{ callback:(v)=> Number(v).toFixed(1) }
+        },
+        y:{
+          grid:{ display:false },
+          ticks:{ color:'#333' }
+        }
+      },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#111',
+          titleColor:'#fff',
+          bodyColor:'#fff',
+          callbacks:{ label:ctx => ctx.raw.toFixed(3) }
+        }
+      }
     }
   });
+}
+
+// Add: helper to clear chart/results
+function clearChart() {
+  if (chart) { try { chart.destroy(); } catch{} chart = null; }
+  $('#results').empty();
 }
 
 async function fileToPCMWindows(file){
@@ -261,6 +338,10 @@ $('#chooseBtn').on('click',()=>$('#fileupload').trigger('click'));
 $('#fileupload').on('change', async e => {
   const file = e.currentTarget.files[0];
   if(!file) return;
+
+  // Clear previous results/chart on new upload
+  clearChart();
+
   $('#fileInfo').text(file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)');
   initWaveSurfer(URL.createObjectURL(file));
   $('#statusLine').text('Decoding audio...');
