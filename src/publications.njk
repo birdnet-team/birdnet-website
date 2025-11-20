@@ -16,33 +16,61 @@ permalink: "/publications/"
 <section class="py-5">
   <div class="container">
 
-    {# Loop over groups by year (already grouped in _data/publications.js) #}
+    {# Filter bar: dropdown with multi-select checkboxes + active chips #}
+    <div class="d-flex align-items-center flex-wrap gap-2 mb-4">
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="pubTagDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          Filter by tags
+        </button>
+        <div class="dropdown-menu p-3" aria-labelledby="pubTagDropdown" style="min-width: 280px; max-height: 320px; overflow:auto;">
+          <div id="pubTagList" class="d-grid gap-1">
+            <!-- Filled dynamically from cards’ data-tags -->
+          </div>
+          <div class="mt-2 d-flex gap-2">
+            <button type="button" id="applyTagFilter" class="btn btn-sm btn-primary">Apply</button>
+            <button type="button" id="clearTagFilter" class="btn btn-sm btn-outline-secondary">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div id="activeTagChips" class="d-flex flex-wrap gap-1"></div>
+    </div>
+
+    {# Badge class helper for tags #}
+    {% macro tagBadgeClass(t) -%}
+      {%- set x = t | lower -%}
+      {%- if 'dataset' in x -%}bg-warning text-dark
+      {%- elif 'embedding' in x -%}bg-info
+      {%- elif 'best' in x or 'guideline' in x -%}bg-primary-subtle text-primary-emphasis
+      {%- elif 'citizen' in x -%}bg-danger
+      {%- elif 'real-time' in x or 'real time' in x -%}bg-success
+      {%- elif 'ecology' in x -%}bg-success-subtle text-success-emphasis
+      {%- elif 'pam' in x -%}bg-secondary
+      {%- elif 'models' in x or 'deep' in x -%}bg-dark
+      {%- else -%}bg-light text-muted
+      {%- endif -%}
+    {%- endmacro %}
+
+    {# Loop over groups by year #}
     {% for group in publications.byYear %}
-      <div class="mb-4">
+      <div class="mb-4 pub-year-group">
         <h2 class="h5 text-uppercase text-muted mb-3">{{ group.year }}</h2>
         <div class="row g-3">
           {% for p in group.items %}
             <div class="col-12">
-              <div class="card card-publication shadow-sm">
+              <div
+                class="card card-publication shadow-sm"
+                data-tags="{{ (p.tags or []) | join(',') }}"
+              >
                 <div class="card-body">
-                  <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
-                    {# very simple type badge; you can refine this test later #}
-                    {% if "Guidelines" in p.title %}
-                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Guidelines</span>
-                    {% elseif "BirdSet" in p.title %}
-                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Datasets</span>
-                    {% elseif "embedding" in p.title | lower %}
-                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Embeddings</span>
-                    {% else %}
-                      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis pub-badge">Article</span>
-                    {% endif %}
 
-                    {% if p.journal %}
-                      <span class="badge rounded-pill bg-light text-muted pub-badge">
-                        {{ p.journal }}
-                      </span>
-                    {% endif %}
-                  </div>
+                  {# Top badges from BibTeX tags #}
+                  {% if p.tags and p.tags.length %}
+                    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+                      {% for t in p.tags %}
+                        <span class="badge rounded-pill {{ tagBadgeClass(t) }} pub-badge">{{ t }}</span>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
 
                   <h3 class="h5 mb-1">
                     {{ p.title | safe }}
@@ -72,3 +100,99 @@ permalink: "/publications/"
 
   </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const listEl = document.getElementById('pubTagList');
+  const chipsEl = document.getElementById('activeTagChips');
+  const applyBtn = document.getElementById('applyTagFilter');
+  const clearBtn = document.getElementById('clearTagFilter');
+  const dropdownBtn = document.getElementById('pubTagDropdown');
+
+  const cards = Array.from(document.querySelectorAll('.card.card-publication'));
+  const groups = Array.from(document.querySelectorAll('.pub-year-group'));
+
+  // Collect unique tags from data-tags attributes
+  const tagSet = new Set();
+  cards.forEach(c => {
+    (c.dataset.tags || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .forEach(t => tagSet.add(t));
+  });
+  const tags = Array.from(tagSet).sort((a,b)=>a.localeCompare(b));
+
+  // Build checkbox list
+  function makeIdForTag(t){ return 'tag-' + t.toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
+  tags.forEach(t => {
+    const wrap = document.createElement('div');
+    wrap.className = 'form-check';
+    const input = document.createElement('input');
+    input.className = 'form-check-input pub-tag-filter';
+    input.type = 'checkbox';
+    input.value = t;
+    input.id = makeIdForTag(t);
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.setAttribute('for', input.id);
+    label.textContent = t;
+    wrap.appendChild(input);
+    wrap.appendChild(label);
+    listEl.appendChild(wrap);
+  });
+
+  function getSelectedTags(){
+    return Array.from(document.querySelectorAll('.pub-tag-filter:checked')).map(i => i.value);
+  }
+
+  function updateChips(selected){
+    chipsEl.innerHTML = '';
+    selected.forEach(t => {
+      const span = document.createElement('span');
+      span.className = 'badge bg-secondary';
+      span.textContent = t;
+      chipsEl.appendChild(span);
+    });
+    dropdownBtn.textContent = selected.length ? `Filter by tags (${selected.length})` : 'Filter by tags';
+  }
+
+  function applyFilter(){
+    const selected = getSelectedTags();
+
+    // Show all if none selected; otherwise OR-match: show if any tag matches
+    cards.forEach(card => {
+      const ct = (card.dataset.tags || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      const visible = selected.length === 0 || selected.some(t => ct.includes(t));
+      const col = card.closest('.col-12');
+      if (col) col.style.display = visible ? '' : 'none';
+    });
+
+    // Hide year groups with no visible cards
+    groups.forEach(g => {
+      const anyVisible = g.querySelector('.col-12:not([style*="display: none"])');
+      g.style.display = anyVisible ? '' : 'none';
+    });
+
+    updateChips(selected);
+  }
+
+  applyBtn.addEventListener('click', () => {
+    applyFilter();
+    // Close the dropdown (Bootstrap)
+    const dropdown = bootstrap.Dropdown.getOrCreateInstance(document.getElementById('pubTagDropdown'));
+    dropdown.hide();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    document.querySelectorAll('.pub-tag-filter:checked').forEach(i => { i.checked = false; });
+    applyFilter();
+  });
+
+  // Initial state
+  applyFilter();
+});
+</script>

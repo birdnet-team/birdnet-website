@@ -86,6 +86,16 @@ function parseAuthors(authorField) {
     .filter(Boolean);
 }
 
+// Add: parse tags from BibTeX "tags" field (comma-separated)
+function parseTags(val) {
+  if (!val) return [];
+  return String(val)
+    .replace(/[{}]/g, '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
 module.exports = function () {
   const bibPath = path.join(process.cwd(), "data", "publications.bib");
 
@@ -112,6 +122,7 @@ module.exports = function () {
       number: f.number || "",
       pages: f.pages || "",
       publisher: latexToUnicode(f.publisher || ""),
+      tags: parseTags(f.tags || ""), // <-- add tags array
     };
   });
 
