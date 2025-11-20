@@ -121,11 +121,12 @@ permalink: "/demo/"
   </div>
 </section>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
-<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
-<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/minimap.min.js"></script>
+<!-- External CDN scripts replaced with local versions -->
+<script src="{{ '/js/jquery-3.7.1.min.js' | url }}"></script>
+<script src="{{ '/js/chart.umd-4.4.1.min.js' | url }}"></script>
+<script src="{{ '/js/wavesurfer-7.min.js' | url }}"></script>
+<script src="{{ '/js/wavesurfer.spectrogram.min.js' | url }}"></script>
+<script src="{{ '/js/wavesurfer.minimap.min.js' | url }}"></script>
 
 <script type="module">
 // Worker lifecycle (language is applied when you click Run)
@@ -170,6 +171,8 @@ Chart.register(ValueLabelPlugin);
 function makeWorkerUrl(selectedLang) {
   const qs = new URLSearchParams({ root: modelsRoot });
   if (selectedLang && selectedLang !== 'auto') qs.set('lang', selectedLang);
+  // Add local TF.js path
+  qs.set('tf', '{{ "/js/tfjs-4.14.0.min.js" | url }}');
   return workerBase + '?' + qs.toString();
 }
 function attachWorker() {

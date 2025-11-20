@@ -1,7 +1,8 @@
-/* Simplified BirdNET TF.js worker (no remap, direct labels) */
-importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest');
-
+/* BirdNET TF.js worker (local TF.js, no CDN) */
 const params = new URL(self.location.href).searchParams;
+const TF_PATH = params.get('tf') || '/js/tfjs-4.14.0.min.js';
+importScripts(TF_PATH);
+
 const ROOT = params.get('root') || '/models';
 const REQ_LANG = params.get('lang'); // optional explicit language
 
