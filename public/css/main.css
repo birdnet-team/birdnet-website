@@ -24,6 +24,8 @@ body {
   background-position: center center;
   border-bottom-left-radius: 1.5rem;
   border-bottom-right-radius: 1.5rem;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
   overflow: hidden;
 }
 
