@@ -25,7 +25,7 @@ permalink: "/app/"
   <div class="container">
 
     <!-- Download buttons -->
-    <div class="mb-4">
+    <div class="mb-5">
       <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet"
          class="btn btn-dark btn-sm me-2" target="_blank" rel="noopener">
         Android (Google Play) ↗
@@ -35,6 +35,46 @@ permalink: "/app/"
         iOS (App Store) ↗
       </a>
     </div>
+
+    <!-- Live BirdNET app stats (last 24h) -->
+    <div id="network-stats" class="mb-5">
+      <h2 class="h5 section-title mb-3">BirdNET app activity (last 24h)</h2>
+      <div class="row g-3 align-items-stretch text-center">
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+              <div class="small text-muted">Total observations</div>
+              <div id="stat-total-observations" class="h4 mb-0 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+              <div class="small text-muted">Observations (24h)</div>
+              <div id="stat-observations-24h" class="h4 mb-0 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+              <div class="small text-muted">Species (24h)</div>
+              <div id="stat-species-24h" class="h4 mb-0 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+              <div class="small text-muted">Users (24h)</div>
+              <div id="stat-users-24h" class="h4 mb-0 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="stats-updated" class="small text-muted mt-2">Loading…</div>
+    </div>    
 
     <div class="row g-4 mb-5">
       <div class="col-lg-6">
@@ -194,3 +234,77 @@ permalink: "/app/"
 
   </div>
 </section>
+
+<!-- Stats fetch script (moved to very end, after all DOM elements) -->
+<script>
+(function(){
+  const STATS_URL = 'https://birdnet.cornell.edu/api2/requeststats';
+  const REFRESH_MS = 5 * 60 * 1000;
+  let refreshTimer = null;
+
+  function fmtInt(v){
+    return (typeof v === 'number' && isFinite(v)) ? v.toLocaleString('en-US') : '0';
+  }
+
+  async function fetchStats(){
+    try {
+      const res = await fetch(STATS_URL, { cache: 'no-store', credentials: 'omit' });
+      if(!res.ok){
+        throw new Error('HTTP '+res.status+' '+res.statusText);
+      }
+      const data = await res.json();
+      processStats(data);
+    } catch (e){
+      console.error('Stats fetch failed:', e);
+      const el = document.getElementById('stats-updated');
+      if(el) el.textContent = 'Failed to load stats.';
+    }
+  }
+
+  function processStats(data){
+    const observationsRaw = Array.isArray(data.observations) ? data.observations : [];
+    const observationsSorted = observationsRaw.slice().sort((a,b)=>(+b.ts)-(+a.ts));
+    const now = Date.now();
+    const dayAgo = now - 24*3600*1000;
+    const obs24h = observationsSorted.filter(o => +o.ts >= dayAgo);
+    const statsObj = (data.stats && typeof data.stats === 'object') ? data.stats : {};
+
+    const totalObservations = statsObj.total_observations ?? observationsSorted.length;
+    const observations24h = statsObj.observations ?? obs24h.length;
+    const users24h = statsObj.users ?? 0;
+
+    const speciesSet = new Set();
+    for (const o of obs24h){
+      if(typeof o.species === 'string'){
+        const common = o.species.split(';')[0] || o.species;
+        speciesSet.add(common);
+      }
+    }
+    const species24h = speciesSet.size;
+
+    // Guard each update in case IDs were reordered/removed
+    const setText = (id,val)=> {
+      const el = document.getElementById(id);
+      if(el) el.textContent = val;
+    };
+    setText('stat-total-observations', fmtInt(totalObservations));
+    setText('stat-observations-24h', fmtInt(observations24h));
+    setText('stat-species-24h', fmtInt(species24h));
+    setText('stat-users-24h', fmtInt(users24h));
+    setText('stats-updated', 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(fetchStats, REFRESH_MS);
+  }
+
+  function init(){
+    fetchStats();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
