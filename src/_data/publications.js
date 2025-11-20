@@ -124,6 +124,7 @@ module.exports = function () {
       publisher: latexToUnicode(f.publisher || ""),
       tags: parseTags(f.tags || ""), // <-- add tags array
       url: f.url || "",              // <-- add url
+      summary: latexToUnicode(f.summary || ""), // <-- add summary
     };
   });
 

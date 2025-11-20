@@ -84,8 +84,15 @@ permalink: "/publications/"
                     {% if p.pages %}, {{ p.pages }}{% endif %}
                   </p>
 
+                  {% if p.summary %}
+                    <div class="mt-2 pub-summary">
+                      <div class="small text-muted fw-semibold text-uppercase">Summary</div>
+                      <p class="mb-2 mt-1">{{ p.summary }}</p>
+                    </div>
+                  {% endif %}
+
                   {% if p.url %}
-                    <div class="mt-2">
+                    <div class="mt-1">
                       <a href="{{ p.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                         Open <span aria-hidden="true">↗</span>
                         <span class="visually-hidden">(opens in a new tab)</span>
