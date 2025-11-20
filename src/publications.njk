@@ -8,7 +8,7 @@ permalink: "/publications/"
   <div class="container">
     <h1 class="page-title">Publications</h1>
     <p class="lead text-muted mb-0">
-      Selected peer-reviewed publications using BirdNET, BirdNET-derived embeddings, or BirdNET-based workflows.
+      Selected peer-reviewed publications by our team and our collaborators that use BirdNET, BirdNET-derived embeddings, or BirdNET-based workflows.
     </p>
   </div>
 </section>
@@ -16,23 +16,16 @@ permalink: "/publications/"
 <section class="py-5">
   <div class="container">
 
-    {# Filter bar: dropdown with multi-select checkboxes + active chips #}
-    <div class="d-flex align-items-center flex-wrap gap-2 mb-4">
-      <div class="dropdown">
-        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="pubTagDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-          Filter by tags
-        </button>
-        <div class="dropdown-menu p-3" aria-labelledby="pubTagDropdown" style="min-width: 280px; max-height: 320px; overflow:auto;">
-          <div id="pubTagList" class="d-grid gap-1">
-            <!-- Filled dynamically from cards’ data-tags -->
-          </div>
-          <div class="mt-2 d-flex gap-2">
-            <button type="button" id="applyTagFilter" class="btn btn-sm btn-primary">Apply</button>
-            <button type="button" id="clearTagFilter" class="btn btn-sm btn-outline-secondary">Clear</button>
-          </div>
-        </div>
+    {# Filter bar: clickable tag pills #}
+    <div class="mb-4" id="tagFilterControls">
+      <p class="small text-muted mb-4">
+        Click one or more tags to filter publications. Click again to deselect. Use Clear to reset.
+      </p>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <div id="tagToggleBar" class="d-flex flex-wrap gap-2"></div>
+        <button type="button" id="clearTagFilter" class="btn btn-sm btn-secondary">Clear</button>
       </div>
-      <div id="activeTagChips" class="d-flex flex-wrap gap-1"></div>
+      <div id="activeTagChips" class="d-flex flex-wrap gap-1 mt-2"></div>
     </div>
 
     {# Badge class helper for tags #}
@@ -112,16 +105,13 @@ permalink: "/publications/"
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const listEl = document.getElementById('pubTagList');
+  const toggleBar = document.getElementById('tagToggleBar');
   const chipsEl = document.getElementById('activeTagChips');
-  const applyBtn = document.getElementById('applyTagFilter');
   const clearBtn = document.getElementById('clearTagFilter');
-  const dropdownBtn = document.getElementById('pubTagDropdown');
-
   const cards = Array.from(document.querySelectorAll('.card.card-publication'));
   const groups = Array.from(document.querySelectorAll('.pub-year-group'));
 
-  // Collect unique tags from data-tags attributes
+  // Collect unique tags
   const tagSet = new Set();
   cards.forEach(c => {
     (c.dataset.tags || '')
@@ -132,44 +122,43 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const tags = Array.from(tagSet).sort((a,b)=>a.localeCompare(b));
 
-  // Build checkbox list
-  function makeIdForTag(t){ return 'tag-' + t.toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
-  tags.forEach(t => {
-    const wrap = document.createElement('div');
-    wrap.className = 'form-check';
-    const input = document.createElement('input');
-    input.className = 'form-check-input pub-tag-filter';
-    input.type = 'checkbox';
-    input.value = t;
-    input.id = makeIdForTag(t);
-    const label = document.createElement('label');
-    label.className = 'form-check-label';
-    label.setAttribute('for', input.id);
-    label.textContent = t;
-    wrap.appendChild(input);
-    wrap.appendChild(label);
-    listEl.appendChild(wrap);
-  });
-
-  function getSelectedTags(){
-    return Array.from(document.querySelectorAll('.pub-tag-filter:checked')).map(i => i.value);
-  }
-
-  function updateChips(selected){
-    chipsEl.innerHTML = '';
-    selected.forEach(t => {
-      const span = document.createElement('span');
-      span.className = 'badge bg-secondary';
-      span.textContent = t;
-      chipsEl.appendChild(span);
+  function renderTagPills() {
+    tags.forEach(t => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-sm btn-outline-primary tag-pill';
+      btn.textContent = t;
+      btn.dataset.tag = t;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', () => {
+        const active = btn.getAttribute('aria-pressed') === 'true';
+        btn.setAttribute('aria-pressed', active ? 'false' : 'true');
+        btn.classList.toggle('btn-primary', !active);
+        btn.classList.toggle('btn-outline-primary', active);
+        applyFilter();
+      });
+      toggleBar.appendChild(btn);
     });
-    dropdownBtn.textContent = selected.length ? `Filter by tags (${selected.length})` : 'Filter by tags';
   }
 
-  function applyFilter(){
-    const selected = getSelectedTags();
+  function getSelectedTags() {
+    return Array.from(document.querySelectorAll('.tag-pill[aria-pressed="true"]'))
+      .map(b => b.dataset.tag);
+  }
 
-    // Show all if none selected; otherwise OR-match: show if any tag matches
+  function updateChips(selected) {
+    chipsEl.innerHTML = '';
+    if (!selected.length) return;
+    selected.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'badge bg-secondary';
+      chip.textContent = t;
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  function applyFilter() {
+    const selected = getSelectedTags();
     cards.forEach(card => {
       const ct = (card.dataset.tags || '')
         .split(',')
@@ -179,29 +168,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const col = card.closest('.col-12');
       if (col) col.style.display = visible ? '' : 'none';
     });
-
-    // Hide year groups with no visible cards
     groups.forEach(g => {
       const anyVisible = g.querySelector('.col-12:not([style*="display: none"])');
       g.style.display = anyVisible ? '' : 'none';
     });
-
     updateChips(selected);
   }
 
-  applyBtn.addEventListener('click', () => {
-    applyFilter();
-    // Close the dropdown (Bootstrap)
-    const dropdown = bootstrap.Dropdown.getOrCreateInstance(document.getElementById('pubTagDropdown'));
-    dropdown.hide();
-  });
-
   clearBtn.addEventListener('click', () => {
-    document.querySelectorAll('.pub-tag-filter:checked').forEach(i => { i.checked = false; });
+    document.querySelectorAll('.tag-pill').forEach(b => {
+      b.setAttribute('aria-pressed','false');
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline-primary');
+    });
     applyFilter();
   });
 
-  // Initial state
+  // Init
+  renderTagPills();
   applyFilter();
 });
 </script>
