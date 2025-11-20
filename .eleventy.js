@@ -21,6 +21,6 @@ module.exports = function (eleventyConfig) {
     markdownTemplateEngine: "njk",
     htmlTemplateEngine: "njk",
     templateFormats: ["md", "njk", "html"],
-    pathPrefix: "/birdnet-website/"
+    //pathPrefix: "/birdnet-website/"
   };
 };
