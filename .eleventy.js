@@ -12,6 +12,12 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({
     "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js": "vendor/bootstrap/bootstrap.bundle.min.js",
   });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/bootstrap-icons/font/bootstrap-icons.css": "vendor/bootstrap-icons/bootstrap-icons.css",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/bootstrap-icons/font/fonts": "vendor/bootstrap-icons/fonts",
+  });
 
   // Shortcode for current year
   eleventyConfig.addShortcode("year", () => new Date().getFullYear());
