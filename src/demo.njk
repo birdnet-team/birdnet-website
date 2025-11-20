@@ -4,6 +4,7 @@ layout: layouts/base.njk
 permalink: "/demo/"
 ---
 
+<!-- Page header -->
 <section class="page-header">
   <div class="container">
     <h1 class="page-title">BirdNET Demo (Browser Inference)</h1>
@@ -20,6 +21,7 @@ permalink: "/demo/"
 <section class="py-5">
   <div class="container">
 
+    <!-- Upload form / dropzone -->
     <form id="fileform" class="mb-4" enctype="multipart/form-data">
       <div id="dropzone" class="upload-dropzone text-center p-4 border border-dashed rounded bg-light">
         <p class="mb-2 small text-muted">Drag & drop audio or choose a file (48 kHz preferred, WAV/MP3)</p>
@@ -29,6 +31,7 @@ permalink: "/demo/"
       </div>
     </form>
 
+    <!-- Player / spectrogram area -->
     <div id="player" class="mb-3">
       <div class="spectro-wrapper" id="spectro-wrapper">
         <div id="ws-container" class="ws-container position-relative">
@@ -37,15 +40,16 @@ permalink: "/demo/"
         <div id="spectro-controls" class="spectro-controls d-none align-items-center gap-2 mt-3 flex-wrap">
           <button id="playBtn" class="btn btn-sm btn-primary" title="Play" aria-label="Play">▶</button>
           <button id="pauseBtn" class="btn btn-sm btn-primary btn-control" title="Pause" aria-label="Pause">❚❚</button>
-          <button id="restartBtn" class="btn btn-sm btn-primary btn-control" title="Restart" aria-label="Restart">↺</button>
+            <button id="restartBtn" class="btn btn-sm btn-primary btn-control" title="Restart" aria-label="Restart">↺</button>
           <div id="timeDisplay" class="small text-white-50 ms-2">0:00 / 0:00</div>
         </div>
       </div>
     </div>
 
-    <!-- Settings BELOW spectrogram; hidden until audio is loaded -->
+    <!-- Settings panel (hidden until audio loads) -->
     <div id="settingsPanel" class="card card-body mb-3 d-none">
       <div class="row g-2 align-items-end">
+        <!-- Language selection -->
         <div class="col-12 col-md-4">
           <label for="langSelect" class="form-label small mb-1">Labels language</label>
           <select id="langSelect" class="form-select form-select-sm">
@@ -78,6 +82,7 @@ permalink: "/demo/"
             <option value="zh">中文</option>
           </select>
         </div>
+        <!-- Geo inputs -->
         <div class="col-6 col-md-3">
           <label for="latInput" class="form-label small mb-1">Latitude</label>
           <input type="number" step="0.0001" id="latInput" class="form-control form-control-sm" placeholder="e.g. 40.7812">
@@ -86,6 +91,7 @@ permalink: "/demo/"
           <label for="lonInput" class="form-label small mb-1">Longitude</label>
           <input type="number" step="0.0001" id="lonInput" class="form-control form-control-sm" placeholder="-73.9665">
         </div>
+        <!-- Overlap selection -->
         <div class="col-6 col-md-2">
           <label for="overlapSelect" class="form-label small mb-1">Overlap (s)</label>
           <select id="overlapSelect" class="form-select form-select-sm">
@@ -97,6 +103,7 @@ permalink: "/demo/"
             <option value="2.5">2.5</option>
           </select>
         </div>
+        <!-- Run button -->
         <div class="col-12 col-md-2 d-grid">
           <label class="form-label small mb-1 invisible">.</label>
           <button type="button" id="runBtn" class="btn btn-sm btn-primary">Run analysis</button>
@@ -108,73 +115,86 @@ permalink: "/demo/"
       </div>
     </div>
 
-    <!-- Separate status area -->
+    <!-- Status line -->
     <div id="statusArea" class="mb-3">
       <div id="statusLine" class="small text-muted">Waiting for audio…</div>
     </div>
 
+    <!-- Results: chart canvas injected dynamically -->
     <div id="results" class="mb-3"></div>
+
+    <!-- Download button (hidden until segment data + chart available) -->
     <div class="mb-4">
       <button id="downloadCsvBtn" class="btn btn-sm btn-outline-secondary d-none" disabled>Download per-segment results</button>
     </div>
-    
+
   </div>
 </section>
 
-<!-- External CDN scripts replaced with local versions -->
+<!-- Local JS vendor bundles -->
 <script src="{{ '/js/jquery-3.7.1.min.js' | url }}"></script>
 <script src="{{ '/js/chart.umd-4.4.1.min.js' | url }}"></script>
 <script src="{{ '/js/wavesurfer-7.min.js' | url }}"></script>
 <script src="{{ '/js/wavesurfer.spectrogram.min.js' | url }}"></script>
 <script src="{{ '/js/wavesurfer.minimap.min.js' | url }}"></script>
 
+<!-- App logic (no functional changes, only formatting / comments) -->
 <script type="module">
-// Worker lifecycle (language is applied when you click Run)
+/* -----------------------------
+   Global state / configuration
+----------------------------- */
 const workerBase = '{{ "/js/birdnet-worker.js" | url }}';
 const modelsRoot = '{{ "/models" | url }}';
 let worker = null;
 let workerLoaded = false;
 let resolveWhenLoaded = null;
-let currentWorkerLang = null; // track which language the current worker uses
+let currentWorkerLang = null;
 let ws = null;
 let chart = null;
 let areaModelLoaded = false;
-let lastPCM = null;  // last audio buffer
+let lastPCM = null;
+let segmentPredictions = null;
 
-const WINDOW_SAMPLES = 144000; // 3s @ 48kHz
+const WINDOW_SAMPLES = 144000; // 3s @ 48 kHz
 
-// Pretty labels on bars (no extra plugin dependency)
+/* -----------------------------
+   Chart value label plugin
+----------------------------- */
 const ValueLabelPlugin = {
   id: 'valueLabel',
-  afterDatasetsDraw(chart, args, opts) {
+  afterDatasetsDraw(chart) {
     const { ctx, scales } = chart;
     const meta = chart.getDatasetMeta(0);
     const data = chart.data.datasets[0].data;
     ctx.save();
-    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    ctx.font = '12px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     ctx.fillStyle = '#444';
     ctx.textBaseline = 'middle';
     meta.data.forEach((bar, i) => {
       const val = data[i];
       if (val == null) return;
       const label = val.toFixed(3);
-      const padding = 6;
-      const x = Math.min(bar.x + 24, scales.x.getPixelForValue(1) - 4); // keep inside chart
-      const y = bar.y;
-      ctx.fillText(label, x, y);
+      const x = Math.min(bar.x + 24, scales.x.getPixelForValue(1) - 4);
+      ctx.fillText(label, x, bar.y);
     });
     ctx.restore();
   }
 };
 Chart.register(ValueLabelPlugin);
 
+/* -----------------------------
+   Worker URL builder
+----------------------------- */
 function makeWorkerUrl(selectedLang) {
   const qs = new URLSearchParams({ root: modelsRoot });
   if (selectedLang && selectedLang !== 'auto') qs.set('lang', selectedLang);
-  // Add local TF.js path
   qs.set('tf', '{{ "/js/tfjs-4.14.0.min.js" | url }}');
   return workerBase + '?' + qs.toString();
 }
+
+/* -----------------------------
+   Worker setup / lifecycle
+----------------------------- */
 function attachWorker() {
   worker.onmessage = ({ data }) => {
     if(['load_model','warmup','load_geomodel','load_labels'].includes(data.message)){
@@ -195,8 +215,7 @@ function attachWorker() {
       console.groupEnd();
     }
     if(data.message === 'segments'){
-      // raw segment predictions stored for CSV export
-      segmentPredictions = data.segments; // [{start,end,preds:[{index,confidence,geoscore,name,nameI18n}]}]
+      segmentPredictions = data.segments;
       $('#downloadCsvBtn').prop('disabled', false).removeClass('d-none');
     }
     if(data.message === 'pooled'){
@@ -231,8 +250,19 @@ function waitForLoaded(){
   return new Promise(res => { resolveWhenLoaded = res; });
 }
 
-function fmtTime(sec){ if(!sec||isNaN(sec)) return '0:00'; const m=Math.floor(sec/60); const s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
+/* -----------------------------
+   Utility functions
+----------------------------- */
+function fmtTime(sec){
+  if(!sec||isNaN(sec)) return '0:00';
+  const m=Math.floor(sec/60);
+  const s=Math.floor(sec%60);
+  return m+':'+String(s).padStart(2,'0');
+}
 
+/* -----------------------------
+   WaveSurfer + Spectrogram init
+----------------------------- */
 function initWaveSurfer(url){
   if(ws){ try{ ws.destroy(); } catch{} ws=null; }
   $('#spectro-controls').addClass('d-none');
@@ -249,24 +279,28 @@ function initWaveSurfer(url){
   });
   if(MinimapPlugin){
     ws.registerPlugin(MinimapPlugin.create({
-      height:30,waveColor:'#a89f98',progressColor:'#2E261F',normalize:true
+      height:30, waveColor:'#a89f98', progressColor:'#2E261F', normalize:true
     }));
   }
   if(SpectrogramPlugin){
     ws.registerPlugin(SpectrogramPlugin.create({
-      frequencyMax:12000,frequencyMin:300,fftSamples:512,labels:false,
-      splitChannels:false,height:150,scale:'linear',colorMap:'roseus',gainDB:35,rangeDB:100
+      frequencyMax:12000, frequencyMin:300, fftSamples:512, labels:false,
+      splitChannels:false, height:150, scale:'linear', colorMap:'roseus',
+      gainDB:35, rangeDB:100
     }));
   }
   ws.on('ready',()=>{
     $('#timeDisplay').text('0:00 / '+fmtTime(ws.getDuration()));
     $('#spectro-controls').removeClass('d-none').addClass('d-flex');
-    $('#settingsPanel').removeClass('d-none'); // show settings once audio is ready
+    $('#settingsPanel').removeClass('d-none');
   });
   ws.on('audioprocess',t=>$('#timeDisplay').text(fmtTime(t)+' / '+fmtTime(ws.getDuration())));
   ws.on('seek',()=>$('#timeDisplay').text(fmtTime(ws.getCurrentTime())+' / '+fmtTime(ws.getDuration())));
 }
 
+/* -----------------------------
+   Chart rendering
+----------------------------- */
 function drawChart(list, valueKey='confidence'){
   const labels = list.map(b => b.nameI18n || b.name);
   const data = list.map(b => b[valueKey] || 0);
@@ -279,9 +313,9 @@ function drawChart(list, valueKey='confidence'){
     const area = chart.chartArea;
     if (!area) return '#7dd3fc';
     const grad = chart.ctx.createLinearGradient(area.left, 0, area.right, 0);
-    grad.addColorStop(0, '#22d3ee');   // cyan
-    grad.addColorStop(0.5, '#60a5fa'); // sky
-    grad.addColorStop(1, '#a78bfa');   // violet
+    grad.addColorStop(0, '#22d3ee');
+    grad.addColorStop(0.5, '#60a5fa');
+    grad.addColorStop(1, '#a78bfa');
     return grad;
   };
 
@@ -305,21 +339,18 @@ function drawChart(list, valueKey='confidence'){
       indexAxis:'y',
       responsive:true,
       maintainAspectRatio:false,
-      animation: {
-        duration: 900,
-        easing: 'easeOutQuart',
-        delay: (ctx) => ctx.dataIndex * 30
+      animation:{
+        duration:900,
+        easing:'easeOutQuart',
+        delay: ctx => ctx.dataIndex * 30
       },
       scales:{
         x:{
-          min:0, max:1,
-          grid:{ color: 'rgba(0,0,0,0.06)' },
-          ticks:{ callback:(v)=> Number(v).toFixed(1) }
+          min:0,max:1,
+          grid:{ color:'rgba(0,0,0,0.06)' },
+          ticks:{ callback:v => Number(v).toFixed(1) }
         },
-        y:{
-          grid:{ display:false },
-          ticks:{ color:'#333' }
-        }
+        y:{ grid:{ display:false }, ticks:{ color:'#333' } }
       },
       plugins:{
         legend:{ display:false },
@@ -334,39 +365,46 @@ function drawChart(list, valueKey='confidence'){
   });
 }
 
-// Add: helper to clear chart/results
-let segmentPredictions = null; // segment-wise raw predictions
-
+/* -----------------------------
+   Clear previous results
+----------------------------- */
 function clearChart() {
   if (chart) { try { chart.destroy(); } catch{} chart = null; }
   $('#results').empty();
   $('#downloadCsvBtn').prop('disabled', true).addClass('d-none');
+  segmentPredictions = null;
 }
 
+/* -----------------------------
+   Audio decoding + normalization
+----------------------------- */
 async function fileToPCMWindows(file){
   const buf = await file.arrayBuffer();
   const ctx = new AudioContext({ sampleRate:48000 });
   const audio = await ctx.decodeAudioData(buf);
   const chan = audio.numberOfChannels > 1
-    ? (()=>{ const l = audio.getChannelData(0), r = audio.getChannelData(1); const m = new Float32Array(audio.length); for(let i=0;i<audio.length;i++) m[i] = 0.5*(l[i] + r[i]); return m; })()
+    ? (()=>{ const l = audio.getChannelData(0), r = audio.getChannelData(1);
+             const m = new Float32Array(audio.length);
+             for(let i=0;i<audio.length;i++) m[i] = 0.5*(l[i] + r[i]);
+             return m; })()
     : audio.getChannelData(0);
-  let max = 0; for(let i=0;i<chan.length;i++){ const v=Math.abs(chan[i]); if(v>max) max=v; }
+  let max = 0;
+  for(let i=0;i<chan.length;i++){ const v=Math.abs(chan[i]); if(v>max) max=v; }
   const norm = max || 1;
   const pcm = new Float32Array(chan.length);
-  for(let i=0;i<pcm.length;i++) pcm[i] = chan[i]/norm; // full-length, no truncation (worker frames with overlap)
+  for(let i=0;i<pcm.length;i++) pcm[i] = chan[i]/norm;
   return { pcm };
 }
 
-// --- Init and handlers ---
-// Removed eager model load at page load (no newWorker() here)
-
+/* -----------------------------
+   Event handlers
+----------------------------- */
 $('#chooseBtn').on('click',()=>$('#fileupload').trigger('click'));
+
 $('#fileupload').on('change', async e => {
   const file = e.currentTarget.files[0];
   if(!file) return;
-
   clearChart();
-
   $('#fileInfo').text(file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)');
   initWaveSurfer(URL.createObjectURL(file));
   $('#statusLine').text('Decoding audio...');
@@ -375,7 +413,6 @@ $('#fileupload').on('change', async e => {
   $('#statusLine').text('Audio ready. Adjust settings, then click "Run analysis".');
 });
 
-// Manual run
 $('#runBtn').on('click', async () => {
   if (!lastPCM) { $('#statusLine').text('Please load audio first.'); return; }
   const selectedLang = $('#langSelect').val() || 'auto';
@@ -395,16 +432,19 @@ $('#runBtn').on('click', async () => {
   worker.postMessage({ message:'predict', pcmAudio: lastPCM, overlapSec });
 });
 
+/* WaveSurfer seek interaction */
 $('#ws-container').on('mousedown',function(e){
   if(!ws) return;
   const x = e.clientX + window.scrollX - $(this).offset().left;
   ws.seekTo(Math.min(Math.max(x/$(this).width(),0),1));
 });
 
+/* Player controls */
 $('#playBtn').on('click',()=> ws && ws.play());
 $('#pauseBtn').on('click',()=> ws && ws.pause());
 $('#restartBtn').on('click',()=> { if(ws){ ws.seekTo(0); ws.play(); } });
-// Drag & drop
+
+/* Drag & drop */
 const dz=$('#dropzone');
 dz.on('dragenter dragover',e=>{ e.preventDefault(); e.stopPropagation(); dz.addClass('upload-dropzone-hover'); });
 dz.on('dragleave',e=>{ e.preventDefault(); e.stopPropagation(); dz.removeClass('upload-dropzone-hover'); });
@@ -415,7 +455,9 @@ dz.on('drop',async e=>{
   $('#fileupload').trigger('change');
 });
 
-// CSV download
+/* -----------------------------
+   CSV export
+----------------------------- */
 $('#downloadCsvBtn').on('click', () => {
   if(!segmentPredictions){ return; }
   const MIN_CONF = 0.1;
@@ -423,25 +465,15 @@ $('#downloadCsvBtn').on('click', () => {
   const useGeo = areaModelLoaded;
   let rows = ['start,end,label,score'];
   segmentPredictions.forEach(seg => {
-    // filter predictions for this segment
     const filtered = seg.preds
-      .filter(p => {
-        if (p.confidence < MIN_CONF) return false;
-        if (useGeo && !(p.geoscore > GEO_THRESH)) return false;
-        return true;
-      })
+      .filter(p => p.confidence >= MIN_CONF && (!useGeo || p.geoscore > GEO_THRESH))
       .sort((a,b)=> b.confidence - a.confidence);
     filtered.forEach(p => {
-      rows.push(
-        `${seg.start.toFixed(3)},${seg.end.toFixed(3)},"${(p.nameI18n||p.name).replace(/"/g,'""')}",${p.confidence.toFixed(4)}`
-      );
+      rows.push(`${seg.start.toFixed(3)},${seg.end.toFixed(3)},"${(p.nameI18n||p.name).replace(/"/g,'""')}",${p.confidence.toFixed(4)}`);
     });
   });
-  if(rows.length === 1){
-    rows.push('0,0,"(no detections)",0');
-  }
-  const csv = rows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  if(rows.length === 1) rows.push('0,0,"(no detections)",0');
+  const blob = new Blob([rows.join('\n')], { type:'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = ($('#fileupload')[0].files[0]?.name || 'audio').replace(/\.[^/.]+$/,'') + '_BirdNET_Results.csv';
