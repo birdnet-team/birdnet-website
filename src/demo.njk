@@ -250,7 +250,7 @@ permalink: "/demo/"
 const workerBase = '{{ "/js/birdnet-worker.js" | url }}';
 const modelsRoot = '{{ "/models" | url }}';
 const sampleAudioUrl = '{{ "/audio/XC1059662_Blue_Jay.mp3" | url }}';
-const speciesImageBase = 'https://birdnet.cornell.edu/api2/bird/';
+const speciesImageBase = 'https://birdnet.cornell.edu/taxonomy/api/image/';
 
 let worker = null;
 let workerLoaded = false;
@@ -424,9 +424,10 @@ function fmtTimeDetailed(sec){
   return m+':'+String(s).padStart(4,'0');
 }
 
-function getSpeciesImageUrl(scientificName) {
+function getSpeciesImageUrl(scientificName, size = 'thumb') {
   if (!scientificName) return null;
-  return speciesImageBase + encodeURIComponent(scientificName) + '.webp';
+  const normalizedName = scientificName.replace(/_/g, ' ');
+  return speciesImageBase + encodeURIComponent(normalizedName) + '?size=' + encodeURIComponent(size);
 }
 
 function getConfidenceThreshold() {

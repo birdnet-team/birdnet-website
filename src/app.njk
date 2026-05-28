@@ -408,9 +408,10 @@ permalink: "/app/"
     return (typeof v === 'number' && isFinite(v)) ? v.toLocaleString('en-US') : '0';
   }
 
-  function getBirdImage(scientificName){
+  function getBirdImage(scientificName, size = 'medium'){
     if(!scientificName) return '{{ "/img/placeholder_bird.jpg" | url }}';
-    return `https://birdnet.cornell.edu/api2/bird/${encodeURIComponent(scientificName)}.webp`;
+    const normalizedName = scientificName.replace(/_/g, ' ');
+    return `https://birdnet.cornell.edu/taxonomy/api/image/${encodeURIComponent(normalizedName)}?size=${encodeURIComponent(size)}`;
   }
 
   async function fetchStats(){
@@ -497,7 +498,7 @@ permalink: "/app/"
                    data-species="${scientific}"
                    onclick="showSpeciesDetail('${scientific.replace(/'/g, "\\'")}', ${count})">
                 <div class="d-flex align-items-center gap-3">
-                  <img src="${getBirdImage(scientific)}" 
+                     <img src="${getBirdImage(scientific, 'thumb')}" 
                        class="rounded-3 shadow-sm" 
                        style="width: 50px; height: 50px; object-fit: cover;"
                        onerror="this.src='{{ '/img/placeholder_bird.jpg' | url }}'; this.onerror=null;">
@@ -528,7 +529,7 @@ permalink: "/app/"
     const common = labelMap.get(scientific) || scientific.split('_')[1] || scientific;
     
     // Update headers
-    document.getElementById('detail-species-img').src = getBirdImage(scientific);
+    document.getElementById('detail-species-img').src = getBirdImage(scientific, 'medium');
     document.getElementById('detail-species-name').textContent = common;
     document.getElementById('detail-species-scientific').textContent = scientific;
     document.getElementById('detail-species-count').textContent = fmtInt(count);
