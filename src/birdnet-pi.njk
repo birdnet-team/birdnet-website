@@ -1,0 +1,311 @@
+---
+title: BirdNET-Pi
+layout: layouts/base.njk
+permalink: "/birdnet-pi/"
+---
+
+<!-- Hero Header Section -->
+<div class="row align-items-center g-5 mb-5 pb-lg-5">
+  <div class="col-lg-7 text-center text-lg-start">
+    <span class="section-label" data-i18n="birdnetpi.hero.label">COMMUNITY EDGE COMPUTING</span>
+    <h1 class="page-title mb-4" data-i18n="birdnetpi.hero.title">BirdNET-Pi</h1>
+    <p class="lead text-muted mb-4" data-i18n="birdnetpi.hero.intro">
+      Turn a Raspberry Pi and a microphone into a fully autonomous, 24/7 backyard listening station. Record, identify, and log bird sounds right on the edge using BirdNET AI.
+    </p>
+    <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start mb-2">
+      <a href="https://github.com/Nachtzuster/BirdNET-Pi" target="_blank" rel="noopener" class="btn btn-primary btn-lg px-4 d-inline-flex align-items-center gap-2">
+        <i class="bi bi-github"></i> <span data-i18n="birdnetpi.hero.github">GitHub Repository</span>
+      </a>
+      <a href="https://www.birdweather.com/birdnetpi" target="_blank" rel="noopener" class="btn btn-outline-dark btn-lg px-4 d-inline-flex align-items-center gap-2">
+        <i class="bi bi-globe"></i> <span data-i18n="birdnetpi.hero.birdweather">BirdWeather Map</span>
+      </a>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <img
+      src="{{ '/img/birdnet_pi_header.jpg' | url }}"
+      alt="BirdNET-Pi header"
+      class="img-fluid rounded-4 shadow-sm border border-light-subtle"
+      style="width: 100%; object-fit: cover;">
+  </div>
+</div>
+
+<!-- Onboarding flow / Get Started Section -->
+<div id="get-started" class="py-5">
+  <div class="container px-0">
+    <div class="row justify-content-center text-center mb-5">
+      <div class="col-lg-8">
+        <span class="section-label mx-auto" data-i18n="birdnetpi.onboarding.label">ONBOARDING GUIDE</span>
+        <h2 class="display-6 fw-bold mb-3" data-i18n="birdnetpi.onboarding.title">Three Steps to Your Listening Station</h2>
+        <p class="text-muted" data-i18n="birdnetpi.onboarding.desc">Follow this step-by-step checklist to select your hardware, choose your version, and deploy BirdNET-Pi.</p>
+      </div>
+    </div>
+
+    <!-- Step 1: Hardware Checklist -->
+    <div class="row g-5 align-items-center mb-5 pb-5">
+      <div class="col-lg-6">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="badge bg-primary rounded-pill px-3 py-2" data-i18n="birdnetpi.steps.step1.badge">STEP 1</span>
+          <h3 class="h4 fw-bold mb-0" data-i18n="birdnetpi.steps.step1.title">Assemble Your Hardware</h3>
+        </div>
+        <p class="text-muted mb-4" data-i18n="birdnetpi.steps.step1.desc">
+          To build a reliable outdoor listening post that handles continuous audio analysis, you will need:
+        </p>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="p-3 bg-light rounded-4 border border-light-subtle h-100">
+              <h4 class="h6 fw-bold text-dark mb-2"><i class="bi bi-cpu text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step1.pi.title">Raspberry Pi</span></h4>
+              <p class="smaller text-muted mb-0" data-i18n="birdnetpi.steps.step1.pi.desc">A Raspberry Pi 4B or 5 is recommended for optimal performance. Pi 3B+ or Zero 2W can be used with lightweight OS setups.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 bg-light rounded-4 border border-light-subtle h-100">
+              <h4 class="h6 fw-bold text-dark mb-2"><i class="bi bi-mic text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step1.mic.title">USB Microphone</span></h4>
+              <p class="smaller text-muted mb-0" data-i18n="[html]birdnetpi.steps.step1.mic.desc"><strong>Avoid external sound cards</strong> to prevent ground-loop buzzing. Plug-and-play USB mics (Boya, Saramonic) or custom SASS rigs are best.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 bg-light rounded-4 border border-light-subtle h-100">
+              <h4 class="h6 fw-bold text-dark mb-2"><i class="bi bi-hdd-network text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step1.sd.title">Fast SD Card</span></h4>
+              <p class="smaller text-muted mb-0" data-i18n="[html]birdnetpi.steps.step1.sd.desc">A high-end SD card loaded with <strong>64-bit Raspberry Pi OS Lite</strong> (Bookworm or Trixie releases).</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 bg-light rounded-4 border border-light-subtle h-100">
+              <h4 class="h6 fw-bold text-dark mb-2"><i class="bi bi-shield-shaded text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step1.case.title">Outdoor Housing</span></h4>
+              <p class="smaller text-muted mb-0" data-i18n="birdnetpi.steps.step1.case.desc">A weatherproof electrical junction box or birdhouse-style mount with acoustic fabrics to shield wind/rain.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+          <h4 class="h5 fw-bold text-dark mb-3"><i class="bi bi-tools text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step1.guides.title">Community Build Guides</span></h4>
+          <p class="text-muted smaller mb-4" data-i18n="birdnetpi.steps.step1.guides.desc">
+            If you need step-by-step instructions on casing designs, microphone configurations, or running your station off-grid on solar power:
+          </p>
+          <div class="d-grid gap-3">
+            <a href="https://pixcams.com/building-a-birdnet-pi-real-time-acoustic-bird-id-station/" target="_blank" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-text me-2"></i> <span data-i18n="birdnetpi.steps.step1.guide.pixcams">PixCams Station Build Guide</span></span>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+            <a href="https://core-electronics.com.au/projects/bird-calls-raspberry-pi" target="_blank" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-text me-2"></i> <span data-i18n="birdnetpi.steps.step1.guide.core">Core-Electronics Pi Setup Article</span></span>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+            <a href="https://github.com/DD4WH/SASS/wiki/Stereo--(Mono)-recording-low-noise-low-cost-system" target="_blank" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-text me-2"></i> <span data-i18n="birdnetpi.steps.step1.guide.sass">Stereo SASS Microphone DIY Wiki</span></span>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+            <a href="https://rajsei.github.io/schlaumeise/en/project01/overview/" target="_blank" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-text me-2"></i> <span data-i18n="birdnetpi.steps.step1.guide.smartfinch">SmartFinch DIY Guide (English K-12)</span></span>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+            <a href="https://rajsei.github.io/schlaumeise/project01/overview/" target="_blank" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-text me-2"></i> <span data-i18n="birdnetpi.steps.step1.guide.schlaumeise">Schlaumeise DIY Guide (German K-12)</span></span>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Choose Version -->
+    <div class="row g-5 align-items-center mb-5 pb-5 border-top pt-5">
+      <div class="col-lg-5">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="badge bg-primary rounded-pill px-3 py-2" data-i18n="birdnetpi.steps.step2.badge">STEP 2</span>
+          <h3 class="h4 fw-bold mb-0" data-i18n="birdnetpi.steps.step2.title">Choose Your Version</h3>
+        </div>
+        <p class="text-muted mb-4" data-i18n="birdnetpi.steps.step2.desc">
+          BirdNET-Pi is supported by two main community forks. Select the one that matches your interface and feature needs:
+        </p>
+        <div class="p-3 bg-light rounded-4 border border-light-subtle mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="h6 fw-bold text-dark mb-0" data-i18n="birdnetpi.steps.step2.comparison.a.title">A. Nachtzuster Branch</h4>
+            <span class="badge bg-secondary" data-i18n="birdnetpi.steps.step2.comparison.a.badge">Stable Backend</span>
+          </div>
+          <p class="smaller text-muted mb-0" data-i18n="birdnetpi.steps.step2.comparison.a.desc">Focused on core backend code efficiency, daemon runtimes, backup/restore systems, and support for the latest 64-bit Bookworm & Trixie OS releases.</p>
+        </div>
+        <div class="p-3 bg-light rounded-4 border border-light-subtle">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="h6 fw-bold text-dark mb-0" data-i18n="birdnetpi.steps.step2.comparison.b.title">B. zach7036 Enhanced Version</h4>
+            <span class="badge bg-success" data-i18n="birdnetpi.steps.step2.comparison.b.badge">Interactive UI & Analytics</span>
+          </div>
+          <p class="smaller text-muted mb-0" data-i18n="birdnetpi.steps.step2.comparison.b.desc">Introduces a beautiful slate/teal design system, full Dark Mode, floating audio players, detailed Chart.js graphs, and smart behavioral analytics (Dawn Chorus, Yard Health Score).</p>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 transition-all hover-lift">
+              <h3 class="h5 fw-bold mb-2" data-i18n="birdnetpi.steps.step2.card.a.title">Nachtzuster Fork</h3>
+              <p class="small text-muted mb-3" data-i18n="birdnetpi.steps.step2.card.a.focus">Focus: Reliability & Backend</p>
+              <p class="text-muted smaller mb-4" data-i18n="birdnetpi.steps.step2.card.a.desc">
+                Recommended if you want a robust, lightweight station running the latest Debian packages with automated data migrations.
+              </p>
+              <a href="https://github.com/Nachtzuster/BirdNET-Pi" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill mt-auto" data-i18n="birdnetpi.steps.step2.card.a.link">View Nachtzuster GitHub</a>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 transition-all hover-lift">
+              <h3 class="h5 fw-bold mb-2" data-i18n="birdnetpi.steps.step2.card.b.title">Enhanced UI Version</h3>
+              <p class="small text-muted mb-3" data-i18n="birdnetpi.steps.step2.card.b.focus">Focus: Modern UI & Insights</p>
+              <p class="text-muted smaller mb-4" data-i18n="birdnetpi.steps.step2.card.b.desc">
+                Recommended if you want a premium dashboard with visual analytics, weather integration, and detailed behavioral reports.
+              </p>
+              <a href="https://github.com/zach7036/BirdNET-Pi-Enhanced-Version" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill mt-auto" data-i18n="birdnetpi.steps.step2.card.b.link">View Enhanced UI GitHub</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Run Installer -->
+    <div class="row g-5 align-items-center mb-5 border-top pt-5">
+      <div class="col-lg-6">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="badge bg-primary rounded-pill px-3 py-2" data-i18n="birdnetpi.steps.step3.badge">STEP 3</span>
+          <h3 class="h4 fw-bold mb-0" data-i18n="birdnetpi.steps.step3.title">Run the Installer</h3>
+        </div>
+        <p class="text-muted mb-4" data-i18n="birdnetpi.steps.step3.desc">
+          Connect your microphone and boot your Pi. SSH into the device, copy one of the commands below, paste it into your terminal, and press Enter:
+        </p>
+
+        <div class="p-4 bg-dark text-white rounded-4 shadow-sm border border-secondary border-opacity-25 font-monospace small mb-4">
+          <div class="text-white-50 mb-2" data-i18n="birdnetpi.steps.step3.option.a"># Option A: Install Nachtzuster Backend Branch</div>
+          <div class="text-info mb-4 text-break">curl -s https://raw.githubusercontent.com/Nachtzuster/BirdNET-Pi/main/newinstaller.sh | bash</div>
+
+          <div class="text-white-50 mb-2" data-i18n="birdnetpi.steps.step3.option.b"># Option B: Install zach7036 Enhanced UI Version</div>
+          <div class="text-info text-break">curl -s https://raw.githubusercontent.com/zach7036/BirdNET-Pi-Enhanced-Version/main/newinstaller.sh | bash</div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-4 p-xl-5">
+          <h4 class="h5 fw-bold text-dark mb-3"><i class="bi bi-display-fill text-primary me-2"></i> <span data-i18n="birdnetpi.steps.step3.dashboard.title">Accessing Your Dashboard</span></h4>
+          <p class="text-muted smaller mb-3" data-i18n="birdnetpi.steps.step3.dashboard.desc">
+            The installation script takes care of configuration. Once the terminal setup completes, the Pi will reboot automatically.
+          </p>
+          <ul class="text-muted smaller ps-3 mb-0">
+            <li class="mb-2" data-i18n="[html]birdnetpi.steps.step3.dashboard.list1">Visit <a href="http://birdnetpi.local" target="_blank" class="fw-bold">http://birdnetpi.local</a> on your local network.</li>
+            <li class="mb-2" data-i18n="[html]birdnetpi.steps.step3.dashboard.list2">Default Username: <code>birdnet</code></li>
+            <li class="mb-2" data-i18n="[html]birdnetpi.steps.step3.dashboard.list3">Default Password: <em>(Leave blank/empty on first login)</em></li>
+            <li data-i18n="[html]birdnetpi.steps.step3.dashboard.list4">Configure your coordinates and password under <strong>Tools > Settings</strong>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detailed Features Section -->
+<div id="features" class="py-5 bg-light rounded-4 px-4 px-md-5 shadow-sm border border-light-subtle">
+  <div class="px-0">
+    <div class="row justify-content-center text-center mb-5">
+      <div class="col-lg-8">
+        <span class="section-label mx-auto" data-i18n="birdnetpi.features.label">DETAILED OVERVIEW</span>
+        <h2 class="display-6 fw-bold mb-3" data-i18n="birdnetpi.features.title">Core Capabilities</h2>
+        <p class="text-muted" data-i18n="birdnetpi.features.desc">A deep dive into the features that power BirdNET-Pi's autonomous listening station.</p>
+      </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-mic"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.1.title">24/7 Audio Classification</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.1.desc">Records ambient soundscapes continuously, converting audio tracks into spectrograms and identifying species using the BirdNET model.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-database"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.2.title">Clip Cataloguing</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.2.desc">Extracts isolated sound clips for all detections, storing audio snippets alongside classification details in your local database.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-bar-chart"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.3.title">Trend Analysis</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.3.desc">Displays interactive daily, weekly, and monthly histograms of species sightings, tracking visitor patterns over time.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-bell"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.4.title">Apprise Notifications</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.4.desc">Send instant alerts to Discord, Telegram, Pushover, Email, or SMS when target species or life list additions are heard.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-cloud-sun"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.5.title">Global Integration</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.5.desc">Optionally share your local detections with the BirdWeather network to contribute to global biodiversity research maps.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-0 shadow-sm rounded-4 p-2 bg-white">
+          <div class="card-body">
+            <div class="icon-wrapper soft text-primary mb-3"><i class="bi bi-window"></i></div>
+            <h4 class="h5 fw-bold text-dark mb-2" data-i18n="birdnetpi.feature.6.title">SysInfo & Database Maintenance</h4>
+            <p class="smaller text-muted mb-0" data-i18n="birdnetpi.feature.6.desc">Adminer database interface, SQLite3 maintenance, phpSysInfo logs, and GoTTY terminal access are built right in.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Extensions & Community Support Section -->
+<div class="py-5 bg-white">
+  <div class="container px-0">
+    <div class="row g-5 align-items-center">
+      <div class="col-lg-6">
+        <span class="section-label" data-i18n="birdnetpi.extensions.label">COMMUNITY ADD-ONS</span>
+        <h2 class="h3 fw-bold mb-4" data-i18n="birdnetpi.extensions.title">Avian Visitors Live Collage</h2>
+        <p class="text-muted smaller mb-4" data-i18n="[html]birdnetpi.extensions.desc">
+          Extend your setup with **Avian Visitors** (by drundoor), an illustrated dashboard overlay that reads your local database detections to assemble a live bird collage.
+        </p>
+        <ul class="text-muted smaller ps-3 mb-4">
+          <li class="mb-2" data-i18n="[html]birdnetpi.extensions.list1"><strong>Screen Collage:</strong> Displays actual drawings of species seen in your yard, scaling collage sizes automatically.</li>
+          <li data-i18n="[html]birdnetpi.extensions.list2"><strong>Public Netlify Mirror:</strong> Includes helper scripts to build a public mirror of your collage and statistics without exposing your local Pi or database to the open web.</li>
+        </ul>
+        <a href="https://github.com/drundoor/AvianVisitors" target="_blank" class="btn btn-outline-dark px-4"><i class="bi bi-github me-2"></i> <span data-i18n="birdnetpi.extensions.link">Avian Visitors GitHub</span></a>
+      </div>
+      <div class="col-lg-6">
+        <div class="card h-100 border-0 shadow-sm rounded-4 bg-light p-4 p-xl-5">
+          <h3 class="h5 fw-bold mb-4 text-dark"><i class="bi bi-chat-left-text-fill text-primary me-2"></i> <span data-i18n="birdnetpi.share.title">Share & Connect</span></h3>
+          <p class="text-muted smaller mb-4" data-i18n="birdnetpi.share.desc">
+            DIY monitoring is built on community collaboration. Join discussions, share pictures of your station setups, and find configurations:
+          </p>
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 bg-white rounded-3 shadow-sm text-center">
+                <i class="bi bi-reddit text-danger display-6 mb-2"></i>
+                <div class="fw-bold smaller"><a href="https://www.reddit.com/r/BirdNET_Analyzer/" target="_blank" class="text-decoration-none" data-i18n="birdnetpi.share.subreddit">Subreddit</a></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-white rounded-3 shadow-sm text-center">
+                <i class="bi bi-github text-dark display-6 mb-2"></i>
+                <div class="fw-bold smaller"><a href="https://github.com/Nachtzuster/BirdNET-Pi/discussions" target="_blank" class="text-decoration-none" data-i18n="birdnetpi.share.discussions">Discussions</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
