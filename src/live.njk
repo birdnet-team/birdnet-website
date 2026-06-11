@@ -17,9 +17,9 @@ permalink: "/live_app/"
           <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
             <i class="bi bi-google-play"></i> Google Play
           </a>
-          <div class="btn btn-outline-dark disabled custom-disabled-btn d-flex align-items-center gap-2 px-4" style="opacity: 0.6; pointer-events: none;">
-            <i class="bi bi-apple"></i> iOS Coming Soon
-          </div>
+          <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+            <i class="bi bi-apple"></i> App Store
+          </a>
           <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm">
             <i class="bi bi-download"></i> Download APK
           </a>
@@ -145,6 +145,9 @@ permalink: "/live_app/"
              <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
                <i class="bi bi-google-play me-2"></i> <span data-i18n="app.support.android">Android Release</span>
              </a>
+             <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
+               <i class="bi bi-apple me-2"></i> <span data-i18n="app.support.ios">iOS Release</span>
+             </a>
              <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
                <i class="bi bi-download me-2"></i> Download APK
              </a>
@@ -153,15 +156,42 @@ permalink: "/live_app/"
       </div>
     </div>
     <!-- Documentation Link -->
-    <div class="card bg-light border-0 rounded-4 p-5 text-center shadow-sm">
+    <div class="card bg-light border-0 rounded-4 p-5 text-center shadow-sm mb-4">
       <h3 class="h4 fw-bold mb-3" data-i18n="live.docs.title">Comprehensive Documentation</h3>
       <p class="text-muted mb-4 mx-auto" style="max-width: 600px;" data-i18n="live.docs.desc">
         Whether you're a user looking for a quick start guide or a developer wanting to understand the architecture, we've got you covered.
       </p>
       <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="https://birdnet-team.github.io/birdnet-live-app/user/" class="btn btn-primary" target="_blank" rel="noopener" data-i18n="live.docs.userGuide">User Guide</a>
-        <a href="https://birdnet-team.github.io/birdnet-live-app/developer/" class="btn btn-outline-dark" target="_blank" rel="noopener" data-i18n="live.docs.devGuide">Developer Guide</a>
-        <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-outline-secondary" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="https://birdnet-team.github.io/birdnet-live-app/user/" class="btn btn-primary px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.userGuide">User Guide</a>
+        <a href="https://birdnet-team.github.io/birdnet-live-app/developer/" class="btn btn-outline-dark px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.devGuide">Developer Guide</a>
+      </div>
+    </div>
+
+    <!-- Development & Contribution -->
+    <div class="row mb-5">
+      <div class="col-12 rounded-4 pt-5 pe-5 pb-5 ps-0 text-start bg-white d-flex flex-column">
+        <div class="section-label mb-3 align-self-start">Open source</div>
+        <h2 class="h3 fw-bold mb-4 text-dark" data-i18n="live.community.title">Get Involved & Share Feedback</h2>
+        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.desc1">
+          BirdNET Live is an open-source project. We welcome contributions from developers, researchers, and bird lovers. You can help improve the application by reporting issues, submitting feature requests, or creating pull requests directly on our GitHub repository.
+        </p>
+        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.discussionsDesc">
+          Join our discussions forum on GitHub to ask questions, share your birding setups, discuss new feature ideas, and connect with the BirdNET Live community.
+        </p>
+        <div class="d-flex justify-content-start gap-3 flex-wrap mt-auto">
+          <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+            <i class="bi bi-github"></i> <span data-i18n="live.community.repo">GitHub Repository</span>
+          </a>
+          <a href="https://github.com/birdnet-team/birdnet-live-app/discussions" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+            <i class="bi bi-chat-dots-fill"></i> <span data-i18n="live.community.discussionsBtn">Join the Discussion →</span>
+          </a>
+          <a href="https://github.com/birdnet-team/birdnet-live-app/issues" class="btn btn-outline-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+            <i class="bi bi-bug"></i> <span data-i18n="live.community.issues">Report an Issue</span>
+          </a>
+          <a href="https://github.com/birdnet-team/birdnet-live-app/pulls" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+            <i class="bi bi-git"></i> <span data-i18n="live.community.prs">Pull Requests</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>

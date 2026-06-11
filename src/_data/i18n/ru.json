@@ -27,7 +27,7 @@
   "hero.subtitle": "BirdNET использует глубокое обучение, чтобы распознавать более 6 000 видов по всему миру. Наши инструменты с открытым исходным кодом дают надежные рабочие процессы для мониторинга биоразнообразия и гражданской науки.",
   "hero.cta.analyzer": "Скачать Analyzer",
   "hero.cta.demo": "Попробовать демо",
-  "hero.cta.app": "Скачать приложение",
+  "hero.cta.app": "Скачать новое приложение",
   "hero.partners": "Совместная инициатива:",
   "section.researchTools": "Исследования и инструменты",
   "section.researchTools.title": "ИИ-набор для охраны природы.",
@@ -52,6 +52,7 @@
   "section.cards.citizenScientists": "Гражданская наука",
   "section.cards.citizenScientistsDesc": "Вносите вклад в глобальный мониторинг биоразнообразия: записывайте птиц вокруг себя и распознавайте их с BirdNET App.",
   "section.cards.birdnetApp": "BirdNET App →",
+  "section.cards.birdnetLiveApp": "Приложение BirdNET Live →",
   "section.cards.browserDemo": "Демо в браузере →",
   "section.cards.bioacousticResearch": "Биоакустические исследования",
   "section.cards.bioacousticResearchDesc": "Научные публикации о моделях, исследованиях валидации и влиянии BirdNET.",
@@ -568,5 +569,14 @@
   "live.docs.title": "Подробная документация",
   "live.docs.desc": "Хотите быстро начать или разобраться в архитектуре — здесь найдется подходящая документация.",
   "live.docs.userGuide": "Руководство пользователя",
-  "live.docs.devGuide": "Руководство для разработчиков"
+  "live.docs.devGuide": "Руководство для разработчиков",
+  "live.community.label": "РАЗРАБОТКА И УЧАСТИЕ",
+  "live.community.title": "Присоединяйтесь и делитесь отзывами",
+  "live.community.desc1": "BirdNET Live — это проект с открытым исходным кодом. Мы приветствуем вклад разработчиков, исследователей и любителей птиц. Вы можете помочь улучшить приложение, сообщая об ошибках, отправляя предложения по новым функциям или создавая pull request'ы прямо в нашем репозитории GitHub.",
+  "live.community.repo": "Репозиторий GitHub",
+  "live.community.issues": "Сообщить о проблеме",
+  "live.community.prs": "Pull Request'ы",
+  "live.community.discussionsTitle": "Форум обсуждений",
+  "live.community.discussionsDesc": "Присоединяйтесь к нашему форуму обсуждений на GitHub, чтобы задавать вопросы, делиться своими установками для наблюдения за птицами, обсуждать идеи новых функций и общаться с сообществом BirdNET Live.",
+  "live.community.discussionsBtn": "Присоединиться к обсуждению →"
 }

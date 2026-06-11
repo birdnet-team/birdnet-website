@@ -27,7 +27,7 @@
   "hero.subtitle": "O BirdNET usa deep learning para identificar mais de 6.000 espécies no mundo todo. Nossas ferramentas de código aberto oferecem workflows robustos para monitoramento de biodiversidade e ciência cidadã.",
   "hero.cta.analyzer": "Baixar Analyzer",
   "hero.cta.demo": "Experimentar demo",
-  "hero.cta.app": "Baixar app",
+  "hero.cta.app": "Baixar novo app",
   "hero.partners": "Uma iniciativa conjunta de:",
   "section.researchTools": "Pesquisa e ferramentas",
   "section.researchTools.title": "O toolkit de IA para conservação.",
@@ -52,6 +52,7 @@
   "section.cards.citizenScientists": "comunidade de ciência cidadã",
   "section.cards.citizenScientistsDesc": "Contribua para o monitoramento global de biodiversidade – grave e identifique aves com o app BirdNET.",
   "section.cards.birdnetApp": "App BirdNET →",
+  "section.cards.birdnetLiveApp": "App BirdNET Live →",
   "section.cards.browserDemo": "Demo no navegador →",
   "section.cards.bioacousticResearch": "Pesquisa bioacústica",
   "section.cards.bioacousticResearchDesc": "Publicações científicas sobre os modelos BirdNET, estudos de validação e impacto.",
@@ -568,5 +569,14 @@
   "live.docs.title": "Documentação Completa",
   "live.docs.desc": "Quer você seja uma pessoa usuária procurando um guia de início rápido ou um perfil de desenvolvimento querendo entender a arquitetura, nós temos o que você precisa.",
   "live.docs.userGuide": "Guia de uso",
-  "live.docs.devGuide": "Guia de desenvolvimento"
+  "live.docs.devGuide": "Guia de desenvolvimento",
+  "live.community.label": "DESENVOLVIMENTO E CONTRIBUIÇÃO",
+  "live.community.title": "Participe e compartilhe feedback",
+  "live.community.desc1": "O BirdNET Live é um projeto de código aberto. Agradecemos contribuições de desenvolvedores, pesquisadores e amantes das aves. Você pode ajudar a melhorar o aplicativo relatando problemas, enviando solicitações de recursos ou criando pull requests diretamente em nosso repositório no GitHub.",
+  "live.community.repo": "Repositório do GitHub",
+  "live.community.issues": "Relatar um problema",
+  "live.community.prs": "Pull Requests",
+  "live.community.discussionsTitle": "Fórum de discussões",
+  "live.community.discussionsDesc": "Participe do nosso fórum de discussões no GitHub para tirar dúvidas, compartilhar suas configurações de observação de aves, debater novas ideias de recursos e se conectar com a comunidade do BirdNET Live.",
+  "live.community.discussionsBtn": "Participar da discussão →"
 }

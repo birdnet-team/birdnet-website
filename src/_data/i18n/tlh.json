@@ -27,7 +27,7 @@
   "hero.subtitle": "BirdNET ghojmeH mI'QeD lo' 'ej qo' HochDaq 6,000 bo'Degh Seghmey law' ngu'laH. yInmey bejmeH Qul je tlhIngan Hol rurbogh QeDvaD poS Hal lI'wI'mey DIqem.",
   "hero.cta.analyzer": "pojwI' yISuq",
   "hero.cta.demo": "tobmeH yIlegh",
-  "hero.cta.app": "ghunwI' yIQaw'",
+  "hero.cta.app": "ghunwI' chu' yIQaw'",
   "hero.partners": "wa'DIch jev:",
   "section.researchTools": "QulmoH je lI'wI'mey",
   "section.researchTools.title": "yInSIpvaD AI lI'wI'mey.",
@@ -52,6 +52,7 @@
   "section.cards.citizenScientists": "nugh QulwI'pu'",
   "section.cards.citizenScientistsDesc": "qo' yIn law' bejmeH boQ - BirdNET ghun lo'taHvIS bo'Deghmey yIngu'.",
   "section.cards.birdnetApp": "BirdNET ghunwI' →",
+  "section.cards.birdnetLiveApp": "BirdNET yIn ghunwI' →",
   "section.cards.browserDemo": "De'wI' tobmeH →",
   "section.cards.bioacousticResearch": "bioacoustics Qul",
   "section.cards.bioacousticResearchDesc": "BirdNET model, tobmeH Qulmey, ta'pu' je Delbogh ghItlhmey.",
@@ -568,5 +569,14 @@
   "live.docs.title": "De' paq naQ",
   "live.docs.desc": "lo'wI'vaD nom taghmeH De' qoj ghunwI'vaD architecture DelmeH De' DaneHchugh, naDev tu'lu'.",
   "live.docs.userGuide": "lo'wI' De' paq",
-  "live.docs.devGuide": "ghunwI' De' paq"
+  "live.docs.devGuide": "ghunwI' De' paq",
+  "live.community.label": "GHUN JE BOQ",
+  "live.community.title": "boQ yImuv 'ej qeSmey yInob",
+  "live.community.desc1": "poS Hal tlhIgh 'oH BirdNET yIn. ghunwI'pu', QulwI'pu', bo'Degh parpu' jevo' boQ wIHev. Qaghmey yIja', laH chu' yItlhob qoj GitHub repositoryDaq pull requestmey yIchenmoH.",
+  "live.community.repo": "GitHub Repository",
+  "live.community.issues": "Qagh yIja'",
+  "live.community.prs": "Pull Requestmey",
+  "live.community.discussionsTitle": "ja'chuqghach ghom",
+  "live.community.discussionsDesc": "GitHubDaq ja'chuqghach ghom yImuv ghelmeH, toDujlIj yIchelmeH, ghunwI' chaw' yIja'meH, BirdNET yIn ghom yIghommeH je.",
+  "live.community.discussionsBtn": "ja'chuqghach yImuv →"
 }

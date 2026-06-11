@@ -27,7 +27,7 @@
   "hero.subtitle": "BirdNET 利用深度学习识别全球超过 6,000 种鸟类。我们的开源工具为生物多样性监测和公民科学提供强大的工作流程。",
   "hero.cta.analyzer": "下载分析器",
   "hero.cta.demo": "试用演示",
-  "hero.cta.app": "下载应用",
+  "hero.cta.app": "下载新应用",
   "hero.partners": "联合发起方：",
   "section.researchTools": "研究与工具",
   "section.researchTools.title": "自然保护的 AI 工具箱。",
@@ -52,6 +52,7 @@
   "section.cards.citizenScientists": "公民科学家",
   "section.cards.citizenScientistsDesc": "使用 BirdNET 应用录制和识别周围的鸟类，为全球生物多样性监测做出贡献。",
   "section.cards.birdnetApp": "BirdNET 应用 →",
+  "section.cards.birdnetLiveApp": "BirdNET Live 应用 →",
   "section.cards.browserDemo": "浏览器演示 →",
   "section.cards.bioacousticResearch": "生物声学研究",
   "section.cards.bioacousticResearchDesc": "关于模型、验证研究和 BirdNET 影响力的科学论文。",
@@ -568,5 +569,14 @@
   "live.docs.title": "完善的文档",
   "live.docs.desc": "无论您是寻找快速入门指南的用户，还是希望了解架构的开发者，我们都能满足您的要求。",
   "live.docs.userGuide": "用户指南",
-  "live.docs.devGuide": "开发者指南"
+  "live.docs.devGuide": "开发者指南",
+  "live.community.label": "开发与贡献",
+  "live.community.title": "参与其中并分享反馈",
+  "live.community.desc1": "BirdNET Live 是一个开源项目。我们欢迎开发者、研究人员和鸟类爱好者的贡献。您可以通过在 GitHub 仓库中报告问题、提交功能需求或创建 Pull Request 来帮助改进应用。",
+  "live.community.repo": "GitHub 仓库",
+  "live.community.issues": "报告问题",
+  "live.community.prs": "Pull Request",
+  "live.community.discussionsTitle": "讨论论坛",
+  "live.community.discussionsDesc": "加入我们在 GitHub 上的讨论论坛，提问、分享您的观鸟设备设置、讨论新功能想法，并与 BirdNET Live 社区建立联系。",
+  "live.community.discussionsBtn": "加入讨论 →"
 }

@@ -27,7 +27,7 @@
   "hero.subtitle": "BirdNET využívá deep learning k identifikaci více než 6 000 druhů po celém světě. Naše open source nástroje nabízejí robustní workflow pro monitoring biodiverzity a občanskou vědu.",
   "hero.cta.analyzer": "Stáhnout Analyzer",
   "hero.cta.demo": "Vyzkoušet demo",
-  "hero.cta.app": "Stáhnout aplikaci",
+  "hero.cta.app": "Stáhnout novou aplikaci",
   "hero.partners": "Společná iniciativa:",
   "section.researchTools": "Výzkum a nástroje",
   "section.researchTools.title": "AI toolkit pro ochranu přírody.",
@@ -52,6 +52,7 @@
   "section.cards.citizenScientists": "Občanští vědecké týmy",
   "section.cards.citizenScientistsDesc": "Přispívej k celosvětovému monitoringu biodiverzity – nahrávej a identifikuj ptáky s aplikací BirdNET.",
   "section.cards.birdnetApp": "Aplikace BirdNET →",
+  "section.cards.birdnetLiveApp": "Aplikace BirdNET Live →",
   "section.cards.browserDemo": "Demo v prohlížeči →",
   "section.cards.bioacousticResearch": "Bioakustický výzkum",
   "section.cards.bioacousticResearchDesc": "Vědecké publikace o modelech BirdNET, validační studie a dopady.",
@@ -568,5 +569,14 @@
   "live.docs.title": "Komplexní Dokumentace",
   "live.docs.desc": "Ať už jste uživatelé a uživatelky hledající stručný návod, nebo vývojový tým, který chce porozumět architektuře, máme to pro vás pokryto.",
   "live.docs.userGuide": "Příručka pro použití",
-  "live.docs.devGuide": "Příručka pro vývoj"
+  "live.docs.devGuide": "Příručka pro vývoj",
+  "live.community.label": "VÝVOJ A PŘÍSPĚVKY",
+  "live.community.title": "Zapojte se a sdílejte zpětnou vazbu",
+  "live.community.desc1": "BirdNET Live je open-source projekt. Vítáme příspěvky od vývojářů, vědců a milovníků ptáků. Můžete pomoci zlepšit aplikaci nahlášením chyb, zasláním požadavků na nové funkce nebo vytvořením pull requestů přímo na našem GitHub repozitáři.",
+  "live.community.repo": "GitHub repozitář",
+  "live.community.issues": "Nahlásit chybu",
+  "live.community.prs": "Pull Requesty",
+  "live.community.discussionsTitle": "Diskusní fórum",
+  "live.community.discussionsDesc": "Připojte se k našemu diskusnímu fóru na GitHubu a ptejte se na otázky, sdílejte své vybavení pro pozorování ptáků, diskutujte o nápadech na nové funkce a spojte se s komunitou BirdNET Live.",
+  "live.community.discussionsBtn": "Zapojit se do diskuse →"
 }
