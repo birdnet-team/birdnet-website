@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Integrované rozhraní Adminer pro databázi, údržba SQLite3, protokoly phpSysInfo a přístup k terminálu GoTTY.",
   "birdnetpi.extensions.label": "KOMUNITNÍ DOPLŇKY",
   "birdnetpi.extensions.title": "Živá koláž Avian Visitors",
-  "birdnetpi.extensions.desc": "Rozšiřte své nastavení o doplňkovou vizualizaci **Avian Visitors** (od drundoor), která vytváří živou koláž na základě dat z místní databáze.",
+  "birdnetpi.extensions.desc": "Rozšiřte své nastavení o doplňkovou vizualizaci **Avian Visitors** (od Teddy Warner), která vytváří živou koláž na základě dat z místní databáze.",
   "birdnetpi.extensions.list1": "<strong>Koláž na obrazovce:</strong> Zobrazuje ilustrace druhů navštěvujících vaši zahradu a automaticky upravuje jejich velikost.",
   "birdnetpi.extensions.list2": "<strong>Veřejné zrcadlo Netlify:</strong> Obsahuje pomocné skripty pro sestavení veřejného zrcadla koláže a statistik bez vystavení lokální databáze internetu.",
   "birdnetpi.extensions.link": "GitHub Avian Visitors",

@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Встроенный веб-интерфейс Adminer для работы с БД, оптимизация SQLite3, системные логи phpSysInfo и веб-доступ к терминалу GoTTY.",
   "birdnetpi.extensions.label": "ДОПОЛНЕНИЯ СООБЩЕСТВА",
   "birdnetpi.extensions.title": "Живой коллаж Avian Visitors",
-  "birdnetpi.extensions.desc": "Дополните вашу станцию плагином **Avian Visitors** (автор drundoor), который собирает живую иллюстрированную мозаику на основе ваших баз данных.",
+  "birdnetpi.extensions.desc": "Дополните вашу станцию плагином **Avian Visitors** (автор Teddy Warner), который собирает живую иллюстрированную мозаику на основе ваших баз данных.",
   "birdnetpi.extensions.list1": "<strong>Визуальный коллаж:</strong> Отображает цветные рисунки птиц, прилетавших к вам в сад, автоматически масштабируя их размеры.",
   "birdnetpi.extensions.list2": "<strong>Зеркало на Netlify:</strong> Содержит вспомогательные скрипты для безопасной публикации коллажа в сети без прямого доступа к вашей БД.",
   "birdnetpi.extensions.link": "GitHub Avian Visitors",

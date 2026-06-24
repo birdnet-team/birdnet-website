@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Contient des interfaces intégrées pour la gestion de base de données Adminer, la maintenance SQLite3, les logs phpSysInfo et le terminal GoTTY.",
   "birdnetpi.extensions.label": "EXTENSIONS COMMUNAUTAIRES",
   "birdnetpi.extensions.title": "Collage en direct d'Avian Visitors",
-  "birdnetpi.extensions.desc": "Ajoutez à votre système l'extension **Avian Visitors** (par drundoor), un tableau de bord illustré qui génère une mosaïque animée des espèces enregistrées.",
+  "birdnetpi.extensions.desc": "Ajoutez à votre système l'extension **Avian Visitors** (par Teddy Warner), un tableau de bord illustré qui génère une mosaïque animée des espèces enregistrées.",
   "birdnetpi.extensions.list1": "<strong>Mosaïque d'affichage :</strong> Affiche les dessins en couleur des oiseaux détectés dans votre jardin, avec ajustement automatique des tailles.",
   "birdnetpi.extensions.list2": "<strong>Miroir public Netlify :</strong> Propose des scripts pour publier votre collage sur le web sans exposer votre Pi local à Internet.",
   "birdnetpi.extensions.link": "GitHub d'Avian Visitors",

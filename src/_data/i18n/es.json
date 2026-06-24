@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Acceso integrado a la herramienta Adminer, mantenimiento de SQLite3, registros de phpSysInfo y consola GoTTY en la interfaz.",
   "birdnetpi.extensions.label": "COMPLEMENTOS DE LA COMUNIDAD",
   "birdnetpi.extensions.title": "Mural en vivo de Avian Visitors",
-  "birdnetpi.extensions.desc": "Amplíe su configuración con **Avian Visitors** (creado por drundoor), un complemento ilustrado que crea una composición visual dinámica de las aves detectadas.",
+  "birdnetpi.extensions.desc": "Amplíe su configuración con **Avian Visitors** (creado por Teddy Warner), un complemento ilustrado que crea una composición visual dinámica de las aves detectadas.",
   "birdnetpi.extensions.list1": "<strong>Composición en pantalla:</strong> Muestra dibujos a color de los pájaros que visitan su jardín y adapta los tamaños automáticamente.",
   "birdnetpi.extensions.list2": "<strong>Espejo público en Netlify:</strong> Incluye scripts que le permiten alojar una réplica web pública del collage sin exponer su base de datos local.",
   "birdnetpi.extensions.link": "GitHub de Avian Visitors",

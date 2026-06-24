@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Zintegrowane narzędzie Adminer, optymalizacja baz SQLite3, logi phpSysInfo oraz wbudowany terminal webowy GoTTY.",
   "birdnetpi.extensions.label": "DODATKI DLA SPOŁECZNOŚCI",
   "birdnetpi.extensions.title": "Kolaż na żywo Avian Visitors",
-  "birdnetpi.extensions.desc": "Wzbogać swoją stację o dodatek **Avian Visitors** (autorstwa drundoor), który tworzy dynamiczną mozaikę z rysunkami zaobserwowanych gatunków.",
+  "birdnetpi.extensions.desc": "Wzbogać swoją stację o dodatek **Avian Visitors** (autorstwa Teddy Warner), który tworzy dynamiczną mozaikę z rysunkami zaobserwowanych gatunków.",
   "birdnetpi.extensions.list1": "<strong>Kolaż graficzny:</strong> Wyświetla kolorowe ilustracje ptaków odwiedzających Twój ogród i automatycznie dobiera ich rozmiary.",
   "birdnetpi.extensions.list2": "<strong>Kopia na Netlify:</strong> Zawiera skrypty pomocnicze pozwalające na bezpieczną publikację kolażu w sieci bez udostępniania lokalnego dysku.",
   "birdnetpi.extensions.link": "GitHub Avian Visitors",

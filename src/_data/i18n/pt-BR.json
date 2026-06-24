@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Ferramenta de administração de banco de dados Adminer, manutenção de tabelas SQLite3, logs phpSysInfo e terminal GoTTY integrados à web.",
   "birdnetpi.extensions.label": "EXTENSÕES DA COMUNIDADE",
   "birdnetpi.extensions.title": "Colagem dinâmica de Avian Visitors",
-  "birdnetpi.extensions.desc": "Customize seu painel de controle com o **Avian Visitors** (desenvolvido por drundoor), que gera uma colagem visual a partir das detecções.",
+  "birdnetpi.extensions.desc": "Customize seu painel de controle com o **Avian Visitors** (desenvolvido por Teddy Warner), que gera uma colagem visual a partir das detecções.",
   "birdnetpi.extensions.list1": "<strong>Mosaico interativo:</strong> Mostra ilustrações coloridas dos pássaros que visitam sua casa e redimensiona as imagens automaticamente.",
   "birdnetpi.extensions.list2": "<strong>Espelho público Netlify:</strong> Oferece scripts para hospedar uma réplica pública do collage na web sem expor seu banco de dados local.",
   "birdnetpi.extensions.link": "GitHub do Avian Visitors",

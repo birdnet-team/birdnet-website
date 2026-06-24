@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Die Administrationsoberfläche Adminer, SQLite3-Wartung, phpSysInfo-Protokolle und GoTTY-Terminalzugriff sind direkt integriert.",
   "birdnetpi.extensions.label": "COMMUNITY-ERWEITERUNGEN",
   "birdnetpi.extensions.title": "Avian Visitors Live-Collage",
-  "birdnetpi.extensions.desc": "Erweitern Sie Ihr System mit **Avian Visitors** (von drundoor), einer illustrierten Dashboard-Erweiterung, die aus den erkannten Vögeln eine Live-Collage erstellt.",
+  "birdnetpi.extensions.desc": "Erweitern Sie Ihr System mit **Avian Visitors** (von Teddy Warner), einer illustrierten Dashboard-Erweiterung, die aus den erkannten Vögeln eine Live-Collage erstellt.",
   "birdnetpi.extensions.list1": "<strong>Bildschirm-Collage:</strong> Zeigt Illustrationen der Vögel in Ihrem Garten und passt deren Bildgröße automatisch an.",
   "birdnetpi.extensions.list2": "<strong>Öffentlicher Netlify-Spiegel:</strong> Enthält Skripte zur Veröffentlichung einer Online-Statistik ohne Offenlegung der lokalen Datenbank.",
   "birdnetpi.extensions.link": "Avian Visitors GitHub",

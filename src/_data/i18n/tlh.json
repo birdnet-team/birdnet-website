@@ -650,7 +650,7 @@
   "birdnetpi.feature.6.desc": "Adminer database, SQLite3 maintenance, phpSysInfo logs, GoTTY terminal.",
   "birdnetpi.extensions.label": "nugh Add-ons",
   "birdnetpi.extensions.title": "Avian Visitors Collage",
-  "birdnetpi.extensions.desc": "lo' **Avian Visitors** (drundoor), database read collage dynamically.",
+  "birdnetpi.extensions.desc": "lo' **Avian Visitors** (Teddy Warner), database read collage dynamically.",
   "birdnetpi.extensions.list1": "<strong>Screen Collage:</strong> show bird drawing garden, automatically scale.",
   "birdnetpi.extensions.list2": "<strong>Public Netlify Mirror:</strong> script build mirror without database risk.",
   "birdnetpi.extensions.link": "Avian Visitors GitHub",
