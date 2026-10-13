@@ -14,6 +14,15 @@ function hasProjectCoordinates(project) {
         Number.isFinite(project.Longitude) && Math.abs(project.Longitude) <= 180;
 }
 
+// i18n helper - returns translation or fallback, never the key
+function projectText(key, fallback) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+        const result = window.i18n.t(key);
+        return result !== key ? result : fallback;
+    }
+    return fallback;
+}
+
 function escapeProjectText(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -76,18 +85,18 @@ function initProjectsMap(projects) {
                 <div class="popup-meta-item"><i class="fa-solid fa-tag"></i><span>${escapeProjectText(project['Target species'])}</span></div>
                 <div class="popup-meta-item"><i class="fa-solid fa-location-dot"></i><span>${location}</span></div>
                 <div class="popup-links">
-                    ${projectLink(project.Website, 'Website', 'btn btn-primary text-white')}
-                    ${projectLink(project.Paper, 'Paper', 'btn btn-outline-dark')}
+                    ${projectLink(project.Website, escapeProjectText(projectText('projectsMap.popup.website', 'Website')), 'btn btn-primary text-white')}
+                    ${projectLink(project.Paper, escapeProjectText(projectText('projectsMap.popup.paper', 'Paper')), 'btn btn-outline-dark')}
                 </div>
-                ${credit ? `<div class="popup-image-credit text-muted mt-2" style="font-size: 0.7rem;">Photo: ${credit}</div>` : ''}
+                ${credit ? `<div class="popup-image-credit text-muted mt-2" style="font-size: 0.7rem;">${escapeProjectText(projectText('projectsMap.popup.photo', 'Photo:'))} ${credit}</div>` : ''}
             </div>`;
         popup.querySelector('img').addEventListener('error', event => {
             const img = event.currentTarget;
             if (img.getAttribute('src') === fallbackImage) return;
             img.src = fallbackImage;
-            img.alt = 'Project image placeholder';
+            img.alt = projectText('projectsMap.popup.placeholderAlt', 'Project image placeholder');
             const creditElement = popup.querySelector('.popup-image-credit');
-            if (creditElement) creditElement.textContent = 'Placeholder: ChatGPT';
+            if (creditElement) creditElement.textContent = projectText('projectsMap.popup.placeholder', 'Placeholder:') + ' ChatGPT';
         });
         const customIcon = L.divIcon({
             className: 'custom-marker', html: `<i class="${iconClass}"></i>`,
@@ -139,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="text-truncate">
                 <span class="d-block text-truncate small fw-medium">${escapeProjectText(project['Project name'])}</span>
-                <span class="d-block x-small text-muted">${escapeProjectText(project.Country || 'Global')}</span>
+                <span class="d-block x-small text-muted">${escapeProjectText(project.Country || projectText('projectsMap.popup.global', 'Global'))}</span>
             </div>`;
         // Event listeners allow names containing apostrophes, quotes, and accented letters.
         button.addEventListener('click', () => {

@@ -139,6 +139,15 @@
       }
     });
 
+    // Translate image alt texts
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+      const key = el.getAttribute('data-i18n-alt');
+      const translated = t(key);
+      if (translated !== key) {
+        el.setAttribute('alt', translated);
+      }
+    });
+
     // Update HTML lang attribute
     document.documentElement.lang = currentLang;
 

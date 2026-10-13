@@ -1,5 +1,6 @@
 ---
 title: BirdNET Demo
+titleKey: meta.title.demo
 layout: layouts/base.njk
 permalink: "/demo/"
 ---
@@ -37,7 +38,7 @@ permalink: "/demo/"
           <div class="d-flex align-items-center justify-content-between w-100">
             <div class="d-flex align-items-center gap-2 min-width-0">
               <i class="bi bi-file-earmark-music text-primary flex-shrink-0"></i>
-              <span class="small" id="collapsedFileInfo">Audio loaded</span>
+              <span class="small" id="collapsedFileInfo" data-i18n="demo.audioLoaded">Audio loaded</span>
             </div>
             <div class="d-flex align-items-center gap-2 flex-shrink-0">
               <button type="button" id="downloadRecordingBtn" class="btn btn-sm btn-outline-primary d-none" onclick="event.stopPropagation();">
@@ -100,10 +101,10 @@ permalink: "/demo/"
           <div id="playCursor"></div>
         </div>
         <div id="spectro-controls" class="spectro-controls d-none align-items-center gap-2 mt-3 flex-wrap">
-          <button id="playBtn" class="btn btn-sm btn-primary" title="Play" aria-label="Play">▶</button>
-          <button id="pauseBtn" class="btn btn-sm btn-primary btn-control" title="Pause" aria-label="Pause">❚❚</button>
-            <button id="restartBtn" class="btn btn-sm btn-primary btn-control" title="Restart" aria-label="Restart">↺</button>
-          <div id="timeDisplay" class="small text-white-50 ms-2">0:00 / 0:00</div>
+          <button id="playBtn" class="btn btn-sm btn-primary btn-control" title="Play" aria-label="Play" data-i18n-title="demo.player.play" data-i18n-aria="demo.player.play">▶</button>
+          <button id="pauseBtn" class="btn btn-sm btn-primary btn-control" title="Pause" aria-label="Pause" data-i18n-title="demo.player.pause" data-i18n-aria="demo.player.pause">❚❚</button>
+          <button id="restartBtn" class="btn btn-sm btn-primary btn-control" title="Restart" aria-label="Restart" data-i18n-title="demo.player.restart" data-i18n-aria="demo.player.restart">↺</button>
+          <div id="timeDisplay" class="small text-muted ms-2">0:00 / 0:00</div>
         </div>
       </div>
     </div>
@@ -119,7 +120,7 @@ permalink: "/demo/"
               <i class="bi bi-translate me-1 text-muted"></i><span data-i18n="demo.settings.labels">Species labels</span>
             </label>
             <select id="langSelect" class="form-select form-select-sm">
-              <option value="auto" selected>Auto (browser language)</option>
+              <option value="auto" selected data-i18n="demo.settings.auto">Auto (browser language)</option>
               <option value="en_us">English (US)</option>
               <option value="en_uk">English (UK)</option>
               <option value="de">Deutsch</option>
@@ -195,13 +196,13 @@ permalink: "/demo/"
           
           <div id="locationInputs" class="row g-2 align-items-end" style="display: none;">
             <div class="col">
-              <input type="number" step="0.0001" id="latInput" class="form-control form-control-sm" placeholder="Latitude (e.g. 40.7812)">
+              <input type="number" step="0.0001" id="latInput" class="form-control form-control-sm" placeholder="Latitude (e.g. 40.7812)" data-i18n-placeholder="demo.settings.latPlaceholder">
             </div>
             <div class="col">
-              <input type="number" step="0.0001" id="lonInput" class="form-control form-control-sm" placeholder="Longitude (e.g. -73.9665)">
+              <input type="number" step="0.0001" id="lonInput" class="form-control form-control-sm" placeholder="Longitude (e.g. -73.9665)" data-i18n-placeholder="demo.settings.lonPlaceholder">
             </div>
             <div class="col-auto">
-              <button type="button" id="geolocateBtn" class="btn btn-sm btn-outline-primary" title="Use my current location">
+              <button type="button" id="geolocateBtn" class="btn btn-sm btn-outline-primary" title="Use my current location" data-i18n-title="demo.settings.detectTitle">
                 <i class="bi bi-crosshair me-1"></i><span data-i18n="demo.settings.detect">Detect</span>
               </button>
             </div>
@@ -222,7 +223,7 @@ permalink: "/demo/"
               <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
             </div>
           </div>
-          <div id="progressText" class="small text-muted" style="min-width: 120px;">Initializing...</div>
+          <div id="progressText" class="small text-muted" style="min-width: 120px;" data-i18n="demo.status.initializing">Initializing...</div>
         </div>
       </div>
     </div>
@@ -329,9 +330,9 @@ function updateLocationStatus() {
   if (!enabled) {
     badge.removeClass('bg-success bg-warning').addClass('bg-secondary').text(_t('demo.settings.locationOff', 'Off'));
   } else if (hasCoords) {
-    badge.removeClass('bg-secondary bg-warning').addClass('bg-success').text('Active');
+    badge.removeClass('bg-secondary bg-warning').addClass('bg-success').text(_t('demo.settings.locationActive', 'Active'));
   } else {
-    badge.removeClass('bg-secondary bg-success').addClass('bg-warning').text('No coordinates');
+    badge.removeClass('bg-secondary bg-success').addClass('bg-warning').text(_t('demo.settings.locationNoCoords', 'No coordinates'));
   }
 }
 
@@ -499,8 +500,7 @@ function renderResults() {
     $('#results').html(`
       <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>
-        No species detected above the confidence threshold (${(threshold * 100).toFixed(0)}%). 
-        Try lowering the threshold or using a different audio file.
+        ${_t('demo.results.none', 'No species detected above the confidence threshold ({threshold}%). Try lowering the threshold or using a different audio file.').replace('{threshold}', (threshold * 100).toFixed(0))}
       </div>
     `);
     return;
@@ -511,7 +511,7 @@ function renderResults() {
   if (useGeo) {
     filterInfo = `<div class="alert alert-light border small mb-3">
       <i class="bi bi-geo-alt-fill text-success me-1"></i>
-      Results filtered by location. Species unlikely to occur at your coordinates are hidden.
+      ${_t('demo.results.geoFiltered', 'Results filtered by location. Species unlikely to occur at your coordinates are hidden.')}
     </div>`;
   }
   
@@ -550,7 +550,7 @@ function renderResults() {
                 </div>
                 <div class="text-end">
                   <span class="badge bg-primary">${confidencePercent}%</span>
-                  ${segments.length > 0 ? `<div class="small text-muted mt-1">${segments.length} detection${segments.length > 1 ? 's' : ''}</div>` : ''}
+                  ${segments.length > 0 ? `<div class="small text-muted mt-1">${(segments.length === 1 ? _t('demo.results.detectionOne', '{count} detection') : _t('demo.results.detectionMany', '{count} detections')).replace('{count}', segments.length)}</div>` : ''}
                 </div>
               </div>
               <div class="progress mt-2" style="height: 4px;">
@@ -568,13 +568,13 @@ function renderResults() {
               ${segments.length > 0 ? segments.map(seg => `
                 <div class="segment-item d-flex align-items-center gap-2 py-1 px-2 rounded hover-bg" 
                      data-start="${seg.start}" data-end="${seg.end}">
-                  <button class="btn btn-sm btn-outline-primary play-segment-btn" title="Play segment">
+                  <button class="btn btn-sm btn-outline-primary play-segment-btn" title="${_t('demo.results.playSegment', 'Play segment')}">
                     <i class="bi bi-play-fill"></i>
                   </button>
                   <span class="small text-muted">${fmtTimeDetailed(seg.start)} – ${fmtTimeDetailed(seg.end)}</span>
                   <span class="badge bg-secondary ms-auto">${(seg.confidence * 100).toFixed(1)}%</span>
                 </div>
-              `).join('') : '<div class="small text-muted">No individual segment detections above threshold.</div>'}
+              `).join('') : '<div class="small text-muted">' + _t('demo.results.noSegments', 'No individual segment detections above threshold.') + '</div>'}
             </div>
           </div>
         </div>
@@ -713,14 +713,16 @@ async function loadAudioFile(file, isRecording = false) {
     $('#statusLine').html('<i class="bi bi-check-circle text-success me-1"></i>' + _t('demo.status.audioLoaded', 'Audio loaded. Adjust settings and click <strong>Run Analysis</strong>.'));
   } catch (err) {
     hideProgress();
-    $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Error decoding audio: ' + err.message + '</span>');
+    $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>' + _t('demo.error.decoding', 'Error decoding audio:') + ' ' + err.message + '</span>');
   }
 }
 
 async function loadSampleAudio() {
   clearResults();
   currentFileName = 'Blue_Jay_Sample';
-  const sampleText = 'Sample: Blue Jay (Cyanocitta cristata)';
+  const sampleLabel = _t('demo.sample.label', 'Sample:');
+  const sampleName = _t('workflow.species.blueJay', 'Blue Jay');
+  const sampleText = sampleLabel + ' ' + sampleName + ' (Cyanocitta cristata)';
   $('#fileInfo').html('<i class="bi bi-music-note-beamed me-1"></i>' + sampleText);
   $('#collapsedFileInfo').html('<i class="bi bi-music-note-beamed me-1"></i><strong>' + sampleLabel + '</strong> ' + sampleName);
   initWaveSurfer(sampleAudioUrl);
@@ -738,7 +740,7 @@ async function loadSampleAudio() {
     $('#statusLine').html('<i class="bi bi-check-circle text-success me-1"></i>' + _t('demo.status.sampleLoaded', 'Sample loaded. Adjust settings and click <strong>Run Analysis</strong>.'));
   } catch (err) {
     hideProgress();
-    $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Error loading sample: ' + err.message + '</span>');
+    $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>' + _t('demo.error.sample', 'Error loading sample:') + ' ' + err.message + '</span>');
   }
 }
 
@@ -886,7 +888,7 @@ async function startRecording() {
     
     mediaRecorder.onerror = (e) => {
       console.error('MediaRecorder error:', e);
-      $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Recording error: ' + (e.error?.message || 'Unknown error') + '</span>');
+      $('#statusLine').html('<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>' + _t('demo.recording.error', 'Recording error:') + ' ' + (e.error?.message || _t('demo.recording.unknownError', 'Unknown error')) + '</span>');
       cancelRecording();
     };
     
@@ -898,17 +900,17 @@ async function startRecording() {
     // Update timer every second
     recordingTimerInterval = setInterval(updateRecordingTimer, 1000);
     
-    $('#statusLine').html('<i class="bi bi-mic-fill text-danger me-1"></i>Recording... Speak or play bird sounds near your microphone.');
+    $('#statusLine').html('<i class="bi bi-mic-fill text-danger me-1"></i>' + _t('demo.recording.active', 'Recording... Speak or play bird sounds near your microphone.'));
     
   } catch (err) {
     console.error('Microphone access error:', err);
-    let msg = 'Could not access microphone';
+    let msg = _t('demo.mic.generic', 'Could not access microphone');
     if (err.name === 'NotAllowedError') {
-      msg = 'Microphone access denied. Please allow microphone access in your browser settings.';
+      msg = _t('demo.mic.denied', 'Microphone access denied. Please allow microphone access in your browser settings.');
     } else if (err.name === 'NotFoundError') {
-      msg = 'No microphone found. Please connect a microphone and try again.';
+      msg = _t('demo.mic.notFound', 'No microphone found. Please connect a microphone and try again.');
     } else if (err.name === 'NotReadableError') {
-      msg = 'Microphone is in use by another application.';
+      msg = _t('demo.mic.inUse', 'Microphone is in use by another application.');
     }
     $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>' + msg + '</span>');
   }
@@ -938,7 +940,7 @@ function cancelRecording() {
   }
   
   hideRecordingUI();
-  $('#statusLine').html('Recording cancelled.');
+  $('#statusLine').text(_t('demo.recording.cancelled', 'Recording cancelled.'));
 }
 
 $('#recordBtn').on('click', startRecording);
@@ -953,7 +955,7 @@ $('#fileupload').on('change', async e => {
 
 $('#runBtn').on('click', async () => {
   if (!lastPCM) { 
-    $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Please load audio first.</span>'); 
+    $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>' + _t('demo.error.noAudio', 'Please load audio first.') + '</span>'); 
     return; 
   }
   
@@ -1009,11 +1011,11 @@ $('#geolocateBtn').on('click', function() {
   const originalContent = btn.html();
   
   if (!navigator.geolocation) {
-    $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Geolocation not supported by your browser.</span>');
+    $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>' + _t('demo.geo.unsupported', 'Geolocation not supported by your browser.') + '</span>');
     return;
   }
   
-  btn.prop('disabled', true).html('<i class="bi bi-arrow-repeat spin me-1"></i>Detecting...');
+  btn.prop('disabled', true).html('<i class="bi bi-arrow-repeat spin me-1"></i>' + _t('demo.geo.detecting', 'Detecting...'));
   
   navigator.geolocation.getCurrentPosition(
     (position) => {
@@ -1021,14 +1023,14 @@ $('#geolocateBtn').on('click', function() {
       $('#lonInput').val(position.coords.longitude.toFixed(4));
       btn.prop('disabled', false).html(originalContent);
       updateLocationStatus();
-      $('#statusLine').html('<i class="bi bi-check-circle text-success me-1"></i>Location detected successfully.');
+      $('#statusLine').html('<i class="bi bi-check-circle text-success me-1"></i>' + _t('demo.geo.success', 'Location detected successfully.'));
     },
     (error) => {
       btn.prop('disabled', false).html(originalContent);
-      let msg = 'Could not get location';
-      if (error.code === 1) msg = 'Location access denied. Please allow location access in your browser.';
-      else if (error.code === 2) msg = 'Location unavailable';
-      else if (error.code === 3) msg = 'Location request timed out';
+      let msg = _t('demo.geo.generic', 'Could not get location');
+      if (error.code === 1) msg = _t('demo.geo.denied', 'Location access denied. Please allow location access in your browser.');
+      else if (error.code === 2) msg = _t('demo.geo.unavailable', 'Location unavailable');
+      else if (error.code === 3) msg = _t('demo.geo.timeout', 'Location request timed out');
       $('#statusLine').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>' + msg + '</span>');
     },
     { enableHighAccuracy: false, timeout: 10000 }

@@ -1,5 +1,6 @@
 ---
 title: BirdNET App – Identify Birds by Sound
+titleKey: meta.title.app
 layout: layouts/base.njk
 permalink: "/app/"
 ---
@@ -24,7 +25,7 @@ permalink: "/app/"
     <div class="position-relative">
       <img
         src="{{ '/img/app_header.jpg' | url }}"
-        alt="BirdNET app header"
+        alt="BirdNET app header" data-i18n-alt="app.headerAlt"
         class="img-fluid rounded-4 shadow-sm border border-light-subtle"
         style="width: 100%; object-fit: cover;">
     </div>
@@ -64,10 +65,10 @@ permalink: "/app/"
           </div>
           <div class="col-lg-4 text-center d-flex flex-column gap-3 justify-content-center">
             <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2" target="_blank" rel="noopener">
-              <i class="bi bi-google-play"></i> Get it on Google Play
+              <i class="bi bi-google-play"></i> <span data-i18n="common.getOnGooglePlay">Get it on Google Play</span>
             </a>
             <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-outline-light btn-lg px-4 d-flex align-items-center justify-content-center gap-2" target="_blank" rel="noopener">
-              <i class="bi bi-apple"></i> Get it on App Store
+              <i class="bi bi-apple"></i> <span data-i18n="common.getOnAppStore">Get it on App Store</span>
             </a>
             <a href="{{ '/live-app/' | url }}" class="text-white small text-decoration-underline" data-i18n="app.live.learnMore">Learn more about BirdNET Live</a>
           </div>
@@ -219,7 +220,7 @@ permalink: "/app/"
       <div class="col-lg-5">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
           <img src="{{ '/img/birdnet_app_screenshots.png' | url }}"
-               alt="BirdNET app interface screenshots"
+               alt="BirdNET app interface screenshots" data-i18n-alt="app.screenshotsAlt"
                class="img-fluid">
           <div class="card-body bg-white p-3 text-center border-top">
              <span class="small text-muted" data-i18n="app.uiCaption">User Interface & Species Details</span>
@@ -377,6 +378,15 @@ permalink: "/app/"
   let globalData = null;
   let labelMap = new Map();
 
+  // i18n helper - returns translation or fallback, never the key
+  function _t(key, fallback) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const result = window.i18n.t(key);
+      return result !== key ? result : fallback;
+    }
+    return fallback;
+  }
+
   async function fetchLabels() {
     const lang = window.i18n ? window.i18n.getCurrentLang() : 'en';
     const langMap = {
@@ -422,7 +432,7 @@ permalink: "/app/"
     } catch (e){
       console.error('Stats fetch failed:', e);
       const el = document.getElementById('stats-updated');
-      if(el) el.textContent = 'Failed to load stats.';
+      if(el) el.textContent = _t('app.stats.failed', 'Failed to load stats.');
     }
   }
 
@@ -459,6 +469,9 @@ permalink: "/app/"
       if (t !== 'app.stats.updated') updatedLabel = t;
     }
     
+    // Timestamped label replaces the static text; keep translatePage() from resetting it
+    const updatedEl = document.getElementById('stats-updated');
+    if (updatedEl) updatedEl.removeAttribute('data-i18n');
     setText('stats-updated', updatedLabel + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
     clearTimeout(refreshTimer);

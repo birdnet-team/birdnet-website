@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{{ title or "BirdNET" }}</title>
+  <title{% if titleKey %} data-i18n="{{ titleKey }}"{% endif %}>{{ title or "BirdNET" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {# Bootstrap CSS (local only) #}

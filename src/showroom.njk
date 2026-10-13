@@ -1,5 +1,6 @@
 ---
 title: BirdNET Showroom
+titleKey: meta.title.showroom
 layout: layouts/base.njk
 permalink: "/showroom/"
 ---
@@ -19,11 +20,11 @@ permalink: "/showroom/"
       <!-- HaikuBox -->
       <div class="col">
         <div class="card showroom-card h-100 shadow-sm">
-          <div class="card-body d-flex flex-column p-4">
-            <img src="{{ '/img/haikubox.png' | url }}" class="showroom-logo mb-4" alt="HaikuBox logo" style="height: 40px; width: auto;">
-            <div class="mb-3 d-flex flex-wrap gap-1">
-              <span class="badge bg-success">Backyard monitoring</span>
-              <span class="badge bg-danger">Community science</span>
+          <div class="card-body d-flex flex-column">
+            <img src="{{ '/img/haikubox.png' | url }}" class="showroom-logo" alt="HaikuBox logo">
+            <div class="mb-2 d-flex flex-wrap gap-1">
+              <span class="badge bg-success" data-i18n="showroom.tag.backyard">Backyard monitoring</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">HaikuBox</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.haikubox.desc">
@@ -41,9 +42,9 @@ permalink: "/showroom/"
           <div class="card-body d-flex flex-column">
             <img src="{{ '/img/birdnet-pi.png' | url }}" class="showroom-logo" alt="BirdNET-Pi logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-success">Backyard monitoring</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-success" data-i18n="showroom.tag.backyard">Backyard monitoring</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">BirdNET-Pi</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birdnetpi.desc">
@@ -61,9 +62,9 @@ permalink: "/showroom/"
             <img src="{{ '/img/birdweather.png' | url }}"
                  class="showroom-logo" alt="BirdWeather logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-primary">App</span>
-              <span class="badge bg-success">Backyard monitoring</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-primary" data-i18n="showroom.tag.app">App</span>
+              <span class="badge bg-success" data-i18n="showroom.tag.backyard">Backyard monitoring</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">BirdWeather</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birdweather.desc">
@@ -81,8 +82,8 @@ permalink: "/showroom/"
             <img src="{{ '/img/birdnetlib.png' | url }}"
                  class="showroom-logo" alt="birdnetlib logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-info">Tool</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
             </div>
             <h2 class="h5 card-title">birdnetlib</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birdnetlib.desc">
@@ -100,7 +101,7 @@ permalink: "/showroom/"
             <img src="{{ '/img/ecopi.png' | url }}"
                  class="showroom-logo" alt="ecoPi logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-info">Tool</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
             </div>
             <h2 class="h5 card-title">ecoPi:Bird</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.ecopi.desc">
@@ -118,8 +119,8 @@ permalink: "/showroom/"
             <img src="{{ '/img/terra_logo.png' | url }}"
                  class="showroom-logo" alt="Terra logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-success">Backyard monitoring</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-success" data-i18n="showroom.tag.backyard">Backyard monitoring</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">Terra</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.terra.desc">
@@ -137,8 +138,8 @@ permalink: "/showroom/"
             <img src="{{ '/img/dawnchorus.png' | url }}"
                  class="showroom-logo" alt="Dawn Chorus logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-primary">App</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-primary" data-i18n="showroom.tag.app">App</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">Dawn Chorus</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.dawnchorus.desc">
@@ -156,9 +157,9 @@ permalink: "/showroom/"
             <img src="{{ '/img/chirpity.png' | url }}"
                  class="showroom-logo" alt="Chirpity logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-info">Tool</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">Chirpity</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.chirpity.desc">
@@ -176,9 +177,9 @@ permalink: "/showroom/"
             <img src="{{ '/img/BirdNET-Go-logo.webp' | url }}"
                  class="showroom-logo" alt="BirdNET-Go logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-info">Tool</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">BirdNET-Go</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birdnetgo.desc">
@@ -196,9 +197,9 @@ permalink: "/showroom/"
             <img src="{{ '/img/rust_logo.png' | url }}"
                  class="showroom-logo" alt="Birda logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-info">Tool</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">Birda</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birda.desc">
@@ -216,9 +217,9 @@ permalink: "/showroom/"
             <img src="{{ '/img/whobird.png' | url }}"
                  class="showroom-logo" alt="whoBIRD logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-primary">App</span>
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-primary" data-i18n="showroom.tag.app">App</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">whoBIRD</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.whobird.desc">
@@ -236,8 +237,8 @@ permalink: "/showroom/"
             <img src="{{ '/img/ribbit.png' | url }}"
                  class="showroom-logo" alt="Ribbit logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-primary">App</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-primary" data-i18n="showroom.tag.app">App</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">Ribbit</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.ribbit.desc">
@@ -255,8 +256,8 @@ permalink: "/showroom/"
             <img src="{{ '/img/ecosound-web_logo_large_white_on_black.png' | url }}"
                  class="showroom-logo" alt="ecoSound web logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-info">Tool</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">ecoSound-web</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.ecosoundweb.desc">
@@ -275,8 +276,8 @@ permalink: "/showroom/"
               src="{{ '/img/faunanet_logo.png' | url }}"
               class="showroom-logo" alt="FaunaNet logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-dark">Code</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-dark" data-i18n="showroom.tag.code">Code</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">FaunaNet</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.faunanet.desc">
@@ -296,8 +297,8 @@ permalink: "/showroom/"
               src="{{ '/img/Muuttolintujen-Kevät.png' | url }}"
               class="showroom-logo" alt="Muuttolintujen Kevät logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-primary">App</span>
-              <span class="badge bg-danger">Community science</span>
+              <span class="badge bg-primary" data-i18n="showroom.tag.app">App</span>
+              <span class="badge bg-danger" data-i18n="showroom.tag.community">Community science</span>
             </div>
             <h2 class="h5 card-title">Muuttolintujen Kevät</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.muuttolintujen.desc">
@@ -317,8 +318,8 @@ permalink: "/showroom/"
               src="{{ '/img/birdomatic.jpg' | url }}"
               class="showroom-logo" alt="BirdOMatic logo">
             <div class="mb-2 d-flex flex-wrap gap-1">
-              <span class="badge bg-info">Tool</span>
-              <span class="badge bg-warning text-dark">Analysis</span>
+              <span class="badge bg-info" data-i18n="showroom.tag.tool">Tool</span>
+              <span class="badge bg-warning text-dark" data-i18n="showroom.tag.analysis">Analysis</span>
             </div>
             <h2 class="h5 card-title">BirdOMatic</h2>
             <p class="text-muted flex-grow-1" data-i18n="showroom.birdomatic.desc">

@@ -1,39 +1,36 @@
 ---
 title: BirdNET Live – Real-time Bird Identification
+titleKey: meta.title.live
 layout: layouts/base.njk
 permalink: "/live-app/"
 ---
 
-<section class="py-5">
-  <div class="container">
-    <div class="row align-items-center g-5 mb-5 pb-lg-5">
-      <div class="col-lg-6">
-        <span class="section-label" data-i18n="live.label">Mobile Application</span>
-        <h1 class="page-title mb-4" data-i18n="live.title">BirdNET Live</h1>
-        <p class="lead text-muted mb-5" data-i18n="live.intro">
-          Continuous real-time bird species identification using on-device inference. Built for field researchers, conservationists, and serious birders. It runs the BirdNET+ model directly on your device — no internet required.
-        </p>
-        <div class="d-flex flex-wrap gap-3">
-          <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
-            <i class="bi bi-google-play"></i> Google Play
-          </a>
-          <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
-            <i class="bi bi-apple"></i> App Store
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm">
-            <i class="bi bi-download"></i> Download APK
-          </a>
-        </div>
-      </div>
-      <div class="col-lg-6 text-center">
-        <div class="position-relative">
-          <img
-            src="{{ '/img/birdnet_live_header.jpg' | url }}"
-            alt="BirdNET app header"
-            class="img-fluid rounded-4 shadow-sm border border-light-subtle"
-            style="width: 100%; object-fit: cover;">
-        </div>
-      </div>
+<div class="row align-items-center g-5 mb-5 pb-lg-5">
+  <div class="col-lg-6">
+    <span class="section-label" data-i18n="live.label">Mobile Application</span>
+    <h1 class="page-title mb-4" data-i18n="live.title">BirdNET Live</h1>
+    <p class="lead text-muted mb-5" data-i18n="live.intro">
+      Continuous real-time bird species identification using on-device inference. Built for field researchers, conservationists, and serious birders. It runs the BirdNET+ model directly on your device — no internet required.
+    </p>
+    <div class="d-flex flex-wrap gap-3">
+      <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+        <i class="bi bi-google-play"></i> Google Play
+      </a>
+      <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+        <i class="bi bi-apple"></i> App Store
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" target="_blank" rel="noopener" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm">
+        <i class="bi bi-download"></i> <span data-i18n="common.downloadApk">Download APK</span>
+      </a>
+    </div>
+  </div>
+  <div class="col-lg-6 text-center">
+    <div class="position-relative">
+      <img
+        src="{{ '/img/birdnet_live_header.jpg' | url }}"
+        alt="BirdNET Live app header" data-i18n-alt="live.headerAlt"
+        class="img-fluid rounded-4 shadow-sm border border-light-subtle"
+        style="width: 100%; object-fit: cover;">
     </div>
   </div>
 </div>
@@ -138,4 +135,43 @@ permalink: "/live-app/"
       </div>
     </div>
   </div>
-</section>
+</div>
+<!-- Documentation Link -->
+<div class="card bg-light border-0 rounded-4 p-5 text-center shadow-sm mb-4">
+  <h3 class="h4 fw-bold mb-3" data-i18n="live.docs.title">Comprehensive Documentation</h3>
+  <p class="text-muted mb-4 mx-auto" style="max-width: 600px;" data-i18n="live.docs.desc">
+    Whether you're a user looking for a quick start guide or a developer wanting to understand the architecture, we've got you covered.
+  </p>
+  <div class="d-flex justify-content-center gap-3 flex-wrap">
+    <a href="https://birdnet-team.github.io/birdnet-live-app/user/" class="btn btn-primary px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.userGuide">User Guide</a>
+    <a href="https://birdnet-team.github.io/birdnet-live-app/developer/" class="btn btn-outline-dark px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.devGuide">Developer Guide</a>
+  </div>
+</div>
+
+<!-- Development & Contribution -->
+<div class="row mb-5">
+  <div class="col-12 rounded-4 pt-5 pe-5 pb-5 ps-0 text-start bg-white d-flex flex-column">
+    <div class="section-label mb-3 align-self-start" data-i18n="nav.tools.openSource">Open source</div>
+    <h2 class="h3 fw-bold mb-4 text-dark" data-i18n="live.community.title">Get Involved & Share Feedback</h2>
+    <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.desc1">
+      BirdNET Live is an open-source project. We welcome contributions from developers, researchers, and bird lovers. You can help improve the application by reporting issues, submitting feature requests, or creating pull requests directly on our GitHub repository.
+    </p>
+    <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.discussionsDesc">
+      Join our discussions forum on GitHub to ask questions, share your birding setups, discuss new feature ideas, and connect with the BirdNET Live community.
+    </p>
+    <div class="d-flex justify-content-start gap-3 flex-wrap mt-auto">
+      <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-github"></i> <span data-i18n="live.community.repo">GitHub Repository</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/discussions" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-chat-dots-fill"></i> <span data-i18n="live.community.discussionsBtn">Join the Discussion →</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/issues" class="btn btn-outline-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-bug"></i> <span data-i18n="live.community.issues">Report an Issue</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/pulls" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-git"></i> <span data-i18n="live.community.prs">Pull Requests</span>
+      </a>
+    </div>
+  </div>
+</div>

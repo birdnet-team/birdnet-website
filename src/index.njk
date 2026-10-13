@@ -1,5 +1,6 @@
 ---
 title: BirdNET – AI-Powered Sound ID
+titleKey: meta.title.home
 layout: layouts/base.njk
 permalink: "/"
 containerClass: ""
@@ -268,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="position-relative">
           <div class="bg-dark rounded-4 shadow-sm p-5 text-light overflow-hidden border border-secondary border-opacity-25" style="background-color: #1a1a1a !important;">
              <div class="font-monospace small mb-4">
-               <div class="text-white-50 mb-3"># Python Integration</div>
+               <div class="text-white-50 mb-3" data-i18n="section.ecosystem.codePython"># Python Integration</div>
                <div><span class="text-info">import</span> birdnet</div>
                <div class="mt-2">model = birdnet.<span class="text-info">load</span>(<span class="text-warning">"acoustic"</span>, <span class="text-warning">"2.4"</span>, <span class="text-warning">"tf"</span>)</div>
                <div class="mt-2 text-white">predictions = model.<span class="text-info">predict</span>(<span class="text-warning">"example/soundscape.wav"</span>)</div>
@@ -278,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
              <hr class="border-secondary opacity-25 my-4">
              
              <div class="font-monospace small">
-               <div class="text-white-50 mb-3"># R Ecological Analysis</div>
+               <div class="text-white-50 mb-3" data-i18n="section.ecosystem.codeR"># R Ecological Analysis</div>
                <div><span class="text-info">library</span>(birdnetR)</div>
                <div class="mt-2">model &lt;- <span class="text-info">load_birdnet</span>()</div>
                <div class="mt-2">audio_path &lt;- <span class="text-info">system.file</span>(<span class="text-warning">"extdata"</span>, <span class="text-warning">"soundscape.mp3"</span>, package = <span class="text-warning">"birdnetR"</span>)</div>
