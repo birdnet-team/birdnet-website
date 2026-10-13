@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Вариант Б: Установка улучшенной версии интерфейса zach7036",
   "birdnetpi.steps.step3.dashboard.title": "Доступ к панели управления",
   "birdnetpi.steps.step3.dashboard.desc": "Скрипт установки берет на себя всю настройку. Как только процесс в терминале завершится, плата автоматически перезагрузится.",
-  "birdnetpi.steps.step3.dashboard.list1": "Откройте адрес <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> в вашей локальной сети.",
+  "birdnetpi.steps.step3.dashboard.list1": "Откройте адрес <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> в вашей локальной сети.",
   "birdnetpi.steps.step3.dashboard.list2": "Имя пользователя по умолчанию: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Пароль по умолчанию: <em>(Оставьте поле пустым при первом входе)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Укажите ваши географические координаты и пароль в меню <strong>Tools > Settings</strong>.",

@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Opção B: Instalar a versão melhorada zach7036",
   "birdnetpi.steps.step3.dashboard.title": "Acessar o Painel de Controle",
   "birdnetpi.steps.step3.dashboard.desc": "O instalador automático realiza toda a configuração. Assim que o terminal concluir o processo, o Pi reiniciará de forma autônoma.",
-  "birdnetpi.steps.step3.dashboard.list1": "Visite o endereço <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> em sua rede local.",
+  "birdnetpi.steps.step3.dashboard.list1": "Visite o endereço <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> em sua rede local.",
   "birdnetpi.steps.step3.dashboard.list2": "Nome de usuário padrão: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Senha padrão: <em>(Deixe em branco no primeiro login)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Configure suas coordenadas geográficas e senha no menu <strong>Tools > Settings</strong>.",

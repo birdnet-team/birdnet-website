@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Opzione B: Installa la versione migliorata zach7036",
   "birdnetpi.steps.step3.dashboard.title": "Accedere alla Dashboard",
   "birdnetpi.steps.step3.dashboard.desc": "Lo script si occuperà dell'intera configurazione. Al completamento del processo nel terminale, il Pi si riavvierà da solo.",
-  "birdnetpi.steps.step3.dashboard.list1": "Visita l'indirizzo <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> sulla tua rete locale.",
+  "birdnetpi.steps.step3.dashboard.list1": "Visita l'indirizzo <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> sulla tua rete locale.",
   "birdnetpi.steps.step3.dashboard.list2": "Nome utente predefinito: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Password predefinita: <em>(Lascia vuota al primo accesso)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Configura le coordinate e la password nel menu <strong>Tools > Settings</strong>.",

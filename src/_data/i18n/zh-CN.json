@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# 选项 B: 安装 zach7036 增强 UI 版本",
   "birdnetpi.steps.step3.dashboard.title": "访问您的控制面板",
   "birdnetpi.steps.step3.dashboard.desc": "安装脚本会自动处理所有配置。终端设置完成后，树莓派将自动重启。",
-  "birdnetpi.steps.step3.dashboard.list1": "在本地网络中访问 <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a>。",
+  "birdnetpi.steps.step3.dashboard.list1": "在本地网络中访问 <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a>。",
   "birdnetpi.steps.step3.dashboard.list2": "默认用户名：<code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "默认密码：<em>(首次登录请留空)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "在 <strong>Tools > Settings</strong> 中配置您的坐标和密码。",

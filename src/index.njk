@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <a href="{{ '/analyzer/' | url }}" class="btn btn-primary d-flex align-items-center gap-2">
             <span data-i18n="section.researchTools.exploreAnalyzer">Explore the Analyzer</span> <i class="bi bi-arrow-right"></i>
           </a>
-          <a href="https://github.com/birdnet-team" target="_blank" class="btn btn-outline-primary d-flex align-items-center gap-2">
+          <a href="https://github.com/birdnet-team" target="_blank" rel="noopener" class="btn btn-outline-primary d-flex align-items-center gap-2">
             GitHub <i class="bi bi-github"></i>
           </a>
         </div>
@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="small text-muted mb-4" data-i18n="section.cards.ecologistsDesc">Process months of PAM data with high precision. Filter results by location and time to reduce false positives.</p>
                 <div class="mt-auto d-flex flex-wrap gap-3">
                    <a href="{{ '/analyzer/' | url }}" class="small text-decoration-none fw-bold" data-i18n="section.cards.analyzerGui">Analyzer GUI →</a>
-                   <a href="https://birdnet-team.github.io/BirdNET-Analyzer/" target="_blank" class="small text-decoration-none fw-bold" data-i18n="section.cards.documentation">Documentation →</a>
+                   <a href="https://birdnet-team.github.io/BirdNET-Analyzer/" target="_blank" rel="noopener" class="small text-decoration-none fw-bold" data-i18n="section.cards.documentation">Documentation →</a>
                 </div>
               </div>
             </div>
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="small text-muted mb-4" data-i18n="section.cards.developersDesc">Integration-ready Python modules and TFLite models. Access our codebase and community-driven tools.</p>
                 <div class="mt-auto d-flex flex-wrap gap-3">
                    <a href="{{ '/tools/' | url }}" class="small text-decoration-none fw-bold" data-i18n="section.cards.openSourceTools">Open Source Tools →</a>
-                   <a href="https://github.com/birdnet-team" target="_blank" class="small text-decoration-none fw-bold" data-i18n="section.cards.github">GitHub →</a>
+                   <a href="https://github.com/birdnet-team" target="_blank" rel="noopener" class="small text-decoration-none fw-bold" data-i18n="section.cards.github">GitHub →</a>
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="d-flex flex-wrap gap-3">
           <a href="{{ '/tools/' | url }}" class="btn btn-primary px-4" data-i18n="section.ecosystem.browseTools">Browse All Tools</a>
-          <a href="https://github.com/birdnet-team" target="_blank" class="btn btn-outline-dark px-4" data-i18n="section.ecosystem.githubTeam">BirdNET-Team on GitHub</a>
+          <a href="https://github.com/birdnet-team" target="_blank" rel="noopener" class="btn btn-outline-dark px-4" data-i18n="section.ecosystem.githubTeam">BirdNET-Team on GitHub</a>
         </div>
       </div>
       <div class="col-lg-6">
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ '/img/haikubox.png' | url }}" class="img-fluid mb-2" alt="HaikuBox logo" style="height: 32px; object-fit: contain;">
             <h3 class="h6 fw-bold mb-1">HaikuBox</h3>
             <div class="small text-muted" data-i18n="section.community.acousticHardware">Acoustic Hardware</div>
-            <a href="https://haikubox.com" class="stretched-link"></a>
+            <a href="https://haikubox.com" target="_blank" rel="noopener" class="stretched-link" aria-label="HaikuBox"></a>
           </div>
         </div>
       </div>
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ '/img/birdweather.png' | url }}" class="img-fluid mb-2" alt="BirdWeather logo" style="height: 32px; object-fit: contain;">
             <h3 class="h6 fw-bold mb-1">BirdWeather</h3>
             <div class="small text-muted" data-i18n="section.community.globalDashboard">Global Dashboard</div>
-            <a href="https://app.birdweather.com" class="stretched-link"></a>
+            <a href="https://app.birdweather.com" target="_blank" rel="noopener" class="stretched-link" aria-label="BirdWeather"></a>
           </div>
         </div>
       </div>
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ '/img/chirpity.png' | url }}" class="img-fluid mb-2" alt="Chirpity logo" style="height: 32px; object-fit: contain;">
             <h3 class="h6 fw-bold mb-1">Chirpity</h3>
             <div class="small text-muted" data-i18n="section.community.desktopAnalysis">Desktop Analysis</div>
-            <a href="https://chirpity.mattkirkland.co.uk" class="stretched-link"></a>
+            <a href="https://chirpity.mattkirkland.co.uk" target="_blank" rel="noopener" class="stretched-link" aria-label="Chirpity"></a>
           </div>
         </div>
       </div>
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ '/img/BirdNET-Go-logo.webp' | url }}" class="img-fluid mb-2" alt="BirdNET-Go logo" style="height: 32px; object-fit: contain;">
             <h3 class="h6 fw-bold mb-1">BirdNET-Go</h3>
             <div class="small text-muted" data-i18n="section.community.cliIntegrations">CLI & Integrations</div>
-            <a href="https://github.com/tphakala/go-birdnet" class="stretched-link"></a>
+            <a href="https://github.com/tphakala/go-birdnet" target="_blank" rel="noopener" class="stretched-link" aria-label="BirdNET-Go"></a>
           </div>
         </div>
       </div>
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ '/img/ecosound-web_logo_large_white_on_black.png' | url }}" class="img-fluid mb-2" alt="ecoSound web logo" style="height: 32px; object-fit: contain;">
             <h3 class="h6 fw-bold mb-1">ecoSound</h3>
             <div class="small text-muted" data-i18n="section.community.webMonitoring">Web Monitoring</div>
-            <a href="https://ecosound-web.de" class="stretched-link"></a>
+            <a href="https://ecosound-web.de" target="_blank" rel="noopener" class="stretched-link" aria-label="ecoSound-web"></a>
           </div>
         </div>
       </div>

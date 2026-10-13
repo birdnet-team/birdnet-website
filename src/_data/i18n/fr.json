@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Option B : Installer la version d'interface améliorée zach7036",
   "birdnetpi.steps.step3.dashboard.title": "Accéder à votre tableau de bord",
   "birdnetpi.steps.step3.dashboard.desc": "Le script gère l'ensemble de la configuration. Dès que la configuration du terminal est terminée, le Pi redémarre automatiquement.",
-  "birdnetpi.steps.step3.dashboard.list1": "Accédez à <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> sur votre réseau local.",
+  "birdnetpi.steps.step3.dashboard.list1": "Accédez à <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> sur votre réseau local.",
   "birdnetpi.steps.step3.dashboard.list2": "Identifiant par défaut : <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Mot de passe par défaut : <em>(Laisser vide lors de la première connexion)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Configurez vos coordonnées et votre mot de passe sous <strong>Tools > Settings</strong>.",

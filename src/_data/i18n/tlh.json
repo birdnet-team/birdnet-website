@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Option B: zach7036 Enhanced UI Version yIjom",
   "birdnetpi.steps.step3.dashboard.title": "Dashboard Access",
   "birdnetpi.steps.step3.dashboard.desc": "Installer config yIlo'. terminal setup complete, Pi reboot automatically yIlo'.",
-  "birdnetpi.steps.step3.dashboard.list1": "Visit <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> local network.",
+  "birdnetpi.steps.step3.dashboard.list1": "Visit <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> local network.",
   "birdnetpi.steps.step3.dashboard.list2": "Username default: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Password default: <em>(blank/empty wa'DIch login)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "coords password je configure yIlo' <strong>Tools > Settings</strong>.",

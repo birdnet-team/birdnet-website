@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Option B: zach7036 Enhanced UI-Version installieren",
   "birdnetpi.steps.step3.dashboard.title": "Zugriff auf das Dashboard",
   "birdnetpi.steps.step3.dashboard.desc": "Das Installationsskript übernimmt die gesamte Konfiguration. Nach Abschluss des Setups startet der Pi automatisch neu.",
-  "birdnetpi.steps.step3.dashboard.list1": "Rufen Sie <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> in Ihrem lokalen Netzwerk auf.",
+  "birdnetpi.steps.step3.dashboard.list1": "Rufen Sie <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> in Ihrem lokalen Netzwerk auf.",
   "birdnetpi.steps.step3.dashboard.list2": "Standard-Benutzername: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Standard-Passwort: <em>(Beim ersten Login leer lassen)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Tragen Sie Ihre Koordinaten ein und legen Sie ein Passwort fest unter <strong>Tools > Einstellungen</strong>.",

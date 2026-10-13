@@ -45,7 +45,7 @@ function initProjectsMap(projects) {
     // CARTO raster tiles require a key since September 2026. OSM standard tiles
     // support normal interactive browsing without a token; do not prefetch tiles.
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
         maxZoom: 19
     }).addTo(projectMap);
 

@@ -632,7 +632,7 @@
   "birdnetpi.steps.step3.option.b": "# Opcja B: Instalacja wersji z ulepszonym interfejsem zach7036",
   "birdnetpi.steps.step3.dashboard.title": "Dostęp do panelu zarządzania",
   "birdnetpi.steps.step3.dashboard.desc": "Skrypt instalacyjny automatycznie skonfiguruje stację. Po zakończeniu instalacji w terminalu, Raspberry Pi zrestartuje się samoczynnie.",
-  "birdnetpi.steps.step3.dashboard.list1": "Otwórz adres <a href=\"http://birdnetpi.local\" target=\"_blank\" class=\"fw-bold\">http://birdnetpi.local</a> w swojej sieci lokalnej.",
+  "birdnetpi.steps.step3.dashboard.list1": "Otwórz adres <a href=\"http://birdnetpi.local\" target=\"_blank\" rel=\"noopener\" class=\"fw-bold\">http://birdnetpi.local</a> w swojej sieci lokalnej.",
   "birdnetpi.steps.step3.dashboard.list2": "Domyślny użytkownik: <code>birdnet</code>",
   "birdnetpi.steps.step3.dashboard.list3": "Domyślne hasło: <em>(Pozostaw puste podczas pierwszego logowania)</em>",
   "birdnetpi.steps.step3.dashboard.list4": "Wprowadź współrzędne geograficzne i hasło w sekcji <strong>Tools > Settings</strong>.",
