@@ -80,9 +80,9 @@ permalink: "/publications/"
 
                   <p class="pub-meta mb-0 text-muted small">
                     {% if p.journal %}<em>{{ p.journal }}</em>{% endif %}
-                    {% if p.volume %}, {{ p.volume }}{% endif %}
-                    {% if p.number %}({{ p.number }}){% endif %}
-                    {% if p.pages %}, {{ p.pages }}{% endif %}
+                    {%- if p.volume %}, {{ p.volume }}{% endif %}
+                    {%- if p.number %}({{ p.number }}){% endif %}
+                    {%- if p.pages %}, {{ p.pages }}{% endif %}
                   </p>
 
                   {% if p.summary %}

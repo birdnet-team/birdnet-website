@@ -74,16 +74,26 @@ function latexToUnicode(str) {
   // Remove remaining braces that just group things
   str = str.replace(/[{}]/g, "");
 
+  // LaTeX dashes: --- em dash, -- en dash
+  str = str.replace(/---/g, "—").replace(/--/g, "–");
+
   return str;
 }
 
 function parseAuthors(authorField) {
   if (!authorField) return [];
   // BibTeX authors are typically separated by " and "
-  return authorField
+  const authors = authorField
     .split(/\s+and\s+/)
     .map((a) => latexToUnicode(a.trim()))
     .filter(Boolean);
+
+  // BibTeX "and others" marks a truncated author list
+  if (authors.length > 1 && authors[authors.length - 1] === "others") {
+    authors.pop();
+    authors[authors.length - 1] += " et al.";
+  }
+  return authors;
 }
 
 // Add: parse tags from BibTeX "tags" field (comma-separated)
@@ -116,11 +126,12 @@ module.exports = function () {
       type: e.entryType,
       title: latexToUnicode(f.title || ""),
       authors: parseAuthors(f.author || ""),
-      journal: latexToUnicode(f.journal || ""),
+      // Venue: journal, or proceedings/school/institution for other entry types
+      journal: latexToUnicode(f.journal || f.booktitle || f.school || f.institution || ""),
       year: f.year ? Number(f.year) : null,
       volume: f.volume || "",
       number: f.number || "",
-      pages: f.pages || "",
+      pages: latexToUnicode(f.pages || ""),
       publisher: latexToUnicode(f.publisher || ""),
       tags: parseTags(f.tags || ""), // <-- add tags array
       url: f.url || "",              // <-- add url

@@ -53,6 +53,9 @@ module.exports = function (eleventyConfig) {
     "node_modules/leaflet/LICENSE": "vendor/leaflet/LICENSE",
   });
 
+  // Rebuild when the publication list changes (read by src/_data/publications.js)
+  eleventyConfig.addWatchTarget("./data/publications.bib");
+
   // Shortcode for current year
   eleventyConfig.addShortcode("year", () => new Date().getFullYear());
 
