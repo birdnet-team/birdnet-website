@@ -385,7 +385,7 @@ function attachWorker() {
         setRunButtonLoading(false);
       }, 400);
       
-      const useGeo = areaModelLoaded && isLocationFilterEnabled();
+      const useGeo = areaModelLoaded && isLocationFilterEnabled() && hasValidLocation();
       pooledResults = data.pooled.map(x => {
         const filtered = useGeo ? (x.geoscore > GEO_THRESH ? x.confidence : 0) : x.confidence;
         return { ...x, filtered };
@@ -722,7 +722,7 @@ async function loadSampleAudio() {
   currentFileName = 'Blue_Jay_Sample';
   const sampleText = 'Sample: Blue Jay (Cyanocitta cristata)';
   $('#fileInfo').html('<i class="bi bi-music-note-beamed me-1"></i>' + sampleText);
-  $('#collapsedFileInfo').html('<i class="bi bi-music-note-beamed me-1"></i><strong>Sample:</strong> Blue Jay');
+  $('#collapsedFileInfo').html('<i class="bi bi-music-note-beamed me-1"></i><strong>' + sampleLabel + '</strong> ' + sampleName);
   initWaveSurfer(sampleAudioUrl);
   showProgress(20, _t('demo.status.fetchingSample', 'Fetching sample...'));
   
@@ -829,6 +829,8 @@ function showRecordingUI() {
 function hideRecordingUI() {
   $('#recordingUI').addClass('d-none');
   $('#dropzoneContent').show();
+  // Restore the collapsible header if audio was already loaded before recording
+  if (lastPCM) $('#dropzoneHeader').removeClass('d-none');
 }
 
 async function startRecording() {
@@ -1209,10 +1211,6 @@ $('#downloadCsvBtn').on('click', () => {
   font-weight: 600;
 }
 
-.min-width-0 {
-  min-width: 0;
-}
-
 .segment-item {
   cursor: pointer;
   transition: background 0.15s ease;
@@ -1244,7 +1242,7 @@ $('#downloadCsvBtn').on('click', () => {
 }
 
 /* Progress bar styling */
-#progressContainer .progress {
+#progressSection .progress {
   background: rgba(0,0,0,0.05);
   border-radius: 3px;
   overflow: hidden;

@@ -361,13 +361,11 @@ permalink: "/app/"
 
 <!-- Stats fetch script (moved to very end, after all DOM elements) -->
 <style>
-  .hover-bg-light:hover { background-color: rgba(0,0,0,0.025); }
   .transition-all { transition: all 0.2s ease-in-out; }
   .species-card { border: 1px solid rgba(0,0,0,0.05); cursor: pointer; }
   .species-card:hover { border-color: var(--primary-color); background-color: rgba(26, 95, 180, 0.02); }
   .species-card.active { border-color: var(--primary-color); background-color: rgba(26, 95, 180, 0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; }
   .italic { font-style: italic; }
-  .ls-1 { letter-spacing: 0.05em; }
 </style>
 <script src="{{ '/js/chart.umd-4.4.1.min.js' | url }}"></script>
 <script>
@@ -406,7 +404,7 @@ permalink: "/app/"
   }
 
   function getBirdImage(scientificName, size = 'medium'){
-    if(!scientificName) return '{{ "/img/placeholder_bird.jpg" | url }}';
+    if(!scientificName) return '{{ "/img/dummy_birds_image.png" | url }}';
     const normalizedName = scientificName.replace(/_/g, ' ');
     return `https://birdnet.cornell.edu/taxonomy/api/image/${encodeURIComponent(normalizedName)}?size=${encodeURIComponent(size)}`;
   }
@@ -498,8 +496,8 @@ permalink: "/app/"
                      <img src="${getBirdImage(scientific, 'thumb')}" 
                        class="rounded-3 shadow-sm" 
                        style="width: 50px; height: 50px; object-fit: cover;"
-                       onerror="this.src='{{ '/img/placeholder_bird.jpg' | url }}'; this.onerror=null;">
-                  <div class="min-w-0">
+                       onerror="this.src='{{ '/img/dummy_birds_image.png' | url }}'; this.onerror=null;">
+                  <div class="min-width-0">
                     <div class="fw-bold smaller text-truncate" title="${common}">${display}</div>
                     <div class="smaller text-primary fw-bold" style="font-size: 0.7rem;">${fmtInt(count)} <span data-i18n="app.stats.ids">IDs</span></div>
                   </div>
