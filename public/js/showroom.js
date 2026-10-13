@@ -44,15 +44,17 @@
   for (const [tag, classes] of tags) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `${classes} showroom-filter-button`;
-    if (button.classList.contains('bg-info')) button.classList.add('text-dark');
+    button.className = `${classes.replace(/\bbadge\b/g, '').trim()} showroom-filter-button`;
     button.setAttribute('aria-pressed', 'false');
     button.setAttribute('aria-controls', 'showroom-grid');
 
+    const indicator = document.createElement('span');
+    indicator.className = 'showroom-filter-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
     const check = document.createElement('i');
-    check.className = 'bi bi-check-lg me-1';
-    check.setAttribute('aria-hidden', 'true');
-    button.append(check, document.createTextNode(tag));
+    check.className = 'bi bi-check-lg';
+    indicator.append(check);
+    button.append(indicator, document.createTextNode(tag));
 
     button.addEventListener('click', () => {
       if (selected.has(tag)) selected.delete(tag);

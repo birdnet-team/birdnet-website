@@ -349,29 +349,91 @@ section {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.showroom-filter-button {
+#showroom-filters {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+}
+
+.showroom-filter-toolbar,
+.showroom-filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.showroom-filter-tags {
+  flex: 1 1 auto;
+}
+
+.showroom-filter-button,
+.showroom-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.625rem 0.875rem;
   border: 1px solid transparent;
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.875rem;
+  border-radius: 2rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.showroom-filter-button[aria-pressed="false"] {
-  background-color: #fff !important;
-  color: #475569 !important;
-  border-color: #cbd5e1;
+.showroom-filter-button {
+  color: #fff;
+}
+
+.showroom-filter-button.bg-info,
+.showroom-filter-button.bg-warning {
+  color: #172033;
+}
+
+#showroom-filters .showroom-filter-button[aria-pressed="true"] {
+  outline: 2px solid #334155;
+  outline-offset: 3px;
+}
+
+.showroom-filter-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.6875rem;
 }
 
 .showroom-filter-button[aria-pressed="false"] .bi {
-  opacity: 0;
+  visibility: hidden;
 }
 
-.showroom-filter-button:hover {
-  box-shadow: 0 0 0 1px #94a3b8;
+.showroom-filter-reset {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #475569;
 }
 
-.showroom-filter-button:focus-visible {
+.showroom-filter-reset:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.showroom-filter-button:hover,
+.showroom-filter-reset:not(:disabled):hover {
+  filter: brightness(0.93);
+}
+
+#showroom-filters .showroom-filter-button:focus-visible,
+#showroom-filters .showroom-filter-reset:focus-visible {
   outline: 3px solid var(--primary-color);
   outline-offset: 3px;
 }

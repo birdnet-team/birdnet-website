@@ -4,7 +4,7 @@ layout: layouts/base.njk
 permalink: "/showroom/"
 ---
 
-<div class="row mb-5 pb-lg-5">
+<div class="row mb-4">
   <div class="col-lg-8">
     <span class="section-label" data-i18n="showroom.label">COMMUNITY ECOSYSTEM</span>
     <h1 class="page-title mb-4" data-i18n="showroom.title">BirdNET Showroom</h1>
@@ -15,16 +15,18 @@ permalink: "/showroom/"
   </div>
 </div>
 
-<section id="showroom-filters" class="mb-4" aria-labelledby="showroom-filter-title" hidden>
-  <h2 id="showroom-filter-title" class="h6 fw-semibold" data-i18n="showroom.filters.title">Filter by tag</h2>
-  <p class="small text-muted mb-3" data-i18n="showroom.filters.hint">Select tags to show projects matching any of them.</p>
-  <div class="d-flex flex-wrap align-items-center gap-2">
-    <div id="showroom-filter-tags" class="d-flex flex-wrap gap-2" role="group" aria-labelledby="showroom-filter-title"></div>
-    <button id="showroom-filter-reset" type="button" class="btn btn-link btn-sm p-0 ms-2" aria-controls="showroom-grid" data-i18n="showroom.filters.reset" disabled>Show all</button>
+<section id="showroom-filters" class="showroom-filters mb-4" aria-labelledby="showroom-filter-title" hidden>
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h2 id="showroom-filter-title" class="h6 fw-semibold mb-0"><i class="bi bi-funnel me-2" aria-hidden="true"></i><span data-i18n="showroom.filters.title">Filter by tag</span></h2>
+    <p class="small text-muted mb-0" role="status" aria-live="polite" aria-atomic="true">
+      <span id="showroom-filter-count"></span> <span data-i18n="showroom.filters.projects">projects</span>
+    </p>
   </div>
-  <p class="small text-muted mt-3 mb-0" role="status" aria-live="polite" aria-atomic="true">
-    <span id="showroom-filter-count"></span> <span data-i18n="showroom.filters.projects">projects</span>
-  </p>
+  <div class="showroom-filter-toolbar">
+    <div id="showroom-filter-tags" class="showroom-filter-tags" role="group" aria-labelledby="showroom-filter-title"></div>
+    <button id="showroom-filter-reset" type="button" class="showroom-filter-reset" aria-controls="showroom-grid" data-i18n="showroom.filters.reset" disabled>Show all</button>
+  </div>
+  <p class="small text-muted mt-3 mb-0" data-i18n="showroom.filters.hint">Select tags to show projects matching any of them.</p>
 </section>
 
 <div id="showroom-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5">
