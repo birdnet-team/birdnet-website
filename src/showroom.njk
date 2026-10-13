@@ -15,7 +15,19 @@ permalink: "/showroom/"
   </div>
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5">
+<section id="showroom-filters" class="mb-4" aria-labelledby="showroom-filter-title" hidden>
+  <h2 id="showroom-filter-title" class="h6 fw-semibold" data-i18n="showroom.filters.title">Filter by tag</h2>
+  <p class="small text-muted mb-3" data-i18n="showroom.filters.hint">Select tags to show projects matching any of them.</p>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <div id="showroom-filter-tags" class="d-flex flex-wrap gap-2" role="group" aria-labelledby="showroom-filter-title"></div>
+    <button id="showroom-filter-reset" type="button" class="btn btn-link btn-sm p-0 ms-2" aria-controls="showroom-grid" data-i18n="showroom.filters.reset" disabled>Show all</button>
+  </div>
+  <p class="small text-muted mt-3 mb-0" role="status" aria-live="polite" aria-atomic="true">
+    <span id="showroom-filter-count"></span> <span data-i18n="showroom.filters.projects">projects</span>
+  </p>
+</section>
+
+<div id="showroom-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5">
       <!-- HaikuBox -->
       <div class="col">
         <div class="card showroom-card h-100 shadow-sm">
@@ -350,7 +362,7 @@ permalink: "/showroom/"
       </div>
 
       <!-- Other -->
-      <div class="col">
+      <div class="col" data-showroom-invite>
         <div class="card h-100 border-dashed">
           <div class="card-body d-flex flex-column">
             <h2 class="h5 card-title" data-i18n="showroom.yourProject.title">Your project here?</h2>
@@ -363,6 +375,6 @@ permalink: "/showroom/"
         </div>
       </div>
 
-    </div>
-  </div>
 </div>
+
+<script src="{{ '/js/showroom.js' | url }}" defer></script>

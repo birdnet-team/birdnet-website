@@ -349,6 +349,33 @@ section {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.showroom-filter-button {
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.showroom-filter-button[aria-pressed="false"] {
+  background-color: #fff !important;
+  color: #475569 !important;
+  border-color: #cbd5e1;
+}
+
+.showroom-filter-button[aria-pressed="false"] .bi {
+  opacity: 0;
+}
+
+.showroom-filter-button:hover {
+  box-shadow: 0 0 0 1px #94a3b8;
+}
+
+.showroom-filter-button:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
 .card-publication {
   border-radius: var(--card-radius);
   border: 1px solid rgba(15, 23, 42, 0.08);
