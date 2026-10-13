@@ -107,13 +107,9 @@ permalink: "/publications/"
       </div>
     {% endfor %}
 
-  </div>
-</section>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const toggleBar = document.getElementById('tagToggleBar');
-  const chipsEl = document.getElementById('activeTagChips');
   const clearBtn = document.getElementById('clearTagFilter');
   const cards = Array.from(document.querySelectorAll('.card.card-publication'));
   const groups = Array.from(document.querySelectorAll('.pub-year-group'));

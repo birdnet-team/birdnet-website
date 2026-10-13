@@ -141,7 +141,7 @@ permalink: "/app/"
                 <div class="row g-4">
                   <div class="col-md-4">
                     <div class="d-flex align-items-center gap-3">
-                      <img id="detail-species-img" src="" class="rounded-4 shadow-sm" style="width: 100px; height: 100px; object-fit: cover;">
+                      <img id="detail-species-img" src="" alt="" class="rounded-4 shadow-sm" style="width: 100px; height: 100px; object-fit: cover;">
                       <div>
                         <h4 id="detail-species-name" class="h5 fw-bold mb-1"></h4>
                         <p id="detail-species-scientific" class="small text-muted italic mb-0"></p>
@@ -274,7 +274,6 @@ permalink: "/app/"
       </div>
     </div>
   </div>
-</section>
 
     <!-- Data & privacy -->
     <div class="row g-5 align-items-center mb-5 pt-5">
@@ -359,8 +358,6 @@ permalink: "/app/"
         </div>
       </div>
     </div>
-  </div>
-</section>
 
 <!-- Stats fetch script (moved to very end, after all DOM elements) -->
 <style>
@@ -386,7 +383,7 @@ permalink: "/app/"
     const lang = window.i18n ? window.i18n.getCurrentLang() : 'en';
     const langMap = {
       'en': 'en_us', 'de': 'de', 'es': 'es', 'fr': 'fr', 'it': 'it',
-      'pt-BR': 'pt', 'pt': 'pt', 'pl': 'pl', 'cs': 'cs', 'tlh': 'en_us'
+      'pt-BR': 'pt', 'pt': 'pt', 'ru': 'ru', 'pl': 'pl', 'cs': 'cs', 'zh-CN': 'zh', 'tlh': 'en_us'
     };
     const fileName = langMap[lang] || 'en_us';
     try {

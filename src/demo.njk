@@ -23,7 +23,7 @@ permalink: "/demo/"
   <div class="small mb-0">
     <strong data-i18n="demo.liveAppHint.title">New: BirdNET Live app</strong>
     <span class="text-muted ms-1" data-i18n="demo.liveAppHint.desc">Analyze files from your phone's storage, run live detection offline in the field, and more.</span>
-    <a href="/live-app/" class="ms-1 fw-semibold text-decoration-none" data-i18n="demo.liveAppHint.link">Learn more →</a>
+    <a href="{{ '/live-app/' | url }}" class="ms-1 fw-semibold text-decoration-none" data-i18n="demo.liveAppHint.link">Learn more →</a>
   </div>
 </div>
 
@@ -243,7 +243,6 @@ permalink: "/demo/"
     </div>
 
   </div>
-</div>
 
 <!-- Local JS vendor bundles -->
 <script src="{{ '/js/jquery-3.7.1.min.js' | url }}"></script>
@@ -328,7 +327,7 @@ function updateLocationStatus() {
   const badge = $('#locationStatus');
   
   if (!enabled) {
-    badge.removeClass('bg-success bg-warning').addClass('bg-secondary').text('Off');
+    badge.removeClass('bg-success bg-warning').addClass('bg-secondary').text(_t('demo.settings.locationOff', 'Off'));
   } else if (hasCoords) {
     badge.removeClass('bg-secondary bg-warning').addClass('bg-success').text('Active');
   } else {
