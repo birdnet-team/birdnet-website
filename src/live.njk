@@ -51,29 +51,21 @@ permalink: "/live-app/"
         </div>
       </div>
     </div>
-
-
-    <!-- Screenshots Gallery -->
-    <div class="mb-5 pb-lg-5">
-      <div class="text-center mb-5">
-        <div class="section-label mx-auto" data-i18n="live.gallery.label">GALLERY</div>
-        <h2 class="h3 fw-bold" data-i18n="live.gallery.title">App Interface Screenshots</h2>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-compass display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.explore">Explore</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.exploreDesc">Browse species expected at your location using the geo-model.</p>
+        </div>
       </div>
-      <div class="row flex-nowrap overflow-auto px-3 pb-4" style="scroll-snap-type: x mandatory; gap: 1.5rem;">
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/live-mode.png" alt="Live Mode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/session-review.png" alt="Survey Mode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/explore.png" alt="Session Review" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/species.png" alt="Explore" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/file-analysis.png" alt="File Analysis" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-journal-album display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.library">Session Library</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.libraryDesc">Review, edit, and export past sessions with audio playback.</p>
         </div>
       </div>
     </div>
@@ -107,31 +99,57 @@ permalink: "/live-app/"
   </div>
 </div>
 
-    <!-- Development & Contribution -->
-    <div class="row mb-5">
-      <div class="col-12 rounded-4 pt-5 pe-5 pb-5 ps-0 text-start bg-white d-flex flex-column">
-        <div class="section-label mb-3 align-self-start">Open source</div>
-        <h2 class="h3 fw-bold mb-4 text-dark" data-i18n="live.community.title">Get Involved & Share Feedback</h2>
-        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.desc1">
-          BirdNET Live is an open-source project. We welcome contributions from developers, researchers, and bird lovers. You can help improve the application by reporting issues, submitting feature requests, or creating pull requests directly on our GitHub repository.
-        </p>
-        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.discussionsDesc">
-          Join our discussions forum on GitHub to ask questions, share your birding setups, discuss new feature ideas, and connect with the BirdNET Live community.
-        </p>
-        <div class="d-flex justify-content-start gap-3 flex-wrap mt-auto">
-          <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-github"></i> <span data-i18n="live.community.repo">GitHub Repository</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/discussions" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-chat-dots-fill"></i> <span data-i18n="live.community.discussionsBtn">Join the Discussion →</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/issues" class="btn btn-outline-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-bug"></i> <span data-i18n="live.community.issues">Report an Issue</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/pulls" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-git"></i> <span data-i18n="live.community.prs">Pull Requests</span>
-          </a>
-        </div>
+
+<!-- Screenshots Gallery -->
+<div class="mb-5 pb-lg-5">
+  <div class="text-center mb-5">
+    <div class="section-label mx-auto" data-i18n="live.gallery.label">GALLERY</div>
+    <h2 class="h3 fw-bold" data-i18n="live.gallery.title">App Interface Screenshots</h2>
+  </div>
+  <div class="row flex-nowrap overflow-auto px-3 pb-4" style="scroll-snap-type: x mandatory; gap: 1.5rem;">
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/live-mode.png' | url }}" alt="Live Mode" data-i18n-alt="live.features.liveMode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/session-review.png' | url }}" alt="Session Review" data-i18n-alt="live.gallery.sessionReview" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/explore.png' | url }}" alt="Explore" data-i18n-alt="live.features.explore" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/species.png' | url }}" alt="Species Details" data-i18n-alt="live.gallery.species" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/file-analysis.png' | url }}" alt="File Analysis" data-i18n-alt="live.gallery.fileAnalysis" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+  </div>
+</div>
+
+<!-- Support -->
+<div class="row g-5 mb-5 pb-lg-4 mt-4">
+  <div class="col-lg-7">
+    <div class="section-label mb-3" data-i18n="app.support.label">SUPPORT</div>
+    <h2 class="h3 fw-bold mb-4" data-i18n="app.support.title">Feedback & assistance</h2>
+    <p class="text-muted mb-4" data-i18n="app.support.desc">
+      Encountering issues? Our team is active on GitHub and via email. Your feedback helps us improve the model and the application for everyone.
+    </p>
+    <a href="mailto:ccb-birdnet@cornell.edu" class="btn btn-outline-dark d-inline-flex align-items-center gap-2">
+      <i class="bi bi-envelope"></i> ccb-birdnet@cornell.edu
+    </a>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-light bg-opacity-50">
+      <h3 class="h6 fw-bold mb-3" data-i18n="app.support.download">Download Latest Version</h3>
+      <div class="d-grid gap-2">
+         <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-google-play me-2"></i> <span data-i18n="app.support.android">Android Release</span>
+         </a>
+         <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-apple me-2"></i> <span data-i18n="app.support.ios">iOS Release</span>
+         </a>
+         <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-download me-2"></i> <span data-i18n="common.downloadApk">Download APK</span>
+         </a>
       </div>
     </div>
   </div>
