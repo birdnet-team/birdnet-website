@@ -280,10 +280,10 @@ document.addEventListener('DOMContentLoaded', function() {
              <div class="font-monospace small">
                <div class="text-white-50 mb-3"># R Ecological Analysis</div>
                <div><span class="text-info">library</span>(birdnetR)</div>
-               <div class="mt-2">model &lt;- <span class="text-info">birdnet_model_tflite</span>()</div>
+               <div class="mt-2">model &lt;- <span class="text-info">load_birdnet</span>()</div>
                <div class="mt-2">audio_path &lt;- <span class="text-info">system.file</span>(<span class="text-warning">"extdata"</span>, <span class="text-warning">"soundscape.mp3"</span>, package = <span class="text-warning">"birdnetR"</span>)</div>
-               <div class="mt-2 text-white">predictions &lt;- <span class="text-info">predict_species_from_audio_file</span>(model, audio_path)</div>
-               <div class="mt-2 text-white"><span class="text-info">get_top_prediction</span>(predictions)</div>
+               <div class="mt-2 text-white">predictions &lt;- <span class="text-info">predict</span>(model, audio_path)</div>
+               <div class="mt-2 text-white">df &lt;- <span class="text-info">as.data.frame</span>(predictions)</div>
              </div>
           </div>
           <!-- Abstract representation -->
