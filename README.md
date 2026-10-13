@@ -16,6 +16,21 @@ BirdNET website built with Eleventy.
    ```
 3. Open your browser and navigate to `http://localhost:8080` to view the site.
 
+## Project map data
+
+Project entries live in `src/_data/projects.js`. Use decimal-degree coordinates and
+fully qualified website/paper URLs. Local survey CSV exports must be removed after importing; they are never
+published.
+
+For an identified species photograph, set `Species Image Scientific Name` and run
+`node scripts/update_project_images.js` to refresh the image URL, caption, author,
+license, and source from the [BirdNET taxonomy service](https://birdnet.cornell.edu/taxonomy/docs).
+Broad surveys can retain project photos or placeholders. Builds use the saved
+metadata and do not contact the taxonomy API.
+
+The Leaflet map uses OpenStreetMap standard tiles without an API token and loads
+them only after map consent. Keep attribution visible and do not prefetch tiles.
+
 ## License
 
 - **Source Code**: The source code for this project is licensed under the [MIT License](https://opensource.org/licenses/MIT).

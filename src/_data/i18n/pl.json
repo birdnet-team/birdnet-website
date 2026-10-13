@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "Żaby",
   "projectsMap.legend.marine": "Życie morskie",
   "projectsMap.privacy.title": "Informacja o prywatności mapy",
-  "projectsMap.privacy.desc": "Mapa ładuje dane z OpenStreetMap i CARTO. Ci dostawcy mogą przetwarzać Twój adres IP i dane przeglądarki.",
+  "projectsMap.privacy.desc": "Mapa ładuje dane z OpenStreetMap. Ten dostawca może przetwarzać Twój adres IP i dane przeglądarki.",
   "projectsMap.privacy.accept": "Akceptuj i załaduj mapę",
   "projectsMap.privacy.learn": "Dowiedz się więcej w naszej polityce prywatności",
   "projectsMap.add.title": "Dodaj projekt",

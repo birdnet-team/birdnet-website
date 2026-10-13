@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "Grenouilles",
   "projectsMap.legend.marine": "Vie marine",
   "projectsMap.privacy.title": "Avis de confidentialité de la carte",
-  "projectsMap.privacy.desc": "La carte charge des données depuis OpenStreetMap et CARTO. Ces fournisseurs peuvent traiter votre adresse IP et données de navigateur.",
+  "projectsMap.privacy.desc": "La carte charge des données depuis OpenStreetMap. Ce fournisseur peut traiter votre adresse IP et les données de votre navigateur.",
   "projectsMap.privacy.accept": "Accepter et charger la carte",
   "projectsMap.privacy.learn": "En savoir plus dans notre politique de confidentialité",
   "projectsMap.add.title": "Ajouter un projet",

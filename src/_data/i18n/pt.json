@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "Rãs",
   "projectsMap.legend.marine": "Vida marinha",
   "projectsMap.privacy.title": "Aviso de privacidade do mapa",
-  "projectsMap.privacy.desc": "O mapa carrega dados do OpenStreetMap e CARTO. Estes fornecedores podem processar o teu endereço IP e dados do browser.",
+  "projectsMap.privacy.desc": "O mapa carrega dados do OpenStreetMap. Este fornecedor pode processar o teu endereço IP e dados do browser.",
   "projectsMap.privacy.accept": "Aceitar e carregar mapa",
   "projectsMap.privacy.learn": "Sabe mais na nossa política de privacidade",
   "projectsMap.add.title": "Adicionar projeto",

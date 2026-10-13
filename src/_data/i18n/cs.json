@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "Žáby",
   "projectsMap.legend.marine": "Mořský život",
   "projectsMap.privacy.title": "Oznámení o soukromí mapy",
-  "projectsMap.privacy.desc": "Mapa načítá data z OpenStreetMap a CARTO. Tito poskytovatelé mohou zpracovávat tvou IP adresu a data prohlížeče.",
+  "projectsMap.privacy.desc": "Mapa načítá data z OpenStreetMap. Tento poskytovatel může zpracovávat tvou IP adresu a data prohlížeče.",
   "projectsMap.privacy.accept": "Přijmout a načíst mapu",
   "projectsMap.privacy.learn": "Zjistit více v naší politice soukromí",
   "projectsMap.add.title": "Přidat projekt",

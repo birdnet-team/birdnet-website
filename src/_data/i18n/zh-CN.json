@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "蛙类",
   "projectsMap.legend.marine": "海洋生物",
   "projectsMap.privacy.title": "地图隐私说明",
-  "projectsMap.privacy.desc": "地图从 OpenStreetMap 和 CARTO 加载数据。这些提供商可能会处理您的 IP 地址和浏览器数据。",
+  "projectsMap.privacy.desc": "地图从 OpenStreetMap 加载数据。该提供商可能会处理您的 IP 地址和浏览器数据。",
   "projectsMap.privacy.accept": "接受并加载地图",
   "projectsMap.privacy.learn": "在我们的隐私政策中了解更多",
   "projectsMap.add.title": "添加项目",

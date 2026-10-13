@@ -451,7 +451,7 @@
   "projectsMap.legend.frogs": "Лягушки",
   "projectsMap.legend.marine": "Морская жизнь",
   "projectsMap.privacy.title": "Уведомление о конфиденциальности карты",
-  "projectsMap.privacy.desc": "Карта загружает данные из OpenStreetMap и CARTO. Эти провайдеры могут обрабатывать ваш IP-адрес и данные браузера.",
+  "projectsMap.privacy.desc": "Карта загружает данные из OpenStreetMap. Этот провайдер может обрабатывать ваш IP-адрес и данные браузера.",
   "projectsMap.privacy.accept": "Принять и загрузить карту",
   "projectsMap.privacy.learn": "Подробнее в нашей политике конфиденциальности",
   "projectsMap.add.title": "Добавить проект",

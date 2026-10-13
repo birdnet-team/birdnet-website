@@ -41,9 +41,10 @@ permalink: "/projects-map/"
         </div>
         <h3 class="h5 fw-bold mb-3" data-i18n="projectsMap.privacy.title">Map Privacy Notice</h3>
         <p class="text-muted small mb-4" data-i18n="projectsMap.privacy.desc">
-            To display the interactive project map, we load map tiles from external providers (OpenStreetMap and CARTO). These providers may process your IP address and other browser data. 
+            To display the interactive project map, we load map tiles from OpenStreetMap. This provider may process your IP address and other browser data.
         </p>
         <button type="button" class="btn btn-primary px-4 py-2 fw-bold" onclick="acceptMapConsent()" data-i18n="projectsMap.privacy.accept">Accept and Load Map</button>
+        <p id="project-map-error" class="text-danger small mt-3" role="alert" hidden>The map library could not load. Please reload the page and try again.</p>
         <div class="mt-3">
             <a href="/privacy/" class="text-muted small text-decoration-underline" data-i18n="projectsMap.privacy.learn">Learn more in our Privacy Policy</a>
         </div>
@@ -110,93 +111,4 @@ permalink: "/projects-map/"
 <script src="{{ '/js/projects.js' | url }}"></script>
 <script id="project-data" type="application/json">
   {{ projects | dump | safe }}
-</script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const dataContainer = document.getElementById('project-data');
-    const menu = document.getElementById('projectSelectorMenu');
-    
-    if (dataContainer && menu) {
-      // Parse data and filter for valid coordinates
-      let projectData = JSON.parse(dataContainer.textContent)
-        .filter(p => p.Latitude != null && p.Longitude != null);
-      
-      // Sort alphabetically by Project name
-      projectData.sort((a, b) => a['Project name'].localeCompare(b['Project name']));
-      
-      // Check for consent with a more specific key
-      const consentKey = 'birdnet_map_consent_2024';
-      
-      if (localStorage.getItem(consentKey) === 'true') {
-        initMapUI(projectData);
-      }
-
-      // Handle consent acceptance
-      window.acceptMapConsent = function() {
-        localStorage.setItem(consentKey, 'true');
-        initMapUI(projectData);
-      };
-
-      function initMapUI(data) {
-        console.log('Consent detected or given, loading map...');
-        // Hide overlay
-        const overlay = document.getElementById('map-consent-overlay');
-        if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.classList.add('d-none');
-                overlay.style.display = 'none';
-            }, 300);
-        }
-        
-        // Initialize map
-        initProjectsMap(data);
-      }
-      
-      // Font Awesome mapping
-      const iconMap = {
-          'feather': 'fa-solid fa-feather-pointed',
-          'paw': 'fa-solid fa-paw',
-          'frog': 'fa-solid fa-frog',
-          'water': 'fa-solid fa-droplet',
-          'bug': 'fa-solid fa-bug',
-          'fish': 'fa-solid fa-fish',
-          'leaf': 'fa-solid fa-leaf',
-          'cog': 'fa-solid fa-gear'
-      };
-      
-      // Populate dropdown menu
-      projectData.forEach((project, index) => {
-          const li = document.createElement('li');
-          const iconClass = iconMap[project['Species Icon']] || 'fa-solid fa-location-dot';
-          const countrySuffix = project.Country ? ` <small class="text-muted">(${project.Country})</small>` : '';
-          
-          li.innerHTML = `
-              <button class="dropdown-item d-flex align-items-center gap-3 py-2" type="button" onclick="focusAndClose(${index}, '${project['Project name']}')">
-                  <div class="d-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 28px; height: 28px; flex-shrink: 0;">
-                      <i class="${iconClass} text-primary" style="font-size: 0.85rem;"></i>
-                  </div>
-                  <div class="text-truncate">
-                      <span class="d-block text-truncate small fw-medium">${project['Project name']}</span>
-                      <span class="d-block x-small text-muted">${project.Country || 'Global'}</span>
-                  </div>
-              </button>
-          `;
-          menu.appendChild(li);
-      });
-
-      // Helper to handle click and update button text
-      window.focusAndClose = function(index, name) {
-          const consentKey = 'birdnet_map_consent_2024';
-          if (localStorage.getItem(consentKey) !== 'true') {
-              // Scroll to the disclaimer if they try to jump to a project without consent
-              document.getElementById('map-consent-overlay').scrollIntoView({ behavior: 'smooth', block: 'center' });
-              return;
-          }
-          focusProject(index);
-          const btnSpan = document.getElementById('projectSelectorBtn').querySelector('span');
-          btnSpan.textContent = name;
-      };
-    }
-  });
 </script>

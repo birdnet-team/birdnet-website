@@ -450,7 +450,7 @@
   "projectsMap.legend.frogs": "Frösche",
   "projectsMap.legend.marine": "Meeresleben",
   "projectsMap.privacy.title": "Karten-Datenschutzhinweis",
-  "projectsMap.privacy.desc": "Die Karte lädt Daten von OpenStreetMap und CARTO. Diese Anbieter können deine IP-Adresse und Browserdaten verarbeiten.",
+  "projectsMap.privacy.desc": "Die Karte lädt Daten von OpenStreetMap. Dieser Anbieter kann deine IP-Adresse und Browserdaten verarbeiten.",
   "projectsMap.privacy.accept": "Akzeptieren und Karte laden",
   "projectsMap.privacy.learn": "Mehr in unserer Datenschutzrichtlinie",
   "projectsMap.add.title": "Projekt hinzufügen",
