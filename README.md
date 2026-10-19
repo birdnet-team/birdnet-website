@@ -16,6 +16,42 @@ BirdNET website built with Eleventy.
    ```
 3. Open your browser and navigate to `http://localhost:8080` to view the site.
 
+## Browser demo
+
+The demo page (`/demo/`) runs BirdNET V3.0, the BirdNET Geomodel and BirdBox
+with [ONNX Runtime Web](https://onnxruntime.ai/) (WASM, self-hosted under
+`/vendor/onnxruntime-web/`), plus the previous BirdNET V2.4 demo with
+TensorFlow.js. Inference runs in a pool of web workers; nothing is uploaded.
+
+The ONNX models are too large for this repository. `npm run build` and
+`npm run serve` call `npm run fetch-models` first, which downloads them from
+pinned commits of [birdnet-live-app](https://github.com/birdnet-team/birdnet-live-app)
+and [BirdBox](https://github.com/birdnet-team/BirdBox), checks their SHA-256,
+derives label and species-name files, and writes everything to `_models/`
+(gitignored). Eleventy publishes that folder as `/models/`, and the deploy
+workflow caches it. To update a model, change the commit and hash in
+`scripts/fetch-models.mjs`.
+
+Species details (photo credit, descriptions, links) come from the
+[BirdNET taxonomy service](https://birdnet.cornell.edu/taxonomy/docs). Its API is
+same-origin on birdnet.cornell.edu; on other hosts the demo falls back to the
+build-time snapshot in `models/v3/info.json`.
+
+### Developer check: score parity
+
+The V3.0 tab exports CSV with the columns of the V3.0 command-line analyzer.
+`scripts/dev/v3_parity.py` runs the same ONNX model with onnxruntime in Python
+and compares it with such an export:
+
+```bash
+pip install onnxruntime librosa numpy
+python scripts/dev/v3_parity.py public/audio/BirdNET_soundscape_32kHz.flac demo.csv
+```
+
+For the sample soundscape the rows are identical and scores differ by at most
+0.0012 (WASM vs. native floating point). The sample is stored at 32 kHz, so no
+resampling is involved. BirdBox boxes match the ONNX graph run in Python exactly.
+
 ## Project map data
 
 Project entries live in `src/_data/projects.js`. Use decimal-degree coordinates and
