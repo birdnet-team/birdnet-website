@@ -30,7 +30,7 @@
                             <path d="{{ d }} Z" fill="rgba(255,255,255,0.9)" stroke="none" />
                         </svg>
                     </div>
-                    <p class="small text-white-50 mb-0 step-desc text-center" data-i18n="workflow.step1.desc">Audio is captured at 48 kHz and divided into 3-second segments, optimizing the balance between model input size and the natural duration of avian vocalizations.</p>
+                    <p class="small text-white-50 mb-0 step-desc text-center" data-i18n="workflow.step1.desc">Audio is sampled at 32 kHz. The model analyzes short snippets of a few seconds, matching the typical duration of animal vocalizations.</p>
                 </div>
 
                 <!-- Step 2 -->
@@ -45,7 +45,7 @@
                         <!-- Prerendered Spectrogram -->
                         <canvas id="canvas-spectrogram-static" width="200" height="60" style="width:100%; height:100%;"></canvas>
                     </div>
-                    <p class="small text-white-50 mb-0 step-desc text-center" data-i18n="workflow.step2.desc">Signals are processed into two log-scaled Mel-spectrograms, visualizing frequency patterns from 0 to 3 kHz and 150 Hz to 15 kHz for detailed analysis.</p>
+                    <p class="small text-white-50 mb-0 step-desc text-center" data-i18n="workflow.step2.desc">Inside the model, the signal is converted into a spectrogram spanning 0 to 16 kHz, revealing the frequency patterns of each call in fine detail.</p>
                 </div>
 
                 <!-- Step 3 -->
