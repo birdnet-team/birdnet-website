@@ -1,5 +1,6 @@
 ---
 title: BirdNET Tools
+titleKey: meta.title.tools
 layout: layouts/base.njk
 permalink: "/tools/"
 ---
@@ -12,14 +13,14 @@ permalink: "/tools/"
       Open-source tools from the BirdNET-Team GitHub organization and collaborators. These projects bring BirdNET to
       research workflows, field devices, and analysis environments.
     </p>
-    <a href="https://github.com/birdnet-team" target="_blank" class="btn btn-outline-dark px-4 d-inline-flex align-items-center gap-2">
+    <a href="https://github.com/birdnet-team" target="_blank" rel="noopener" class="btn btn-outline-dark px-4 d-inline-flex align-items-center gap-2">
       <i class="bi bi-github"></i> <span data-i18n="tools.viewGithub">View the GitHub Organization</span>
     </a>
   </div>
   <div class="col-lg-5">
       <img
         src="{{ '/img/tools_header.png' | url }}"
-        alt="BirdNET tools header"
+        alt="BirdNET tools header" data-i18n-alt="tools.headerAlt"
         class="img-fluid rounded-4 shadow-sm border border-light-subtle"
         style="width: 100%; height: auto;">
   </div>
@@ -35,11 +36,11 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">BirdNET-Analyzer</h2>
                 <p class="small text-muted mb-2">Python · Gradio</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.analyzer">
                   Main analysis engine for applying BirdNET models to scientific audio data, from small projects to
                   large-scale monitoring.
                 </p>
-                <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -52,11 +53,11 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnet</h2>
                 <p class="small text-muted mb-2">Python</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.birdnet">
                   A Python library for identifying bird species by sound, focused on robust workflows for ecological
                   data analysis.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnet" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnet" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -69,11 +70,11 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnetR</h2>
                 <p class="small text-muted mb-2">R</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.birdnetR">
                   An R wrapper around the birdnet Python package, providing convenient functions for running BirdNET and
                   handling results in R.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnetR" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnetR" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -86,10 +87,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnetTools</h2>
                 <p class="small text-muted mb-2">R · Shiny</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.birdnetTools">
                   Tools for summarizing, visualizing, and working with BirdNET output within the R ecosystem.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnetTools" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnetTools" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -102,10 +103,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnet-stm32</h2>
                 <p class="small text-muted mb-2">Python · C++</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.stm32">
                   Training and deployment code for tiny BirdNET-based acoustic models on STM32 hardware platforms.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnet-stm32" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnet-stm32" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -118,10 +119,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">BirdNET-Tiny-Forge</h2>
                 <p class="small text-muted mb-2">Python · C++</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.tinyForge">
                   A framework for creating custom birdsong loggers powered by BirdNET-Tiny, targeting low-power devices.
                 </p>
-                <a href="https://github.com/birdnet-team/BirdNET-Tiny-Forge" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/BirdNET-Tiny-Forge" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -134,10 +135,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">BirdBox</h2>
                 <p class="small text-muted mb-2">Python</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.birdbox">
                   A bounding box detector for bird vocalizations in spectrograms, based on YOLO.
                 </p>
-                <a href="https://github.com/birdnet-team/BirdBox" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/BirdBox" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -150,10 +151,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">ecopi-rtf</h2>
                 <p class="small text-muted mb-2">Python · Dash</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.ecopiRtf">
                   A real-time frontend built with Dash for ecoPi devices running BirdNET-based analyses.
                 </p>
-                <a href="https://github.com/birdnet-team/ecopi-rtf" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/ecopi-rtf" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -166,10 +167,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnet-V3.0-dev</h2>
                 <p class="small text-muted mb-2">Python · Streamlit</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.v3dev">
                   CLI and GUI to analyze audio with BirdNET+ V3.0 developer preview models.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnet-V3.0-dev" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnet-V3.0-dev" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -182,10 +183,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnet-website</h2>
                 <p class="small text-muted mb-2">Eleventy · Bootstrap</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.website">
                   Codebase for this website, built with Eleventy.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnet-website" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnet-website" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -198,10 +199,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">birdnet-live-app</h2>
                 <p class="small text-muted mb-2">Flutter · ONNX</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.liveApp">
                   Real-time bird species identification app for mobile devices.
                 </p>
-                <a href="https://github.com/birdnet-team/birdnet-live-app" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/birdnet-live-app" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -214,10 +215,10 @@ permalink: "/tools/"
               <div class="card-body d-flex flex-column">
                 <h2 class="h5 card-title mb-1">lyrebot</h2>
                 <p class="small text-muted mb-2">Python · React</p>
-                <p class="text-muted small flex-grow-1">
+                <p class="text-muted small flex-grow-1" data-i18n="tools.repo.lyrebot">
                   Interactive AI agent for bioacoustics.
                 </p>
-                <a href="https://github.com/birdnet-team/lyrebot" class="stretched-link small" data-i18n="tools.viewOnGithub">
+                <a href="https://github.com/birdnet-team/lyrebot" target="_blank" rel="noopener" class="stretched-link small" data-i18n="tools.viewOnGithub">
                   View on GitHub
                 </a>
               </div>
@@ -235,18 +236,18 @@ permalink: "/tools/"
               This page highlights key repositories from the BirdNET-Team organization. For the full, up-to-date list of
               public projects, visit GitHub directly.
             </p>
-            <a href="https://github.com/birdnet-team" class="btn btn-outline-secondary btn-sm" data-i18n="tools.birdnetTeamGithub">
+            <a href="https://github.com/birdnet-team" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" data-i18n="tools.birdnetTeamGithub">
               BirdNET-Team on GitHub
             </a>
             <p class="text-muted small mt-4" data-i18n="tools.collaborators">
               We are fortunate to collaborate with open-source contributors who develop tools that complement BirdNET.
               For more projects from our collaborators, check out the DBD Research Group and Perch-Team at Google Research on GitHub.
             </p>
-            <a href="https://github.com/DBD-research-group" class="btn btn-outline-secondary btn-sm" data-i18n="tools.dbdGithub">
+            <a href="https://github.com/DBD-research-group" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" data-i18n="tools.dbdGithub">
               DBD Research Group on GitHub
             </a>
             <br><br>
-            <a href="https://github.com/google-research/perch" class="btn btn-outline-secondary btn-sm" data-i18n="tools.perchGithub">
+            <a href="https://github.com/google-research/perch" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" data-i18n="tools.perchGithub">
               Perch-Team on GitHub
             </a>
           </div>
@@ -265,6 +266,3 @@ permalink: "/tools/"
         <a href="{{ '/showroom/' | url }}" class="btn btn-outline-secondary" data-i18n="tools.built.showroom">Explore the showroom</a>
       </div>
     </div>
-
-  </div>
-</div>

@@ -1,55 +1,69 @@
 ---
 title: Privacy Policy
+titleKey: meta.title.privacy
 layout: layouts/base.njk
 permalink: "/privacy/"
 ---
 
 <div class="row mb-5">
   <div class="col-lg-8">
-    <span class="section-label">ADMINISTRATIVE</span>
-    <h1 class="page-title mb-4">Privacy Policy</h1>
+    <span class="section-label" data-i18n="common.administrative">ADMINISTRATIVE</span>
+    <h1 class="page-title mb-4" data-i18n="privacy.title">Privacy Policy</h1>
     <p class="text-muted">
-      This privacy policy applies to the BirdNET website. For the mobile application, please refer to the <a href="{{ '/privacy-app/' | url }}">BirdNET App Privacy Policy</a>.
+      <span data-i18n="privacy.intro">This privacy policy applies to the BirdNET website. For the mobile application, please refer to the</span> <a href="{{ '/privacy-app/' | url }}" data-i18n="privacy.appLink">BirdNET App Privacy Policy</a>.
     </p>
   </div>
 </div>
 
 <div class="row pt-5 pb-5">
   <div class="col-12">
-    <h2 class="section-title h5">Controller</h2>
-    <p class="text-muted mb-1">Responsible for this website including corresponding subpages/subdomains is:</p>
+    <h2 class="section-title h5" data-i18n="privacy.controller.title">Controller</h2>
+    <p class="text-muted mb-1" data-i18n="privacy.controller.desc">Responsible for this website including corresponding subpages/subdomains is:</p>
     <address class="text-muted">
-      Chemnitz University of Technology<br>
-      represented by the Rector<br><br>
+      <span data-i18n="legal.tuc">Chemnitz University of Technology</span><br>
+      <span data-i18n="legal.representedBy">represented by the Rector</span><br><br>
       Prof. Dr. Gerd Strohmeier<br>
       Straße der Nationen 62<br>
       09111 Chemnitz, Germany<br>
-      Email: <a href="mailto:rektor@tu-chemnitz.de">rektor@tu-chemnitz.de</a><br>
-      Phone: +49 371 531-10000<br>
-      Web: <a href="https://www.tu-chemnitz.de/" rel="noopener">https://www.tu-chemnitz.de/</a>
+      <span data-i18n="common.email">Email:</span> <a href="mailto:rektor@tu-chemnitz.de">rektor@tu-chemnitz.de</a><br>
+      <span data-i18n="common.phone">Phone:</span> +49 371 531-10000<br>
+      <span data-i18n="common.web">Web:</span> <a href="https://www.tu-chemnitz.de/" target="_blank" rel="noopener">https://www.tu-chemnitz.de/</a>
     </address>
 
-    <h2 class="section-title h5 mt-4">Data Protection Officer</h2>
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.dpo.title">Data Protection Officer</h2>
     <address class="text-muted">
       Ines Maria Tacke<br>
       Thüringer Weg 7<br>
       09126 Chemnitz<br>
-      Email: <a href="mailto:datenschutzbeauftragter@tu-chemnitz.de">datenschutzbeauftragter@tu-chemnitz.de</a><br>
-      Phone: +49 371 531-12030<br>
-      Web: <a href="https://www.tu-chemnitz.de/rektorat/dsb/" rel="noopener">https://www.tu-chemnitz.de/rektorat/dsb/</a>
+      <span data-i18n="common.email">Email:</span> <a href="mailto:datenschutzbeauftragter@tu-chemnitz.de">datenschutzbeauftragter@tu-chemnitz.de</a><br>
+      <span data-i18n="common.phone">Phone:</span> +49 371 531-12030<br>
+      <span data-i18n="common.web">Web:</span> <a href="https://www.tu-chemnitz.de/rektorat/dsb/" target="_blank" rel="noopener">https://www.tu-chemnitz.de/rektorat/dsb/</a>
     </address>
 
-    <h2 class="section-title h5 mt-4">Visiting the website</h2>
-    <p class="text-muted">
-      When visiting this website, the following data is automatically collected and stored for a maximum of 15 days:
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.hosting.title">Hosting</h2>
+    <p class="text-muted" data-i18n="[html]privacy.hosting.desc">
+      This website is a static site hosted on GitHub Pages, a service of GitHub, Inc., 88 Colin P. Kelly Jr. Street,
+      San Francisco, CA 94107, USA. When you open a page, your browser connects to GitHub's servers, which receive your
+      IP address and technical request data (such as browser type, requested page, and time) in order to deliver the
+      website. According to GitHub, the IP addresses of visitors to GitHub Pages sites are logged and stored for security
+      purposes. This may involve a transfer of personal data to the USA. GitHub is certified under the EU-U.S. Data
+      Privacy Framework, for which the European Commission has adopted an adequacy decision (Art. 45 GDPR). All fonts,
+      scripts, and images of this website are delivered via GitHub Pages; apart from the services described below, the
+      website does not load any content from third parties. Further information can be found in the
+      <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.visit.title">Access statistics</h2>
+    <p class="text-muted" data-i18n="privacy.visit.desc">
+      When visiting this website, the following data is automatically collected and stored on TU Chemnitz servers for a maximum of 30 days:
     </p>
     <ul class="text-muted">
-      <li>IP address</li>
-      <li>User-Agent string (identifies browser and possibly operating system)</li>
-      <li>Referrer URL (the web address that refers to our site)</li>
-      <li>Date and time</li>
+      <li data-i18n="privacy.visit.ip">IP address</li>
+      <li data-i18n="privacy.visit.ua">User-Agent string (identifies browser and possibly operating system)</li>
+      <li data-i18n="privacy.visit.referrer">Referrer URL (the web address that refers to our site)</li>
+      <li data-i18n="privacy.visit.datetime">Date and time</li>
     </ul>
-    <p class="text-muted">
+    <p class="text-muted" data-i18n="privacy.visit.purpose">
       These data have a personal reference due to the combination of time and IP address, but are necessary to identify
       potential disruptors and thus ensure trouble-free operation. After anonymization by omitting the IP address, we
       gain insights into the use of the website, e.g., how many users visit the website, which pages are popular, and
@@ -57,13 +71,73 @@ permalink: "/privacy/"
       development.
     </p>
 
-    <h2 class="section-title h5 mt-4">Information, blocking, and deletion</h2>
-    <p class="text-muted mb-0">
-      Upon written or text-form request, we will inform you at any time about which personal data we have stored about you.
-      You also have the right to request the correction, blocking, or deletion of this data. You can always contact the
-      supervisory authority responsible for you with a complaint. Your responsible supervisory authority depends on the
-      federal state of your residence, your work, or the alleged violation. A list of supervisory authorities with
-      addresses can be found on the website of the Federal Commissioner for Data Protection and Freedom of Information.
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.services.title">BirdNET data services</h2>
+    <p class="text-muted" data-i18n="privacy.services.desc">
+      Some pages load content directly from BirdNET servers operated by TU Chemnitz (birdnet.cornell.edu and birdnet.tu-chemnitz.de): current
+      observation statistics on the BirdNET App page, and species images on the BirdNET App page, in the browser demo,
+      and in the projects map. Your browser transmits your IP address and technical request data to these servers. This
+      data is used only to deliver the requested content. Audio that you analyze in the browser demo is processed
+      entirely in your browser and is not uploaded.
     </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.legalBasis.title">Legal basis</h2>
+    <p class="text-muted" data-i18n="privacy.legalBasis.desc">
+      The legal basis for the processing described in the sections Hosting, Access statistics, and BirdNET data services
+      is Art. 6(1)(e) and (3) GDPR in conjunction with Section 3 of the Saxon Data Protection Implementation Act
+      (SächsDSDG): providing this website and its services and ensuring their secure operation is part of the public
+      tasks of TU Chemnitz in research, teaching, and knowledge transfer.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.map.title">Projects map (OpenStreetMap)</h2>
+    <p class="text-muted" data-i18n="[html]privacy.map.desc">
+      Our projects map displays map tiles from OpenStreetMap, provided by the OpenStreetMap Foundation (OSMF), United
+      Kingdom, via a global network of cache servers. The map is only loaded after you click “Accept and Load Map”. Your
+      browser then requests the map tiles directly from OpenStreetMap’s servers and transmits your IP address, browser
+      information (user agent), and the address of the page you are viewing (referrer) to the OSMF. The legal basis is
+      your consent (Art. 6(1)(a) GDPR). Your choice is saved in your browser’s local storage so that the map loads
+      automatically on later visits; you can withdraw your consent at any time by deleting the stored site data in your
+      browser. Further information can be found in the
+      <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">OSMF privacy policy</a>.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.storage.title">Data stored in your browser</h2>
+    <p class="text-muted" data-i18n="privacy.storage.desc">
+      This website does not use cookies or tracking technologies. It stores information in your browser's local storage
+      only in two cases: your chosen language, if you select a language or open a link with a language setting, and your
+      consent to load the projects map. This information remains on your device and can be deleted at any time in your
+      browser settings. The legal basis is Section 25(2) No. 2 TDDDG, as this storage is strictly necessary to provide the
+      function you requested.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.links.title">Links to other websites</h2>
+    <p class="text-muted" data-i18n="privacy.links.desc">
+      Links to other websites (for example GitHub, YouTube, or app stores) open in a new tab. No data is transmitted to
+      these providers until you click such a link; after that, the privacy policy of the respective provider applies.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.rights.title">Your rights</h2>
+    <p class="text-muted" data-i18n="privacy.rights.desc">
+      You have the right to access the personal data concerning you (Art. 15 GDPR), to rectification (Art. 16 GDPR), to
+      erasure (Art. 17 GDPR), to restriction of processing (Art. 18 GDPR), and to data portability (Art. 20 GDPR). You
+      also have the right to object at any time, on grounds relating to your particular situation, to processing based on
+      Art. 6(1)(e) GDPR (Art. 21 GDPR). Where processing is based on your consent, you can withdraw it at any time with
+      effect for the future (Art. 7(3) GDPR). To exercise your rights, please contact the controller or the data
+      protection officer named above.
+    </p>
+
+    <h2 class="section-title h5 mt-4" data-i18n="privacy.complaint.title">Right to lodge a complaint</h2>
+    <p class="text-muted mb-1" data-i18n="privacy.complaint.desc">
+      You have the right to lodge a complaint with a supervisory authority if you believe that the processing of your
+      personal data infringes data protection law (Art. 77 GDPR). The competent supervisory authority for TU Chemnitz is:
+    </p>
+    <address class="text-muted">
+      Sächsische Datenschutz- und Transparenzbeauftragte<br>
+      Devrientstraße 5<br>
+      01067 Dresden, Germany<br>
+      <span data-i18n="common.email">Email:</span> <a href="mailto:post@sdtb.sachsen.de">post@sdtb.sachsen.de</a><br>
+      <span data-i18n="common.web">Web:</span> <a href="https://www.datenschutz.sachsen.de" target="_blank" rel="noopener">https://www.datenschutz.sachsen.de</a>
+    </address>
+
+    <p class="text-muted small mt-5 mb-0" data-i18n="privacy.updated">Last updated: October 2026</p>
   </div>
 </div>

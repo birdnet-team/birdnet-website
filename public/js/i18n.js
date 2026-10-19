@@ -13,34 +13,47 @@
   let currentLang = DEFAULT_LANG;
 
   /**
-   * Detect the preferred language from URL, localStorage, or browser settings
+   * Read/write the stored language choice. Storage may be blocked by
+   * browser privacy settings; the site then simply falls back to detection.
+   */
+  function getStoredLang() {
+    try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+  }
+
+  function storeLang(lang) {
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) { /* not persisted */ }
+  }
+
+  /**
+   * Detect the preferred language from URL, stored choice, or browser settings.
+   * Returns where the language came from, so only explicit choices are stored.
    */
   function detectLanguage() {
     // 1. Check URL parameter (?lang=de)
     const urlParams = new URLSearchParams(window.location.search);
     const urlLang = urlParams.get('lang');
     if (urlLang && SUPPORTED_LANGS.includes(urlLang)) {
-      return urlLang;
+      return { lang: urlLang, source: 'url' };
     }
 
-    // 2. Check localStorage
-    const storedLang = localStorage.getItem(STORAGE_KEY);
+    // 2. Check the stored language choice
+    const storedLang = getStoredLang();
     if (storedLang && SUPPORTED_LANGS.includes(storedLang)) {
-      return storedLang;
+      return { lang: storedLang, source: 'storage' };
     }
 
     // 3. Check browser language (try full locale first, e.g. zh-CN, then base language)
     const fullLang = navigator.language;
     if (fullLang && SUPPORTED_LANGS.includes(fullLang)) {
-      return fullLang;
+      return { lang: fullLang, source: 'browser' };
     }
     const baseLang = fullLang?.split('-')[0];
     if (baseLang && SUPPORTED_LANGS.includes(baseLang)) {
-      return baseLang;
+      return { lang: baseLang, source: 'browser' };
     }
 
     // 4. Fallback to default
-    return DEFAULT_LANG;
+    return { lang: DEFAULT_LANG, source: 'default' };
   }
 
   /**
@@ -139,6 +152,15 @@
       }
     });
 
+    // Translate image alt texts
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+      const key = el.getAttribute('data-i18n-alt');
+      const translated = t(key);
+      if (translated !== key) {
+        el.setAttribute('alt', translated);
+      }
+    });
+
     // Update HTML lang attribute
     document.documentElement.lang = currentLang;
 
@@ -181,8 +203,8 @@
       return; // Already on this language
     }
 
-    // Store the new language preference
-    localStorage.setItem(STORAGE_KEY, lang);
+    // Store the explicitly chosen language
+    storeLang(lang);
     
     // Update URL and reload to get fresh HTML
     // This is needed because English content comes from the original HTML,
@@ -200,11 +222,12 @@
    * Initialize the i18n system
    */
   async function init() {
-    const detectedLang = detectLanguage();
+    const { lang: detectedLang, source } = detectLanguage();
     currentLang = detectedLang;
-    
-    // Store the choice if it came from URL or browser detection
-    localStorage.setItem(STORAGE_KEY, detectedLang);
+
+    // Only remember explicit choices (language link); browser detection is
+    // repeated on every visit, so there is nothing to store for it
+    if (source === 'url') storeLang(detectedLang);
     updateUrlParam(detectedLang);
 
     translations = await loadTranslations(detectedLang);

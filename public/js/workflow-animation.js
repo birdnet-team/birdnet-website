@@ -48,7 +48,14 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsChart = new Chart(canvasResults.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Blue Jay', 'American Robin', 'House Sparrow'],
+                labels: [
+                    ['workflow.species.blueJay', 'Blue Jay'],
+                    ['workflow.species.americanRobin', 'American Robin'],
+                    ['workflow.species.houseSparrow', 'House Sparrow']
+                ].map(([key, fallback]) => {
+                    const translated = window.i18n ? window.i18n.t(key) : key;
+                    return translated !== key ? translated : fallback;
+                }),
                 datasets: [{
                     data: [0, 0, 0],
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',

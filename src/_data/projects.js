@@ -71,7 +71,7 @@ module.exports = [
     "Contact": null,
     "Website": null,
     "Paper": null,
-    "Species Image": "https://upload.wikimedia.org/wikipedia/commons/2/25/Gibbon_collage.png",
+    "Species Image": "/img/projects/gibbon-collage.jpg",
     "Species Image Credit": "PaleoMatt, CC BY-SA 4.0, via Wikimedia Commons",
     "Species Icon": "paw"
   },
@@ -86,8 +86,8 @@ module.exports = [
     "Contact": null,
     "Website": null,
     "Paper": null,
-    "Species Image": "https://upload.wikimedia.org/wikipedia/commons/2/25/Gibbon_collage.png",
-    "Species Image Credit": "PaleoMatt via Wikimedia Commons",
+    "Species Image": "/img/projects/gibbon-collage.jpg",
+    "Species Image Credit": "PaleoMatt, CC BY-SA 4.0, via Wikimedia Commons",
     "Species Icon": "paw"
   },
   {
@@ -101,8 +101,8 @@ module.exports = [
     "Contact": null,
     "Website": null,
     "Paper": null,
-    "Species Image": "https://upload.wikimedia.org/wikipedia/commons/c/c6/Male_Ribbon_Sea_Ozernoy_Gulf_Russia.jpg",
-    "Species Image Credit": "Michael Cameron via Wikimedia Commons",
+    "Species Image": "/img/projects/ribbon-seal.jpg",
+    "Species Image Credit": "Michael Cameron (NOAA), public domain, via Wikimedia Commons",
     "Species Icon": "water"
   },
   {
@@ -923,8 +923,8 @@ module.exports = [
     "Contact": "benjamin.cretois@nina.no",
     "Website": null,
     "Paper": "https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/1365-2664.14564",
-    "Species Image": "https://upload.wikimedia.org/wikipedia/commons/e/ed/SnowmobilesYellowstone.jpg",
-    "Species Image Credit": "National Park Service, via Wikimedia Commons",
+    "Species Image": "/img/projects/snowmobiles-yellowstone.jpg",
+    "Species Image Credit": "National Park Service, public domain, via Wikimedia Commons",
     "Species Icon": "cog"
   },
   {
@@ -1215,9 +1215,11 @@ module.exports = [
     "Contact": "aaron.greenville@sydney.edu.au",
     "Website": "https://aarongreenville.com/ecosystem-dynamics-lab/",
     "Paper": null,
-    "Species Image": "https://aarongreenville.com/wp-content/uploads/2014/07/aarongreenvilleafter-the-fire.jpg?w=640",
-    "Species Image Credit": "Aaron Greenville",
-    "Species Icon": "feather"
+    "Species Image": "https://birdnet.cornell.edu/taxonomy/api/image/Menura%20novaehollandiae?size=medium",
+    "Species Image Credit": "pdubbin · cc-by-nc · iNaturalist",
+    "Species Icon": "feather",
+    "Species Image Scientific Name": "Menura novaehollandiae",
+    "Species Image Caption": "Superb Lyrebird"
   },
   {
     "Project name": "Avian Projects South India",
@@ -1262,9 +1264,11 @@ module.exports = [
     "Contact": "mike@haven2.com",
     "Website": "https://www.EarsInTheDriftless.com",
     "Paper": null,
-    "Species Image": "https://www.prairiehaven.com/wp-content/uploads/2024/10/Prairie_Haven.jpg",
-    "Species Image Credit": "Marcie O'Connor",
-    "Species Icon": "feather"
+    "Species Image": "https://birdnet.cornell.edu/taxonomy/api/image/Sturnella%20magna?size=medium",
+    "Species Image Credit": "Doris Brookens · © Macaulay Library · Macaulay Library ML306337121",
+    "Species Icon": "feather",
+    "Species Image Scientific Name": "Sturnella magna",
+    "Species Image Caption": "Eastern Meadowlark"
   },
   {
     "Project name": "MoorPV - Biodiversity in Solar Parks on Rewetted Peatlands",
@@ -1467,9 +1471,11 @@ module.exports = [
     "Contact": "david.singer@nw-fva.de",
     "Website": "https://www.nw-fva.de/forschen/projekte/wildnisgebiet-solling",
     "Paper": null,
-    "Species Image": "https://www.nw-fva.de/fileadmin/_processed_/7/b/csm_Wildnis_Naturwald_Limker_Strang_DSinger_1200_6a3c7e65e6.jpg",
-    "Species Image Credit": "David Singer",
-    "Species Icon": "feather"
+    "Species Image": "https://birdnet.cornell.edu/taxonomy/api/image/Dryocopus%20martius?size=medium",
+    "Species Image Credit": "Александр · cc-by-nc-sa · iNaturalist",
+    "Species Icon": "feather",
+    "Species Image Scientific Name": "Dryocopus martius",
+    "Species Image Caption": "Black Woodpecker"
   },
   {
     "Project name": "Bird monitoring - Mittelwald Liebenburg",
@@ -1482,9 +1488,11 @@ module.exports = [
     "Contact": "david.singer@nw-fva.de",
     "Website": "https://www.nw-fva.de/forschen/projekte/win-1",
     "Paper": null,
-    "Species Image": "https://www.nw-fva.de/fileadmin/_processed_/2/3/csm_WIN_1a_AMolder_1200_2830a80628.jpg",
-    "Species Image Credit": "Andreas Mölder",
-    "Species Icon": "feather"
+    "Species Image": "https://birdnet.cornell.edu/taxonomy/api/image/Dendrocoptes%20medius?size=medium",
+    "Species Image Credit": "Joan Roca · cc-by-nc-nd · iNaturalist",
+    "Species Icon": "feather",
+    "Species Image Scientific Name": "Dendrocoptes medius",
+    "Species Image Caption": "Middle Spotted Woodpecker"
   },
   {
     "Project name": "Beak Tech: Urban vs Rural Vocal Activity Monitoring",

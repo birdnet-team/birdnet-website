@@ -1,10 +1,11 @@
 ---
 title: Projects Map
+titleKey: meta.title.projectsMap
 layout: layouts/base.njk
 permalink: "/projects-map/"
 ---
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="{{ '/vendor/leaflet/leaflet.css' | url }}">
 
 <div class="row align-items-end mb-4">
     <div class="col-lg-7">
@@ -44,9 +45,9 @@ permalink: "/projects-map/"
             To display the interactive project map, we load map tiles from OpenStreetMap. This provider may process your IP address and other browser data.
         </p>
         <button type="button" class="btn btn-primary px-4 py-2 fw-bold" onclick="acceptMapConsent()" data-i18n="projectsMap.privacy.accept">Accept and Load Map</button>
-        <p id="project-map-error" class="text-danger small mt-3" role="alert" hidden>The map library could not load. Please reload the page and try again.</p>
+        <p id="project-map-error" class="text-danger small mt-3" role="alert" hidden data-i18n="projectsMap.error">The map library could not load. Please reload the page and try again.</p>
         <div class="mt-3">
-            <a href="/privacy/" class="text-muted small text-decoration-underline" data-i18n="projectsMap.privacy.learn">Learn more in our Privacy Policy</a>
+            <a href="{{ '/privacy/' | url }}" class="text-muted small text-decoration-underline" data-i18n="projectsMap.privacy.learn">Learn more in our Privacy Policy</a>
         </div>
     </div>
   </div>
@@ -67,7 +68,7 @@ permalink: "/projects-map/"
                         </div>
                         <div>
                             <h3 class="h6 fw-bold mb-1" data-i18n="projectsMap.add.github">GitHub Pull Request</h3>
-                            <p class="smaller text-muted mb-0"><span data-i18n="projectsMap.add.githubDesc">Submit a PR with a new entry in the</span> <a href="https://github.com/birdnet-team/BirdNET-Analyzer/blob/main/docs/projects_data.js" target="_blank" data-i18n="projectsMap.add.projectsData">projects data</a> <span data-i18n="projectsMap.add.file">file.</span></p>
+                            <p class="smaller text-muted mb-0"><span data-i18n="projectsMap.add.githubDesc">Submit a PR with a new entry in the</span> <a href="https://github.com/birdnet-team/BirdNET-Analyzer/blob/main/docs/projects_data.js" target="_blank" rel="noopener" data-i18n="projectsMap.add.projectsData">projects data</a> <span data-i18n="projectsMap.add.file">file.</span></p>
                         </div>
                     </div>
                 </div>
@@ -78,7 +79,7 @@ permalink: "/projects-map/"
                         </div>
                         <div>
                             <h3 class="h6 fw-bold mb-1" data-i18n="projectsMap.add.form">Google Form</h3>
-                            <p class="smaller text-muted mb-0"><span data-i18n="projectsMap.add.formDesc">Fill out our</span> <a href="https://forms.gle/z5aydVaRB9op3Tem9" target="_blank" data-i18n="projectsMap.add.formLink">Google Form</a> <span data-i18n="projectsMap.add.formSuffix">with your project details.</span></p>
+                            <p class="smaller text-muted mb-0"><span data-i18n="projectsMap.add.formDesc">Fill out our</span> <a href="https://forms.gle/z5aydVaRB9op3Tem9" target="_blank" rel="noopener" data-i18n="projectsMap.add.formLink">Google Form</a> <span data-i18n="projectsMap.add.formSuffix">with your project details.</span></p>
                         </div>
                     </div>
                 </div>
@@ -87,12 +88,12 @@ permalink: "/projects-map/"
             <div class="mt-4 pt-4 border-top">
                 <h4 class="smaller text-uppercase fw-bold text-muted ls-1 mb-3" data-i18n="projectsMap.add.required">Required Information</h4>
                 <div class="row row-cols-2 row-cols-md-3 g-2">
-                    <div class="col small">Project name*</div>
-                    <div class="col small">Org / Project lead*</div>
-                    <div class="col small">Target species*</div>
-                    <div class="col small">Region/Location*</div>
-                    <div class="col small">Latitude*</div>
-                    <div class="col small">Longitude*</div>
+                    <div class="col small" data-i18n="projectsMap.field.name">Project name*</div>
+                    <div class="col small" data-i18n="projectsMap.field.org">Org / Project lead*</div>
+                    <div class="col small" data-i18n="projectsMap.field.species">Target species*</div>
+                    <div class="col small" data-i18n="projectsMap.field.region">Region/Location*</div>
+                    <div class="col small" data-i18n="projectsMap.field.lat">Latitude*</div>
+                    <div class="col small" data-i18n="projectsMap.field.lon">Longitude*</div>
                 </div>
                 <p class="smaller text-muted mt-3 mb-0" data-i18n="projectsMap.add.requiredNote">* Required fields for a valid map marker.</p>
             </div>
@@ -102,12 +103,12 @@ permalink: "/projects-map/"
         <div class="card border-0 bg-primary text-white p-4 rounded-4 h-100 shadow-sm">
             <h3 class="h5 fw-bold mb-3" data-i18n="projectsMap.accurate.title">Keep it accurate</h3>
             <p class="small text-white text-opacity-75 mb-4" data-i18n="projectsMap.accurate.desc">If you would like to update a project or find that some information is incorrect, please let us know through any of the contribution channels.</p>
-            <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank" class="btn btn-light btn-sm mt-auto shadow-sm" data-i18n="projectsMap.accurate.viewGithub">View on GitHub</a>
+            <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank" rel="noopener" class="btn btn-light btn-sm mt-auto shadow-sm" data-i18n="projectsMap.accurate.viewGithub">View on GitHub</a>
         </div>
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{{ '/vendor/leaflet/leaflet.js' | url }}"></script>
 <script src="{{ '/js/projects.js' | url }}"></script>
 <script id="project-data" type="application/json">
   {{ projects | dump | safe }}

@@ -25,6 +25,37 @@ module.exports = function (eleventyConfig) {
     "node_modules/@fortawesome/fontawesome-free/webfonts": "vendor/fontawesome/webfonts",
   });
 
+  // Self-hosted Inter font (SIL OFL 1.1) – no requests to Google Fonts
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/@fontsource-variable/inter/opsz.css": "vendor/inter/opsz.css",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/@fontsource-variable/inter/opsz-italic.css": "vendor/inter/opsz-italic.css",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/@fontsource-variable/inter/LICENSE": "vendor/inter/LICENSE",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/@fontsource-variable/inter/files/*-opsz-*.woff2": "vendor/inter/files",
+  });
+
+  // Self-hosted Leaflet (BSD-2-Clause) for the projects map – no CDN requests
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/leaflet/dist/leaflet.js": "vendor/leaflet/leaflet.js",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/leaflet/dist/leaflet.css": "vendor/leaflet/leaflet.css",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/leaflet/dist/images": "vendor/leaflet/images",
+  });
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/leaflet/LICENSE": "vendor/leaflet/LICENSE",
+  });
+
+  // Rebuild when the publication list changes (read by src/_data/publications.js)
+  eleventyConfig.addWatchTarget("./data/publications.bib");
+
   // Shortcode for current year
   eleventyConfig.addShortcode("year", () => new Date().getFullYear());
 

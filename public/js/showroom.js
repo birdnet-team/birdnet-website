@@ -17,8 +17,9 @@
   // Use the existing badges as the source of tag names and colors.
   const projects = [...grid.querySelectorAll('.showroom-card')].map(card => {
     const projectTags = [...card.querySelectorAll('.badge')].map(badge => {
-      const tag = badge.textContent.trim();
-      if (!tags.has(tag)) tags.set(tag, badge.className);
+      // Key by the i18n key so tags match regardless of display language.
+      const tag = badge.dataset.i18n || badge.textContent.trim();
+      if (!tags.has(tag)) tags.set(tag, { classes: badge.className, label: badge.textContent.trim(), key: badge.dataset.i18n });
       return tag;
     });
     return { column: card.closest('.col'), tags: projectTags };
@@ -41,7 +42,7 @@
     count.textContent = `${visible} / ${projects.length}`;
   }
 
-  for (const [tag, classes] of tags) {
+  for (const [tag, { classes, label, key }] of tags) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `${classes.replace(/\bbadge\b/g, '').trim()} showroom-filter-button`;
@@ -54,7 +55,10 @@
     const check = document.createElement('i');
     check.className = 'bi bi-check-lg';
     indicator.append(check);
-    button.append(indicator, document.createTextNode(tag));
+    const text = document.createElement('span');
+    text.textContent = label;
+    if (key) text.dataset.i18n = key;
+    button.append(indicator, text);
 
     button.addEventListener('click', () => {
       if (selected.has(tag)) selected.delete(tag);

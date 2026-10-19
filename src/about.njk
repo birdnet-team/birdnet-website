@@ -1,5 +1,6 @@
 ---
 title: About BirdNET
+titleKey: meta.title.about
 layout: layouts/base.njk
 permalink: "/about/"
 ---
@@ -15,7 +16,7 @@ permalink: "/about/"
   <div class="col-lg-5">
     <img
       src="{{ '/img/about_header.jpg' | url }}"
-      alt="BirdNET about header"
+      alt="BirdNET about header" data-i18n-alt="about.headerAlt"
       class="img-fluid rounded-4 shadow-sm border border-light-subtle"
       style="width: 100%; object-fit: cover;">
   </div>
@@ -187,11 +188,11 @@ permalink: "/about/"
             <div class="smaller text-muted">
               <span data-i18n="about.funding.projectDesc">Development of BirdNET is supported by:</span>
               <ul class="mt-2 mb-0 ps-3">
-                <li class="mb-1">German Federal Ministry of Research, Technology and Space (FKZ 01|S22072)</li>
-                <li class="mb-1">German Federal Ministry for the Environment (FKZ 67KI31040E)</li>
-                <li class="mb-1">German Federal Ministry of Economic Affairs and Energy (FKZ 16KN095550)</li>
-                <li class="mb-1">Deutsche Bundesstiftung Umwelt (39263/01)</li>
-                <li>European Social Fund</li>
+                <li class="mb-1" data-i18n="about.funding.bmftr">German Federal Ministry of Research, Technology and Space (FKZ 01|S22072)</li>
+                <li class="mb-1" data-i18n="about.funding.bmuv">German Federal Ministry for the Environment (FKZ 67KI31040E)</li>
+                <li class="mb-1" data-i18n="about.funding.bmwe">German Federal Ministry of Economic Affairs and Energy (FKZ 16KN095550)</li>
+                <li class="mb-1" data-i18n="about.funding.dbu">Deutsche Bundesstiftung Umwelt (39263/01)</li>
+                <li data-i18n="about.funding.esf">European Social Fund</li>
               </ul>
             </div>
           </div>
@@ -208,12 +209,12 @@ permalink: "/about/"
           </p>
           <div class="bg-white rounded-4 p-4 p-xl-5 text-center mt-auto border border-light-subtle shadow-sm">
             <img
-              src="https://tuc.cloud/index.php/s/KSdWfX5CnSRpRgQ/download/box_logos.png"
-              alt="Logos of BirdNET partner organizations"
+              src="{{ '/img/partner_logos.png' | url }}"
+              alt="Logos of BirdNET partner organizations" data-i18n-alt="about.partnersAlt"
               class="img-fluid mb-4"
               style="width: 100%; max-width: 600px; height: auto;">
             <p class="smaller text-muted mb-0">
-              Representative partner logos. See <a href="{{ '/publications/' | url }}" class="fw-bold">publications</a> and <a href="{{ '/tools/' | url }}" class="fw-bold">tools</a> for additional collaborators.
+              <span data-i18n="about.funding.partners">Representative partner logos. See</span> <a href="{{ '/publications/' | url }}" class="fw-bold" data-i18n="about.funding.publicationsLink">publications</a> <span data-i18n="about.funding.and">and</span> <a href="{{ '/tools/' | url }}" class="fw-bold" data-i18n="about.funding.toolsLink">tools</a> <span data-i18n="about.funding.forCollabs">for additional collaborators.</span>
             </p>
           </div>
         </div>

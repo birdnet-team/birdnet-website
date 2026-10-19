@@ -8,7 +8,7 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #334155;
   -webkit-font-smoothing: antialiased;
   background-color: #ffffff;
@@ -16,7 +16,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Container Width Override */
 /* Video Hover Effect */
 .video-overlay-new {
     background: rgba(0, 0, 0, 0.2);
@@ -51,6 +50,7 @@ body {
     color: white;
 }
 
+/* Container Width Override */
 @media (min-width: 1440px) {
   .container {
     max-width: 1400px !important;
@@ -80,18 +80,13 @@ a:hover {
 
 .navbar {
   background-color: #1a1a1a !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 section.bg-dark, .bg-dark {
   background: linear-gradient(180deg, #262626 0%, #1a1a1a 100%) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-/* Header & Navigation */
-
-.navbar {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .bg-glass {
@@ -443,12 +438,12 @@ section {
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   background: #fff;
+  transition: var(--transition-smooth);
 }
 
 .card-publication:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 15px -4px rgba(0, 0, 0, 0.08);
-  transition: var(--transition-smooth);
   border-color: var(--primary-color);
 }
 
@@ -586,9 +581,17 @@ footer p {
   -webkit-text-fill-color: transparent;
 }
 
-/* Code block terminal style */
+/* Text & layout utilities */
 .smaller {
   font-size: 0.8rem;
+}
+
+.ls-1 {
+  letter-spacing: 0.05em;
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 
 .footer-brand {

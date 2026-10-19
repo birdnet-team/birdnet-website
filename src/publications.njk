@@ -1,5 +1,6 @@
 ---
 title: Publications
+titleKey: meta.title.publications
 layout: layouts/base.njk
 permalink: "/publications/"
 ---
@@ -45,7 +46,7 @@ permalink: "/publications/"
       <div class="mb-5 pub-year-group">
         <h2 class="h5 fw-bold text-dark border-bottom pb-3 mb-4 d-flex align-items-center gap-3">
           {{ group.year }}
-          <span class="badge bg-light text-muted fw-normal" style="font-size: 0.7rem;">{{ group.items | length }} Papers</span>
+          <span class="badge bg-light text-muted fw-normal" style="font-size: 0.7rem;">{{ group.items | length }} <span data-i18n="publications.papers">{% if group.items | length == 1 %}Paper{% else %}Papers{% endif %}</span></span>
         </h2>
         <div class="row g-4">
           {% for p in group.items %}
@@ -79,14 +80,14 @@ permalink: "/publications/"
 
                   <p class="pub-meta mb-0 text-muted small">
                     {% if p.journal %}<em>{{ p.journal }}</em>{% endif %}
-                    {% if p.volume %}, {{ p.volume }}{% endif %}
-                    {% if p.number %}({{ p.number }}){% endif %}
-                    {% if p.pages %}, {{ p.pages }}{% endif %}
+                    {%- if p.volume %}, {{ p.volume }}{% endif %}
+                    {%- if p.number %}({{ p.number }}){% endif %}
+                    {%- if p.pages %}, {{ p.pages }}{% endif %}
                   </p>
 
                   {% if p.summary %}
                     <div class="mt-2 pub-summary">
-                      <div class="small text-muted fw-semibold text-uppercase">Summary</div>
+                      <div class="small text-muted fw-semibold text-uppercase" data-i18n="publications.summary">Summary</div>
                       <p class="mb-2 mt-1">{{ p.summary }}</p>
                     </div>
                   {% endif %}
@@ -94,8 +95,8 @@ permalink: "/publications/"
                   {% if p.url %}
                     <div class="mt-1">
                       <a href="{{ p.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
-                        Open <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                        <span class="visually-hidden">(opens in a new tab)</span>
+                        <span data-i18n="publications.open">Open</span> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                        <span class="visually-hidden" data-i18n="common.opensNewTab">(opens in a new tab)</span>
                       </a>
                     </div>
                   {% endif %}
@@ -107,13 +108,9 @@ permalink: "/publications/"
       </div>
     {% endfor %}
 
-  </div>
-</section>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const toggleBar = document.getElementById('tagToggleBar');
-  const chipsEl = document.getElementById('activeTagChips');
   const clearBtn = document.getElementById('clearTagFilter');
   const cards = Array.from(document.querySelectorAll('.card.card-publication'));
   const groups = Array.from(document.querySelectorAll('.pub-year-group'));

@@ -1,198 +1,195 @@
 ---
 title: BirdNET Live – Real-time Bird Identification
+titleKey: meta.title.live
 layout: layouts/base.njk
 permalink: "/live-app/"
 ---
 
-<section class="py-5">
-  <div class="container">
-    <div class="row align-items-center g-5 mb-5 pb-lg-5">
-      <div class="col-lg-6">
-        <span class="section-label" data-i18n="live.label">Mobile Application</span>
-        <h1 class="page-title mb-4" data-i18n="live.title">BirdNET Live</h1>
-        <p class="lead text-muted mb-5" data-i18n="live.intro">
-          Continuous real-time bird species identification using on-device inference. Built for field researchers, conservationists, and serious birders. It runs the BirdNET+ model directly on your device — no internet required.
-        </p>
-        <div class="d-flex flex-wrap gap-3">
-          <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
-            <i class="bi bi-google-play"></i> Google Play
-          </a>
-          <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
-            <i class="bi bi-apple"></i> App Store
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm">
-            <i class="bi bi-download"></i> Download APK
-          </a>
-        </div>
-      </div>
-      <div class="col-lg-6 text-center">
-        <div class="position-relative">
-          <img
-            src="{{ '/img/birdnet_live_header.jpg' | url }}"
-            alt="BirdNET app header"
-            class="img-fluid rounded-4 shadow-sm border border-light-subtle"
-            style="width: 100%; object-fit: cover;">
+<div class="row align-items-center g-5 mb-5 pb-lg-5">
+  <div class="col-lg-6">
+    <span class="section-label" data-i18n="live.label">Mobile Application</span>
+    <h1 class="page-title mb-4" data-i18n="live.title">BirdNET Live</h1>
+    <p class="lead text-muted mb-5" data-i18n="live.intro">
+      Continuous real-time bird species identification using on-device inference. Built for field researchers, conservationists, and serious birders. It runs the BirdNET+ model directly on your device — no internet required.
+    </p>
+    <div class="d-flex flex-wrap gap-3">
+      <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+        <i class="bi bi-google-play"></i> Google Play
+      </a>
+      <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+        <i class="bi bi-apple"></i> App Store
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" target="_blank" rel="noopener" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm">
+        <i class="bi bi-download"></i> <span data-i18n="common.downloadApk">Download APK</span>
+      </a>
+    </div>
+  </div>
+  <div class="col-lg-6 text-center">
+    <div class="position-relative">
+      <img
+        src="{{ '/img/birdnet_live_header.jpg' | url }}"
+        alt="BirdNET Live app header" data-i18n-alt="live.headerAlt"
+        class="img-fluid rounded-4 shadow-sm border border-light-subtle"
+        style="width: 100%; object-fit: cover;">
+    </div>
+  </div>
+</div>
+
+<div class="pt-5 pb-lg-5">
+  <div class="text-center mb-5">
+    <div class="section-label mx-auto" data-i18n="live.features.label">FEATURES</div>
+    <h2 class="h3 fw-bold" data-i18n="live.features.title">Professional Bioacoustics in Your Pocket</h2>
+  </div>
+
+  <div class="row g-4 mb-5">
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-activity display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.liveMode">Live Mode</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.liveModeDesc">Real-time spectrogram with scrolling detection list.</p>
         </div>
       </div>
     </div>
-
-    <div class="pt-5 pb-lg-5">
-      <div class="text-center mb-5">
-        <div class="section-label mx-auto" data-i18n="live.features.label">FEATURES</div>
-        <h2 class="h3 fw-bold" data-i18n="live.features.title">Professional Bioacoustics in Your Pocket</h2>
-      </div>
-
-      <div class="row g-4 mb-5">
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-activity display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.liveMode">Live Mode</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.liveModeDesc">Real-time spectrogram with scrolling detection list.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-compass display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.explore">Explore</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.exploreDesc">Browse species expected at your location using the geo-model.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-journal-album display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.library">Session Library</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.libraryDesc">Review, edit, and export past sessions with audio playback.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-box-arrow-right display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.export">Export Options</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.exportDesc">Export to Raven Pro, CSV, JSON, GPX, and ZIP bundle formats.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-stopwatch display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.pointCount">Point Count Mode</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.pointCountDesc">Timed survey sessions with countdown timer and station metadata.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border-0 shadow-sm p-3">
-            <div class="card-body">
-              <i class="bi bi-map display-6 text-primary mb-3"></i>
-              <h3 class="h5 fw-bold" data-i18n="live.features.survey">Survey Mode</h3>
-              <p class="text-muted small mb-0" data-i18n="live.features.surveyDesc">Long-running transect surveys with GPS tracking, background monitoring, and detection sampling.</p>
-            </div>
-          </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-compass display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.explore">Explore</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.exploreDesc">Browse species expected at your location using the geo-model.</p>
         </div>
       </div>
     </div>
-
-
-    <!-- Screenshots Gallery -->
-    <div class="mb-5 pb-lg-5">
-      <div class="text-center mb-5">
-        <div class="section-label mx-auto" data-i18n="live.gallery.label">GALLERY</div>
-        <h2 class="h3 fw-bold" data-i18n="live.gallery.title">App Interface Screenshots</h2>
-      </div>
-      <div class="row flex-nowrap overflow-auto px-3 pb-4" style="scroll-snap-type: x mandatory; gap: 1.5rem;">
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/live-mode.png" alt="Live Mode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/session-review.png" alt="Survey Mode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/explore.png" alt="Session Review" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/species.png" alt="Explore" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
-        </div>
-        <div class="col-auto" style="scroll-snap-align: start;">
-          <img src="https://birdnet-team.github.io/birdnet-live-app/assets/screenshots/file-analysis.png" alt="File Analysis" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-journal-album display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.library">Session Library</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.libraryDesc">Review, edit, and export past sessions with audio playback.</p>
         </div>
       </div>
     </div>
-
-    <!-- Support -->
-    <div class="row g-5 mb-5 pb-lg-4 mt-4">
-      <div class="col-lg-7">
-        <div class="section-label mb-3" data-i18n="app.support.label">SUPPORT</div>
-        <h2 class="h3 fw-bold mb-4" data-i18n="app.support.title">Feedback & assistance</h2>
-        <p class="text-muted mb-4" data-i18n="app.support.desc">
-          Encountering issues? Our team is active on GitHub and via email. Your feedback helps us improve the model and the application for everyone.
-        </p>
-        <a href="mailto:ccb-birdnet@cornell.edu" class="btn btn-outline-dark d-inline-flex align-items-center gap-2">
-          <i class="bi bi-envelope"></i> ccb-birdnet@cornell.edu
-        </a>
-      </div>
-      <div class="col-lg-5">
-        <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-light bg-opacity-50">
-          <h3 class="h6 fw-bold mb-3" data-i18n="app.support.download">Download Latest Version</h3>
-          <div class="d-grid gap-2">
-             <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
-               <i class="bi bi-google-play me-2"></i> <span data-i18n="app.support.android">Android Release</span>
-             </a>
-             <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
-               <i class="bi bi-apple me-2"></i> <span data-i18n="app.support.ios">iOS Release</span>
-             </a>
-             <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
-               <i class="bi bi-download me-2"></i> Download APK
-             </a>
-          </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-box-arrow-right display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.export">Export Options</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.exportDesc">Export to Raven Pro, CSV, JSON, GPX, and ZIP bundle formats.</p>
         </div>
       </div>
     </div>
-    <!-- Documentation Link -->
-    <div class="card bg-light border-0 rounded-4 p-5 text-center shadow-sm mb-4">
-      <h3 class="h4 fw-bold mb-3" data-i18n="live.docs.title">Comprehensive Documentation</h3>
-      <p class="text-muted mb-4 mx-auto" style="max-width: 600px;" data-i18n="live.docs.desc">
-        Whether you're a user looking for a quick start guide or a developer wanting to understand the architecture, we've got you covered.
-      </p>
-      <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="https://birdnet-team.github.io/birdnet-live-app/user/" class="btn btn-primary px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.userGuide">User Guide</a>
-        <a href="https://birdnet-team.github.io/birdnet-live-app/developer/" class="btn btn-outline-dark px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.devGuide">Developer Guide</a>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-stopwatch display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.pointCount">Point Count Mode</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.pointCountDesc">Timed survey sessions with countdown timer and station metadata.</p>
+        </div>
       </div>
     </div>
-
-    <!-- Development & Contribution -->
-    <div class="row mb-5">
-      <div class="col-12 rounded-4 pt-5 pe-5 pb-5 ps-0 text-start bg-white d-flex flex-column">
-        <div class="section-label mb-3 align-self-start">Open source</div>
-        <h2 class="h3 fw-bold mb-4 text-dark" data-i18n="live.community.title">Get Involved & Share Feedback</h2>
-        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.desc1">
-          BirdNET Live is an open-source project. We welcome contributions from developers, researchers, and bird lovers. You can help improve the application by reporting issues, submitting feature requests, or creating pull requests directly on our GitHub repository.
-        </p>
-        <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.discussionsDesc">
-          Join our discussions forum on GitHub to ask questions, share your birding setups, discuss new feature ideas, and connect with the BirdNET Live community.
-        </p>
-        <div class="d-flex justify-content-start gap-3 flex-wrap mt-auto">
-          <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-github"></i> <span data-i18n="live.community.repo">GitHub Repository</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/discussions" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-chat-dots-fill"></i> <span data-i18n="live.community.discussionsBtn">Join the Discussion →</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/issues" class="btn btn-outline-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-bug"></i> <span data-i18n="live.community.issues">Report an Issue</span>
-          </a>
-          <a href="https://github.com/birdnet-team/birdnet-live-app/pulls" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
-            <i class="bi bi-git"></i> <span data-i18n="live.community.prs">Pull Requests</span>
-          </a>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 border-0 shadow-sm p-3">
+        <div class="card-body">
+          <i class="bi bi-map display-6 text-primary mb-3"></i>
+          <h3 class="h5 fw-bold" data-i18n="live.features.survey">Survey Mode</h3>
+          <p class="text-muted small mb-0" data-i18n="live.features.surveyDesc">Long-running transect surveys with GPS tracking, background monitoring, and detection sampling.</p>
         </div>
       </div>
     </div>
   </div>
-</section>
+</div>
+
+
+<!-- Screenshots Gallery -->
+<div class="mb-5 pb-lg-5">
+  <div class="text-center mb-5">
+    <div class="section-label mx-auto" data-i18n="live.gallery.label">GALLERY</div>
+    <h2 class="h3 fw-bold" data-i18n="live.gallery.title">App Interface Screenshots</h2>
+  </div>
+  <div class="row flex-nowrap overflow-auto px-3 pb-4" style="scroll-snap-type: x mandatory; gap: 1.5rem;">
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/live-mode.png' | url }}" alt="Live Mode" data-i18n-alt="live.features.liveMode" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/session-review.png' | url }}" alt="Session Review" data-i18n-alt="live.gallery.sessionReview" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/explore.png' | url }}" alt="Explore" data-i18n-alt="live.features.explore" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/species.png' | url }}" alt="Species Details" data-i18n-alt="live.gallery.species" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+    <div class="col-auto" style="scroll-snap-align: start;">
+      <img src="{{ '/img/live/file-analysis.png' | url }}" alt="File Analysis" data-i18n-alt="live.gallery.fileAnalysis" class="rounded-4 shadow-sm" style="height: 500px; width: auto;">
+    </div>
+  </div>
+</div>
+
+<!-- Support -->
+<div class="row g-5 mb-5 pb-lg-4 mt-4">
+  <div class="col-lg-7">
+    <div class="section-label mb-3" data-i18n="app.support.label">SUPPORT</div>
+    <h2 class="h3 fw-bold mb-4" data-i18n="app.support.title">Feedback & assistance</h2>
+    <p class="text-muted mb-4" data-i18n="app.support.desc">
+      Encountering issues? Our team is active on GitHub and via email. Your feedback helps us improve the model and the application for everyone.
+    </p>
+    <a href="mailto:ccb-birdnet@cornell.edu" class="btn btn-outline-dark d-inline-flex align-items-center gap-2">
+      <i class="bi bi-envelope"></i> ccb-birdnet@cornell.edu
+    </a>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-light bg-opacity-50">
+      <h3 class="h6 fw-bold mb-3" data-i18n="app.support.download">Download Latest Version</h3>
+      <div class="d-grid gap-2">
+         <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-google-play me-2"></i> <span data-i18n="app.support.android">Android Release</span>
+         </a>
+         <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-apple me-2"></i> <span data-i18n="app.support.ios">iOS Release</span>
+         </a>
+         <a href="https://github.com/birdnet-team/birdnet-live-app/releases/latest" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
+           <i class="bi bi-download me-2"></i> <span data-i18n="common.downloadApk">Download APK</span>
+         </a>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Documentation Link -->
+<div class="card bg-light border-0 rounded-4 p-5 text-center shadow-sm mb-4">
+  <h3 class="h4 fw-bold mb-3" data-i18n="live.docs.title">Comprehensive Documentation</h3>
+  <p class="text-muted mb-4 mx-auto" style="max-width: 600px;" data-i18n="live.docs.desc">
+    Whether you're a user looking for a quick start guide or a developer wanting to understand the architecture, we've got you covered.
+  </p>
+  <div class="d-flex justify-content-center gap-3 flex-wrap">
+    <a href="https://birdnet-team.github.io/birdnet-live-app/user/" class="btn btn-primary px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.userGuide">User Guide</a>
+    <a href="https://birdnet-team.github.io/birdnet-live-app/developer/" class="btn btn-outline-dark px-4 py-2" target="_blank" rel="noopener" data-i18n="live.docs.devGuide">Developer Guide</a>
+  </div>
+</div>
+
+<!-- Development & Contribution -->
+<div class="row mb-5">
+  <div class="col-12 rounded-4 pt-5 pe-5 pb-5 ps-0 text-start bg-white d-flex flex-column">
+    <div class="section-label mb-3 align-self-start" data-i18n="nav.tools.openSource">Open source</div>
+    <h2 class="h3 fw-bold mb-4 text-dark" data-i18n="live.community.title">Get Involved & Share Feedback</h2>
+    <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.desc1">
+      BirdNET Live is an open-source project. We welcome contributions from developers, researchers, and bird lovers. You can help improve the application by reporting issues, submitting feature requests, or creating pull requests directly on our GitHub repository.
+    </p>
+    <p class="text-muted mb-4" style="max-width: 750px;" data-i18n="live.community.discussionsDesc">
+      Join our discussions forum on GitHub to ask questions, share your birding setups, discuss new feature ideas, and connect with the BirdNET Live community.
+    </p>
+    <div class="d-flex justify-content-start gap-3 flex-wrap mt-auto">
+      <a href="https://github.com/birdnet-team/birdnet-live-app" class="btn btn-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-github"></i> <span data-i18n="live.community.repo">GitHub Repository</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/discussions" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-chat-dots-fill"></i> <span data-i18n="live.community.discussionsBtn">Join the Discussion →</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/issues" class="btn btn-outline-dark d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-bug"></i> <span data-i18n="live.community.issues">Report an Issue</span>
+      </a>
+      <a href="https://github.com/birdnet-team/birdnet-live-app/pulls" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-4 py-2" target="_blank" rel="noopener">
+        <i class="bi bi-git"></i> <span data-i18n="live.community.prs">Pull Requests</span>
+      </a>
+    </div>
+  </div>
+</div>

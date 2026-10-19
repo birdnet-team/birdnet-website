@@ -1,5 +1,6 @@
 ---
 title: BirdNET App – Identify Birds by Sound
+titleKey: meta.title.app
 layout: layouts/base.njk
 permalink: "/app/"
 ---
@@ -12,10 +13,10 @@ permalink: "/app/"
       Hold up your phone and identify birds with just one click. Fast, free, and powered by high-precision BirdNET AI—bringing professional bioacoustics to everyone.
     </p>
     <div class="d-flex flex-wrap gap-3">
-      <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+      <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
         <i class="bi bi-google-play"></i> Google Play
       </a>
-      <a href="https://apps.apple.com/us/app/birdnet/id1541842885" target="_blank" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
+      <a href="https://apps.apple.com/us/app/birdnet/id1541842885" target="_blank" rel="noopener" class="btn btn-dark d-flex align-items-center gap-2 px-4 shadow-sm text-white">
         <i class="bi bi-apple"></i> App Store
       </a>
     </div>
@@ -24,7 +25,7 @@ permalink: "/app/"
     <div class="position-relative">
       <img
         src="{{ '/img/app_header.jpg' | url }}"
-        alt="BirdNET app header"
+        alt="BirdNET app header" data-i18n-alt="app.headerAlt"
         class="img-fluid rounded-4 shadow-sm border border-light-subtle"
         style="width: 100%; object-fit: cover;">
     </div>
@@ -64,10 +65,10 @@ permalink: "/app/"
           </div>
           <div class="col-lg-4 text-center d-flex flex-column gap-3 justify-content-center">
             <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet_live" class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2" target="_blank" rel="noopener">
-              <i class="bi bi-google-play"></i> Get it on Google Play
+              <i class="bi bi-google-play"></i> <span data-i18n="common.getOnGooglePlay">Get it on Google Play</span>
             </a>
             <a href="https://apps.apple.com/us/app/birdnet-live/id6776168518" class="btn btn-outline-light btn-lg px-4 d-flex align-items-center justify-content-center gap-2" target="_blank" rel="noopener">
-              <i class="bi bi-apple"></i> Get it on App Store
+              <i class="bi bi-apple"></i> <span data-i18n="common.getOnAppStore">Get it on App Store</span>
             </a>
             <a href="{{ '/live-app/' | url }}" class="text-white small text-decoration-underline" data-i18n="app.live.learnMore">Learn more about BirdNET Live</a>
           </div>
@@ -141,7 +142,7 @@ permalink: "/app/"
                 <div class="row g-4">
                   <div class="col-md-4">
                     <div class="d-flex align-items-center gap-3">
-                      <img id="detail-species-img" src="" class="rounded-4 shadow-sm" style="width: 100px; height: 100px; object-fit: cover;">
+                      <img id="detail-species-img" src="" alt="" class="rounded-4 shadow-sm" style="width: 100px; height: 100px; object-fit: cover;">
                       <div>
                         <h4 id="detail-species-name" class="h5 fw-bold mb-1"></h4>
                         <p id="detail-species-scientific" class="small text-muted italic mb-0"></p>
@@ -219,7 +220,7 @@ permalink: "/app/"
       <div class="col-lg-5">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
           <img src="{{ '/img/birdnet_app_screenshots.png' | url }}"
-               alt="BirdNET app interface screenshots"
+               alt="BirdNET app interface screenshots" data-i18n-alt="app.screenshotsAlt"
                class="img-fluid">
           <div class="card-body bg-white p-3 text-center border-top">
              <span class="small text-muted" data-i18n="app.uiCaption">User Interface & Species Details</span>
@@ -274,7 +275,6 @@ permalink: "/app/"
       </div>
     </div>
   </div>
-</section>
 
     <!-- Data & privacy -->
     <div class="row g-5 align-items-center mb-5 pt-5">
@@ -349,28 +349,24 @@ permalink: "/app/"
         <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-light bg-opacity-50">
           <h3 class="h6 fw-bold mb-3" data-i18n="app.support.download">Download Latest Version</h3>
           <div class="d-grid gap-2">
-             <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
+             <a href="https://play.google.com/store/apps/details?id=de.tu_chemnitz.mi.kahst.birdnet" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
                <i class="bi bi-google-play me-2"></i> <span data-i18n="app.support.android">Android Release</span>
              </a>
-             <a href="https://apps.apple.com/us/app/birdnet/id1541842885" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank">
+             <a href="https://apps.apple.com/us/app/birdnet/id1541842885" class="btn btn-dark text-start px-3 py-2 rounded-3" target="_blank" rel="noopener">
                <i class="bi bi-apple me-2"></i> <span data-i18n="app.support.ios">iOS Release</span>
              </a>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
 
 <!-- Stats fetch script (moved to very end, after all DOM elements) -->
 <style>
-  .hover-bg-light:hover { background-color: rgba(0,0,0,0.025); }
   .transition-all { transition: all 0.2s ease-in-out; }
   .species-card { border: 1px solid rgba(0,0,0,0.05); cursor: pointer; }
   .species-card:hover { border-color: var(--primary-color); background-color: rgba(26, 95, 180, 0.02); }
   .species-card.active { border-color: var(--primary-color); background-color: rgba(26, 95, 180, 0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; }
   .italic { font-style: italic; }
-  .ls-1 { letter-spacing: 0.05em; }
 </style>
 <script src="{{ '/js/chart.umd-4.4.1.min.js' | url }}"></script>
 <script>
@@ -382,11 +378,20 @@ permalink: "/app/"
   let globalData = null;
   let labelMap = new Map();
 
+  // i18n helper - returns translation or fallback, never the key
+  function _t(key, fallback) {
+    if (window.i18n && typeof window.i18n.t === 'function') {
+      const result = window.i18n.t(key);
+      return result !== key ? result : fallback;
+    }
+    return fallback;
+  }
+
   async function fetchLabels() {
     const lang = window.i18n ? window.i18n.getCurrentLang() : 'en';
     const langMap = {
       'en': 'en_us', 'de': 'de', 'es': 'es', 'fr': 'fr', 'it': 'it',
-      'pt-BR': 'pt', 'pt': 'pt', 'pl': 'pl', 'cs': 'cs', 'tlh': 'en_us'
+      'pt-BR': 'pt', 'pt': 'pt', 'ru': 'ru', 'pl': 'pl', 'cs': 'cs', 'zh-CN': 'zh', 'tlh': 'en_us'
     };
     const fileName = langMap[lang] || 'en_us';
     try {
@@ -409,7 +414,7 @@ permalink: "/app/"
   }
 
   function getBirdImage(scientificName, size = 'medium'){
-    if(!scientificName) return '{{ "/img/placeholder_bird.jpg" | url }}';
+    if(!scientificName) return '{{ "/img/dummy_birds_image.png" | url }}';
     const normalizedName = scientificName.replace(/_/g, ' ');
     return `https://birdnet.cornell.edu/taxonomy/api/image/${encodeURIComponent(normalizedName)}?size=${encodeURIComponent(size)}`;
   }
@@ -427,7 +432,7 @@ permalink: "/app/"
     } catch (e){
       console.error('Stats fetch failed:', e);
       const el = document.getElementById('stats-updated');
-      if(el) el.textContent = 'Failed to load stats.';
+      if(el) el.textContent = _t('app.stats.failed', 'Failed to load stats.');
     }
   }
 
@@ -464,6 +469,9 @@ permalink: "/app/"
       if (t !== 'app.stats.updated') updatedLabel = t;
     }
     
+    // Timestamped label replaces the static text; keep translatePage() from resetting it
+    const updatedEl = document.getElementById('stats-updated');
+    if (updatedEl) updatedEl.removeAttribute('data-i18n');
     setText('stats-updated', updatedLabel + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
     clearTimeout(refreshTimer);
@@ -501,8 +509,8 @@ permalink: "/app/"
                      <img src="${getBirdImage(scientific, 'thumb')}" 
                        class="rounded-3 shadow-sm" 
                        style="width: 50px; height: 50px; object-fit: cover;"
-                       onerror="this.src='{{ '/img/placeholder_bird.jpg' | url }}'; this.onerror=null;">
-                  <div class="min-w-0">
+                       onerror="this.src='{{ '/img/dummy_birds_image.png' | url }}'; this.onerror=null;">
+                  <div class="min-width-0">
                     <div class="fw-bold smaller text-truncate" title="${common}">${display}</div>
                     <div class="smaller text-primary fw-bold" style="font-size: 0.7rem;">${fmtInt(count)} <span data-i18n="app.stats.ids">IDs</span></div>
                   </div>
