@@ -1,0 +1,42 @@
+{#- Audio input card for the demo tabs; behavior in public/js/demo/audio-source.js -#}
+{% macro audioSource(id) %}
+<div class="demo-source" id="{{ id }}">
+  <div class="demo-drop" data-role="drop">
+    <div data-role="idle" class="demo-drop-idle">
+      <div class="demo-drop-icon"><i class="bi bi-soundwave"></i></div>
+      <div class="fw-semibold" data-i18n="demo.source.title">Drop a recording here</div>
+      <div class="small text-muted mb-3" data-i18n="demo.source.formats">WAV, FLAC, MP3, OGG or M4A. Audio is processed in your browser and never uploaded.</div>
+      <div class="d-flex flex-wrap gap-2 justify-content-center">
+        <button type="button" class="btn btn-primary btn-sm" data-role="choose"><i class="bi bi-folder2-open me-1"></i><span data-i18n="demo.source.choose">Choose file</span></button>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-role="sample"><i class="bi bi-music-note-beamed me-1"></i><span data-i18n="demo.source.sample">Try sample soundscape</span></button>
+        <button type="button" class="btn btn-outline-danger btn-sm" data-role="record"><i class="bi bi-mic me-1"></i><span data-i18n="demo.source.record">Record</span></button>
+        <button type="button" class="btn btn-link btn-sm text-muted" data-role="back" hidden><span data-i18n="demo.source.back">Keep current file</span></button>
+      </div>
+      <input type="file" accept="audio/*,.wav,.flac,.mp3,.ogg,.opus,.m4a,.aac,.webm" hidden data-role="input">
+    </div>
+    <div data-role="recording" class="demo-drop-recording" hidden>
+      <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+        <span class="recording-dot"></span>
+        <span class="fw-semibold text-danger" data-i18n="demo.recording.title">Recording...</span>
+        <span class="fs-5 fw-bold font-monospace ms-2" data-role="timer">0:00</span>
+      </div>
+      <div class="d-flex gap-2 justify-content-center">
+        <button type="button" class="btn btn-danger btn-sm" data-role="stop"><i class="bi bi-stop-fill me-1"></i><span data-i18n="demo.recording.stopAnalyze">Stop and analyze</span></button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-role="cancel"><i class="bi bi-x-lg me-1"></i><span data-i18n="demo.recording.cancel">Cancel</span></button>
+      </div>
+      <div class="small text-muted mt-2" data-i18n="demo.recording.limit">Up to 5 minutes. Hold your device still and keep quiet for the best results.</div>
+    </div>
+  </div>
+  <div class="demo-filebar" data-role="bar" hidden>
+    <button type="button" class="btn btn-primary demo-play" data-role="play" aria-label="Play" data-i18n-aria="demo.player.play"><i class="bi bi-play-fill"></i></button>
+    <i data-role="icon" class="bi bi-file-earmark-music text-primary fs-5"></i>
+    <div class="min-width-0 flex-grow-1">
+      <div class="fw-semibold text-truncate" data-role="name"></div>
+      <div class="small text-muted text-truncate" data-role="meta"></div>
+    </div>
+    <span class="small text-muted font-monospace d-none d-sm-inline" data-role="time">0:00 / 0:00</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary demo-replace" data-role="replace"><i class="bi bi-arrow-repeat"></i><span data-i18n="demo.source.replace">Other audio</span></button>
+  </div>
+  <div class="small demo-source-status" data-role="status" aria-live="polite"></div>
+</div>
+{% endmacro %}

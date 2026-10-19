@@ -4,31 +4,411 @@ titleKey: meta.title.demo
 layout: layouts/base.njk
 permalink: "/demo/"
 ---
+{% from "partials/demo-audio-source.njk" import audioSource %}
+{% from "partials/demo-location.njk" import locationFilter %}
 
-<div class="row mb-5 pb-lg-2">
-  <div class="col-lg-8">
-    <span class="section-label" data-i18n="demo.label">LIVE INFERENCE</span>
-    <h1 class="page-title mb-4" data-i18n="demo.title">BirdNET Demo</h1>
-    <p class="lead text-muted mb-0" data-i18n="demo.intro">
-      Run BirdNET locally with TensorFlow.js. All audio is processed within your browser—nothing is uploaded.
+<link rel="stylesheet" href="{{ '/vendor/leaflet/leaflet.css' | url }}">
+<link rel="stylesheet" href="{{ '/css/demo.css' | url }}">
+<script id="demo-config" type="application/json">{
+  "models": "{{ '/models/' | url }}",
+  "workerUrl": "{{ '/js/demo/ort-worker.js' | url }}",
+  "ortModule": "{{ '/vendor/onnxruntime-web/ort.wasm.min.mjs' | url }}",
+  "ortWasm": "{{ '/vendor/onnxruntime-web/' | url }}",
+  "sample": "{{ '/audio/BirdNET_soundscape_32kHz.flac' | url }}",
+  "sampleName": "BirdNET_soundscape_32kHz.flac",
+  "basemap": "{{ '/data/world-50m.json' | url }}"
+}</script>
+
+<div class="row mb-4 pb-lg-1">
+  <div class="col-lg-9">
+    <span class="section-label" data-i18n="demo.label">OFFLINE INFERENCE</span>
+    <h1 class="page-title mb-3" data-i18n="demo.title">BirdNET Demo</h1>
+    <p class="lead text-muted mb-0" data-i18n="demo.introV3">
+      Try the latest BirdNET models right in your browser: identify species in recordings, explore where and when they occur, and draw boxes around bird calls. Everything runs on your device; your audio is never uploaded.
     </p>
-    <div class="text-muted small mt-4">
-      <span data-i18n="demo.codeCredit">Code adapted from</span>
-      <a href="https://github.com/georg95/birdnet-web" target="_blank" rel="noopener">georg95/birdnet-web</a>.
+  </div>
+</div>
+
+<nav id="demo-tabs" class="demo-tabs mb-4" role="tablist" aria-label="Demo models" data-i18n-aria="demo.tabs.aria">
+  <button type="button" class="demo-tab" role="tab" id="tab-v3" data-tab="v3" aria-controls="pane-v3" aria-selected="false">
+    <span class="demo-tab-icon"><i class="bi bi-soundwave"></i></span>
+    <span class="demo-tab-text">
+      <span class="demo-tab-title">BirdNET V3.0</span>
+      <span class="demo-tab-sub" data-i18n="demo.tabs.v3Sub">Identify species by sound</span>
+    </span>
+  </button>
+  <button type="button" class="demo-tab" role="tab" id="tab-geomodel" data-tab="geomodel" aria-controls="pane-geomodel" aria-selected="false" tabindex="-1">
+    <span class="demo-tab-icon"><i class="bi bi-globe-americas"></i></span>
+    <span class="demo-tab-text">
+      <span class="demo-tab-title">Geomodel</span>
+      <span class="demo-tab-sub" data-i18n="demo.tabs.geoSub">Where and when species occur</span>
+    </span>
+  </button>
+  <button type="button" class="demo-tab" role="tab" id="tab-birdbox" data-tab="birdbox" aria-controls="pane-birdbox" aria-selected="false" tabindex="-1">
+    <span class="demo-tab-icon"><i class="bi bi-bounding-box"></i></span>
+    <span class="demo-tab-text">
+      <span class="demo-tab-title">BirdBox</span>
+      <span class="demo-tab-sub" data-i18n="demo.tabs.bbSub">Boxes around bird calls</span>
+    </span>
+  </button>
+  <button type="button" class="demo-tab" role="tab" id="tab-v24" data-tab="v24" aria-controls="pane-v24" aria-selected="false" tabindex="-1">
+    <span class="demo-tab-icon"><i class="bi bi-vinyl"></i></span>
+    <span class="demo-tab-text">
+      <span class="demo-tab-title">BirdNET V2.4</span>
+      <span class="demo-tab-sub" data-i18n="demo.tabs.v24Sub">The classic model demo</span>
+    </span>
+  </button>
+</nav>
+
+{# ======================================================================= #}
+{# BirdNET V3.0                                                            #}
+{# ======================================================================= #}
+<section id="pane-v3" class="demo-pane" data-pane="v3" role="tabpanel" aria-labelledby="tab-v3" hidden>
+  <div class="demo-howto" id="v3-howto">
+    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.v3.how1Title">Load a recording</strong><div class="small text-muted" data-i18n="demo.v3.how1">Drop a file, record with your microphone, or try the sample soundscape.</div></div></div>
+    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.v3.how2Title">Watch it analyze</strong><div class="small text-muted" data-i18n="demo.v3.how2">Species appear while the model runs on several CPU cores in parallel.</div></div></div>
+    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.v3.how3Title">Explore and export</strong><div class="small text-muted" data-i18n="demo.v3.how3">Listen to each detection, filter by location and date, and download a CSV.</div></div></div>
+  </div>
+
+  {{ audioSource('v3-source') }}
+
+  <div id="v3-workspace" hidden>
+    <div class="demo-viewer">
+      <div id="v3-spec"></div>
+      <div class="v3-timeline-wrap">
+        <canvas id="v3-timeline" height="26"></canvas>
+        <div id="v3-timeline-tip" class="spec-tooltip" hidden></div>
+      </div>
+      <div class="demo-viewer-foot">
+        <span class="small demo-viewer-hint" data-i18n="demo.spec.hint">Click to listen · Ctrl + scroll or the buttons to zoom · drag to pan</span>
+        <button type="button" class="btn btn-sm btn-link text-white-50 p-0" id="v3-lanes-toggle" hidden></button>
+        <div class="spec-tools-host"></div>
+      </div>
+      <div id="v3-progress" class="demo-progress" hidden>
+        <div class="progress" role="progressbar" aria-label="Analysis progress" data-i18n-aria="demo.v3.progressAria"><div class="progress-bar" style="width:0%"></div></div>
+        <div id="v3-progress-text" class="small" aria-live="polite"></div>
+      </div>
+    </div>
+    <div id="v3-truncated" class="alert alert-warning small py-2 mt-3" hidden data-i18n="demo.v3.truncated">This recording is longer than 15 minutes. The browser demo analyzes the first 15 minutes.</div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-lg-4">
+        <div class="demo-panel demo-sticky demo-settings">
+          <button type="button" class="demo-settings-toggle" aria-expanded="false" aria-controls="v3-settings"><i class="bi bi-sliders"></i><span data-i18n="demo.settings.title">Settings</span><i class="bi bi-chevron-down"></i></button>
+          <div class="demo-settings-body" id="v3-settings">
+          <div class="mb-3">
+            <label for="v3-conf" class="form-label small fw-medium mb-1 d-flex justify-content-between">
+              <span><span data-i18n="demo.settings.confidence">Min. confidence:</span></span>
+              <span id="v3-conf-val" class="text-primary fw-semibold">15%</span>
+            </label>
+            <input type="range" class="form-range" id="v3-conf" min="0.05" max="0.95" step="0.01" value="0.15">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="v3-window" class="form-label small fw-medium mb-1"><span data-i18n="demo.v3.window">Window</span></label>
+              <select id="v3-window" class="form-select form-select-sm">
+                <option value="3" selected>3 s</option>
+                <option value="5">5 s</option>
+                <option value="10">10 s</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="v3-overlap" class="form-label small fw-medium mb-1"><span data-i18n="demo.settings.overlap">Overlap</span></label>
+              <select id="v3-overlap" class="form-select form-select-sm">
+                <option value="0" selected>0 s</option>
+                <option value="1">1 s</option>
+                <option value="1.5">1.5 s</option>
+                <option value="2">2 s</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-label small fw-medium mb-1"><span data-i18n="demo.v3.taxa">Species groups</span></div>
+            <div id="v3-taxa" class="demo-taxa">
+              <label><input type="checkbox" value="Aves" checked><i class="fa-solid fa-dove"></i><span data-i18n="demo.taxa.birds">Birds</span></label>
+              <label><input type="checkbox" value="Amphibia" checked><i class="fa-solid fa-frog"></i><span data-i18n="demo.taxa.amphibians">Amphibians</span></label>
+              <label><input type="checkbox" value="Insecta" checked><i class="fa-solid fa-bug"></i><span data-i18n="demo.taxa.insects">Insects</span></label>
+              <label><input type="checkbox" value="Mammalia" checked><i class="fa-solid fa-paw"></i><span data-i18n="demo.taxa.mammals">Mammals</span></label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="v3-names" class="form-label small fw-medium mb-1"><span data-i18n="demo.settings.labels">Species labels</span></label>
+            <select id="v3-names" class="form-select form-select-sm"><option value="en">English</option></select>
+          </div>
+          <div class="pt-3 border-top">
+            {{ locationFilter('v3-location', 'demo.location.label', 'Filter by location and date') }}
+            <div id="v3-geo-status" class="small text-muted"></div>
+          </div>
+          <button type="button" id="v3-run" class="btn btn-outline-primary btn-sm w-100 mt-3" hidden><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="demo.v3.rerun">Analyze again</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div id="v3-error" class="alert alert-danger small" hidden></div>
+        <div id="v3-summary" class="mb-3"></div>
+        <div id="v3-results"></div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" id="v3-export-csv" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-filetype-csv me-1"></i><span data-i18n="demo.v3.exportCsv">Download CSV</span></button>
+          <button type="button" id="v3-export-raven" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-table me-1"></i><span data-i18n="demo.v3.exportRaven">Raven selection table</span></button>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="alert alert-light border d-flex align-items-center gap-3 mb-4 py-3" role="alert">
-  <i class="bi bi-phone text-primary flex-shrink-0 fs-5"></i>
-  <div class="small mb-0">
-    <strong data-i18n="demo.liveAppHint.title">New: BirdNET Live app</strong>
-    <span class="text-muted ms-1" data-i18n="demo.liveAppHint.desc">Analyze files from your phone's storage, run live detection offline in the field, and more.</span>
-    <a href="{{ '/live-app/' | url }}" class="ms-1 fw-semibold text-decoration-none" data-i18n="demo.liveAppHint.link">Learn more →</a>
+  <p class="demo-hint demo-hint-end">
+    <span data-i18n="demo.v3.hint">BirdNET+ V3.0 developer preview 3.1 recognizes 9,789 species of birds, frogs, insects and mammals in 32 kHz audio. The 64 MB model downloads once, stays cached in your browser and runs locally with ONNX Runtime Web.</span>
+    <span id="v3-model-chip" class="demo-status"></span>
+  </p>
+</section>
+
+{# ======================================================================= #}
+{# Geomodel                                                                #}
+{# ======================================================================= #}
+<section id="pane-geomodel" class="demo-pane" data-pane="geomodel" role="tabpanel" aria-labelledby="tab-geomodel" hidden>
+  <div class="demo-howto" id="geo-howto">
+    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.geo.how1Title">See where species are</strong><div class="small text-muted" data-i18n="demo.geo.how1">The map shows how many species are expected in each area. Drag the week slider or press play to follow the seasons.</div></div></div>
+    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.geo.how2Title">Click a place</strong><div class="small text-muted" data-i18n="demo.geo.how2">See the species expected there and when they occur through the year.</div></div></div>
+    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.geo.how3Title">Open a range map</strong><div class="small text-muted" data-i18n="demo.geo.how3">Click a species in that list, or search one, to see where it occurs.</div></div></div>
   </div>
-</div>
 
-<div class="pt-2 pb-5">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="demo-panel demo-sticky demo-settings">
+        <button type="button" class="demo-settings-toggle" aria-expanded="false" aria-controls="geo-settings"><i class="bi bi-sliders"></i><span data-i18n="demo.settings.title">Settings</span><i class="bi bi-chevron-down"></i></button>
+        <div class="demo-settings-body" id="geo-settings">
+          <div class="mb-3">
+            <div class="form-label small fw-medium mb-1" id="geo-mode-label" data-i18n="demo.geo.map">Map</div>
+            <div class="demo-seg" id="geo-mode" role="group" aria-labelledby="geo-mode-label">
+              <button type="button" class="active" data-mode="richness" aria-pressed="true" data-i18n="demo.geo.modeRichness">Species richness</button>
+              <button type="button" data-mode="range" aria-pressed="false" data-i18n="demo.geo.modeRange">Range map</button>
+            </div>
+          </div>
+          <div id="geo-rich-ctrl" class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="geo-rich-taxa" class="form-label small fw-medium mb-1" data-i18n="demo.v3.taxa">Species groups</label>
+              <select id="geo-rich-taxa" class="form-select form-select-sm"><option value="all">All species</option></select>
+            </div>
+            <div class="col-6">
+              <label for="geo-rich-thr" class="form-label small fw-medium mb-1" data-i18n="demo.geo.minProb">Minimum probability</label>
+              <select id="geo-rich-thr" class="form-select form-select-sm">
+                <option value="0">≥ 1%</option><option value="1">≥ 3%</option><option value="2" selected>≥ 5%</option><option value="3">≥ 10%</option><option value="4">≥ 25%</option><option value="5">≥ 50%</option>
+              </select>
+            </div>
+          </div>
+          <div id="geo-species-ctrl" class="mb-3" hidden>
+            <label for="geo-search" class="form-label small fw-medium mb-1" data-i18n="demo.bb.col.species">Species</label>
+            <div class="geo-species">
+              <span class="geo-species-img"><img id="geo-species-img" alt=""><i class="fa-solid fa-dove"></i></span>
+              <div class="geo-species-label"><strong id="geo-species-name">…</strong><i id="geo-species-sci"></i></div>
+            </div>
+            <div class="geo-search">
+              <input type="search" id="geo-search" class="form-control form-control-sm" autocomplete="off" placeholder="Search 9,789 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
+              <div id="geo-search-results" class="geo-search-results" hidden></div>
+            </div>
+          </div>
+          <div class="pt-3 border-top">
+            <label for="geo-week" class="form-label small fw-medium mb-1 d-flex justify-content-between">
+              <span data-i18n="demo.geo.weekAria">Week</span>
+              <span id="geo-week-label" class="text-primary fw-semibold"></span>
+            </label>
+            <div class="geo-week">
+              <button type="button" id="geo-play" class="btn btn-primary demo-play" aria-label="Play through the year" data-i18n-aria="demo.geo.playYear"><i class="bi bi-play-fill"></i></button>
+              <div class="flex-grow-1 min-width-0">
+                <input type="range" id="geo-week" class="form-range" min="1" max="48" step="1" value="1">
+                <div id="geo-week-ticks" class="geo-week-ticks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="demo-viewer geo-viewer">
+        <div class="geo-map-wrap">
+          <div id="geo-map"></div>
+          <div id="geo-legend" class="geo-legend"></div>
+          <div id="geo-busy" class="geo-busy" hidden><span class="spinner-border spinner-border-sm me-2"></span><span data-i18n="demo.geo.computing">Computing…</span></div>
+          <div id="geo-loading" class="geo-loading" hidden><div><span class="spinner-border me-2"></span><span id="geo-loading-text" data-i18n="demo.geo.loading">Loading geomodel…</span></div></div>
+          <div id="geo-pick-banner" class="geo-pick" hidden>
+            <i class="bi bi-hand-index me-2"></i><span data-i18n="demo.geo.pickBanner">Click on the map to set the location for the audio analysis.</span>
+            <button type="button" class="btn btn-sm btn-light ms-2" id="geo-pick-cancel" data-i18n="demo.recording.cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="demo-viewer-foot geo-disclaimer">
+          <i class="bi bi-info-circle-fill"></i>
+          <span data-i18n="demo.geo.disclaimer">Research preview: the maps show the relative likelihood of occurrence learned from citizen-science observations, so they also reflect where and when people observe. Do not use them as the only basis for conservation or legal decisions.</span>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="button" id="geo-csv" class="btn btn-sm btn-outline-secondary"><i class="bi bi-filetype-csv me-1"></i><span data-i18n="demo.geo.mapCsv">Download map as CSV</span></button>
+      </div>
+
+      <div id="geo-panel" class="demo-panel mt-3" hidden>
+        <div class="d-flex align-items-start gap-2">
+          <div class="me-auto min-width-0">
+            <div class="fw-bold"><i class="bi bi-geo-alt-fill text-primary me-1"></i><span id="geo-panel-coords"></span></div>
+            <div class="small text-muted" id="geo-panel-summary"></div>
+          </div>
+          <button type="button" id="geo-panel-close" class="btn btn-sm btn-light" aria-label="Close" data-i18n-aria="demo.geo.close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="row g-2 mt-1 mb-2">
+          <div class="col-6 col-sm-4">
+            <label for="geo-panel-taxa" class="form-label small fw-medium mb-1" data-i18n="demo.v3.taxa">Species groups</label>
+            <select id="geo-panel-taxa" class="form-select form-select-sm"><option value="all">All species</option></select>
+          </div>
+          <div class="col-6 col-sm-4">
+            <label for="geo-panel-thr" class="form-label small fw-medium mb-1" data-i18n="demo.geo.minProb">Minimum probability</label>
+            <select id="geo-panel-thr" class="form-select form-select-sm">
+              <option value="0">≥ 1%</option><option value="1">≥ 3%</option><option value="2" selected>≥ 5%</option><option value="3">≥ 10%</option><option value="4">≥ 25%</option><option value="5">≥ 50%</option>
+            </select>
+          </div>
+        </div>
+        <div class="geo-list-hint small text-muted"><i class="bi bi-map me-1"></i><span data-i18n="demo.geo.listHint">Click a species to see its range map.</span></div>
+        <div class="geo-list-head small text-muted"><span data-i18n="demo.geo.colSpecies">Species</span><span data-i18n="demo.geo.colYear">Jan – Dec</span><span data-i18n="demo.geo.colWeek">This week</span></div>
+        <div id="geo-panel-list" class="geo-list"></div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" id="geo-use-location" class="btn btn-sm btn-outline-primary"><i class="bi bi-soundwave me-1"></i><span data-i18n="demo.geo.useLocation">Use for audio analysis</span></button>
+          <button type="button" id="geo-panel-csv" class="btn btn-sm btn-outline-secondary"><i class="bi bi-filetype-csv me-1"></i><span data-i18n="demo.v3.exportCsv">Download CSV</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="demo-hint demo-hint-end">
+    <span data-i18n="demo.geo.hint">BirdNET+ Geomodel V3.0.4 predicts which of 9,789 species occur at a place in each of 48 weeks; the 13 MB model runs locally.</span>
+    <a href="https://github.com/birdnet-team/geomodel" target="_blank" rel="noopener">GitHub</a>
+  </p>
+</section>
+
+{# ======================================================================= #}
+{# BirdBox                                                                 #}
+{# ======================================================================= #}
+<section id="pane-birdbox" class="demo-pane" data-pane="birdbox" role="tabpanel" aria-labelledby="tab-birdbox" hidden>
+  <div class="demo-howto" id="bb-howto">
+    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.v3.how1Title">Load a recording</strong><div class="small text-muted" data-i18n="demo.bb.how1">Audio loaded in the V3.0 tab is available here too.</div></div></div>
+    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.bb.how2Title">Review the boxes</strong><div class="small text-muted" data-i18n="demo.bb.how2">Click a box to hear it, drag it to adjust, or draw boxes the detector missed.</div></div></div>
+    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.bb.how3Title">Share with Xeno-canto</strong><div class="small text-muted" data-i18n="demo.bb.how3">Confirm or change the species and sound type, then download Annota-JSON.</div></div></div>
+  </div>
+
+  {{ audioSource('bb-source') }}
+
+  <div id="bb-workspace" hidden>
+    <div class="demo-viewer">
+      <div id="bb-spec"></div>
+      <div class="demo-viewer-foot">
+        <span class="small demo-viewer-hint" data-i18n="demo.bb.specHint">Click a box to play and select it · drag to move or resize · add boxes with the box tool</span>
+        <div class="spec-tools-host"></div>
+      </div>
+      <div id="bb-progress" class="demo-progress" hidden>
+        <div class="progress" role="progressbar" aria-label="Detection progress" data-i18n-aria="demo.bb.progressAria"><div class="progress-bar" style="width:0%"></div></div>
+        <div id="bb-progress-text" class="small" aria-live="polite"></div>
+      </div>
+    </div>
+    <div id="bb-truncated" class="alert alert-warning small py-2 mt-3" hidden></div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-lg-4">
+        <div class="demo-panel demo-sticky demo-settings">
+          <button type="button" class="demo-settings-toggle" aria-expanded="false" aria-controls="bb-settings"><i class="bi bi-sliders"></i><span data-i18n="demo.settings.title">Settings</span><i class="bi bi-chevron-down"></i></button>
+          <div class="demo-settings-body" id="bb-settings">
+          <div class="mb-3">
+            <label for="bb-conf" class="form-label small fw-medium mb-1 d-flex justify-content-between">
+              <span><span data-i18n="demo.bb.conf">Confidence threshold</span></span>
+              <span id="bb-conf-val" class="text-primary fw-semibold">0.18</span>
+            </label>
+            <input type="range" class="form-range" id="bb-conf" min="0.05" max="0.8" step="0.01" value="0.18">
+          </div>
+          <div class="mb-3">
+            <label for="bb-gap" class="form-label small fw-medium mb-1 d-flex justify-content-between">
+              <span><span data-i18n="demo.bb.gap">Song gap</span></span>
+              <span id="bb-gap-val" class="text-primary fw-semibold">0.10 s</span>
+            </label>
+            <input type="range" class="form-range" id="bb-gap" min="0" max="2" step="0.01" value="0.1">
+            <div class="form-text mt-0" data-i18n="demo.bb.gapHelp">Boxes of one song closer than this are merged.</div>
+          </div>
+          <div class="mb-3">
+            <label for="bb-maxlen" class="form-label small fw-medium mb-1"><span data-i18n="demo.bb.maxlen">Maximum length</span></label>
+            <select id="bb-maxlen" class="form-select form-select-sm">
+              <option value="60" selected>1 min</option>
+              <option value="120">2 min</option>
+              <option value="300">5 min</option>
+            </select>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="bb-suggest" checked>
+            <label class="form-check-label small fw-medium" for="bb-suggest" data-i18n="demo.bb.suggest">Suggest species with BirdNET V3.0</label>
+          </div>
+          <div class="pt-2 border-top">
+            {{ locationFilter('bb-location', 'demo.bb.location', 'Limit suggestions to location and date') }}
+          </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div id="bb-error" class="alert alert-danger small" hidden></div>
+        <div id="bb-summary" class="mb-2"></div>
+        <div id="bb-suggest-status" class="small text-muted mb-2" aria-live="polite"></div>
+        <div id="bb-table-wrap" class="demo-table-wrap" hidden>
+          <table id="bb-table" class="table table-sm align-middle mb-0 demo-table">
+            <thead>
+              <tr>
+                <th scope="col" class="bb-c-play">#</th>
+                <th scope="col" class="bb-c-time" data-i18n="demo.bb.col.time">Time</th>
+                <th scope="col" class="bb-c-conf" data-i18n="demo.bb.col.conf">Conf.</th>
+                <th scope="col" class="bb-c-species" data-i18n="demo.bb.col.species">Species</th>
+                <th scope="col" class="bb-c-sound" data-i18n="demo.bb.col.sound">Sound type</th>
+                <th scope="col" class="bb-c-toggle"><span class="visually-hidden" data-i18n="demo.bb.col.remove">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="demo-panel mt-3">
+          <div class="fw-semibold small mb-2"><span data-i18n="demo.bb.xcTitle">Xeno-canto export</span></div>
+          <div class="row g-2">
+            <div class="col-sm-4">
+              <label for="bb-xcnr" class="form-label small mb-1" data-i18n="demo.bb.xcnr">XC recording number</label>
+              <input type="text" id="bb-xcnr" class="form-control form-control-sm" placeholder="e.g. 1059662" data-i18n-placeholder="demo.bb.xcnrPlaceholder" inputmode="numeric">
+            </div>
+            <div class="col-sm-4">
+              <label for="bb-annotator" class="form-label small mb-1" data-i18n="demo.bb.annotator">Annotator</label>
+              <input type="text" id="bb-annotator" class="form-control form-control-sm" placeholder="Your name (optional)" data-i18n-placeholder="demo.bb.annotatorPlaceholder" autocomplete="name">
+            </div>
+            <div class="col-sm-4">
+              <label for="bb-sound-default" class="form-label small mb-1" data-i18n="demo.bb.soundDefault">Default sound type</label>
+              <select id="bb-sound-default" class="form-select form-select-sm"></select>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" id="bb-export-xc" class="btn btn-sm btn-primary" disabled><i class="bi bi-filetype-json me-1"></i><span data-i18n="demo.bb.exportXc">Download Annota-JSON</span></button>
+            <button type="button" id="bb-export-csv" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <button type="button" id="bb-export-raven" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-table me-1"></i><span data-i18n="demo.v3.exportRaven">Raven selection table</span></button>
+          </div>
+          <div class="form-text"><span data-i18n="demo.bb.xcHelp">Scientific names follow the Xeno-canto taxonomy. Unidentified boxes are exported as Aves.</span> <a href="https://xeno-canto.org/article/321" target="_blank" rel="noopener" data-i18n="demo.bb.xcLink">About Annota-JSON</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="demo-hint demo-hint-end">
+    <span data-i18n="demo.bb.hint">BirdBox Just-Bird finds bird vocalizations as time-frequency boxes. One 53 MB ONNX graph computes the PCEN spectrogram, runs the detector and merges boxes into songs; BirdNET V3.0 suggests the species. Exports Xeno-canto Annota-JSON.</span>
+    <a href="https://birdnet-team.github.io/BirdBox/" target="_blank" rel="noopener" data-i18n="demo.bb.linkDocs">Documentation</a> ·
+    <a href="https://github.com/birdnet-team/BirdBox" target="_blank" rel="noopener">GitHub</a>
+    <span id="bb-model-chip" class="demo-status"></span>
+  </p>
+</section>
+
+{# ======================================================================= #}
+{# BirdNET V2.4 (original demo, unchanged)                                 #}
+{# ======================================================================= #}
+<section id="pane-v24" class="demo-pane" data-pane="v24" role="tabpanel" aria-labelledby="tab-v24" hidden>
+  <div class="demo-howto" id="v24-howto">
+    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.v3.how1Title">Load a recording</strong><div class="small text-muted" data-i18n="demo.v24.how1">Drop a file, record with your microphone, or try the Blue Jay sample.</div></div></div>
+    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.v24.how2Title">Run the analysis</strong><div class="small text-muted" data-i18n="demo.v24.how2">Choose the label language, overlap and an optional location filter, then click Run Analysis.</div></div></div>
+    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.v24.how3Title">Explore the results</strong><div class="small text-muted" data-i18n="demo.v24.how3">Expand a species to play its detections, or download the results as CSV.</div></div></div>
+  </div>
+<div class="pb-4">
     <!-- Upload form / dropzone -->
     <form id="fileform" class="mb-4" enctype="multipart/form-data">
       <div id="dropzone" class="upload-dropzone border border-dashed rounded bg-light overflow-hidden">
@@ -244,6 +624,48 @@ permalink: "/demo/"
     </div>
 
   </div>
+  <p class="demo-hint demo-hint-end">
+    <span data-i18n="demo.intro">Run BirdNET locally with TensorFlow.js. All audio is processed within your browser—nothing is uploaded.</span>
+    <span data-i18n="demo.codeCredit">Code adapted from</span>
+    <a href="https://github.com/georg95/birdnet-web" target="_blank" rel="noopener">georg95/birdnet-web</a>.
+  </p>
+</section>
+
+<div class="demo-bottom">
+  <div class="demo-feedback">
+    <span class="demo-card-icon" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span>
+    <div>
+      <strong class="demo-feedback-text" data-i18n="demo.feedback.text">Found a bug or have an idea for the demo?</strong>
+      <div class="demo-feedback-actions">
+        <a class="btn btn-sm btn-outline-primary" href="https://github.com/birdnet-team/birdnet-website/issues" target="_blank" rel="noopener"><i class="bi bi-github me-1"></i><span data-i18n="demo.feedback.issue">Open an issue on GitHub</span></a>
+        <span><span data-i18n="demo.feedback.or">or email</span> <a href="mailto:ccb-birdnet@cornell.edu">ccb-birdnet@cornell.edu</a></span>
+      </div>
+    </div>
+  </div>
+  <aside class="demo-live">
+    <span class="demo-card-icon" aria-hidden="true"><i class="bi bi-phone"></i></span>
+    <div>
+      <div class="demo-live-head"><span class="demo-live-chip" data-i18n="demo.liveAppHint.new">New</span><strong data-i18n="demo.liveAppHint.title">BirdNET Live app</strong></div>
+      <div class="demo-live-desc" data-i18n="demo.liveAppHint.desc">Analyze files from your phone's storage, run live detection offline in the field, and more.</div>
+      <a href="{{ '/live-app/' | url }}" data-i18n="demo.liveAppHint.link">Learn more →</a>
+    </div>
+  </aside>
+</div>
+
+<div class="modal fade" id="species-picker" tabindex="-1" aria-labelledby="species-picker-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h2 class="modal-title h6 mb-0" id="species-picker-title" data-i18n="demo.picker.title">Choose a species</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-i18n-aria="demo.geo.close"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <input type="search" class="form-control form-control-sm mb-2" id="species-picker-q" autocomplete="off" placeholder="Search 9,789 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
+        <div id="species-picker-list" class="picker-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Local JS vendor bundles -->
 <script src="{{ '/js/jquery-3.7.1.min.js' | url }}"></script>
@@ -754,6 +1176,7 @@ let dropzoneExpanded = true;
 
 function collapseDropzone() {
   dropzoneExpanded = false;
+  $('#v24-howto').slideUp(200);
   $('#dropzoneHeader').removeClass('d-none').addClass('collapsed');
   $('#dropzoneContent').slideUp(250);
   $('#dropzone').addClass('dropzone-collapsed');
@@ -1112,6 +1535,9 @@ $('#downloadCsvBtn').on('click', () => {
   }, 100);
 });
 </script>
+
+<script src="{{ '/vendor/leaflet/leaflet.js' | url }}"></script>
+<script type="module" src="{{ '/js/demo/demo.js' | url }}"></script>
 
 <style>
 /* Demo page specific styles */
