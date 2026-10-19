@@ -66,3 +66,6 @@ Thumbs.db
 # Optional: IDE
 # .vscode/
 # .idea/
+
+# Demo models (scripts/fetch-models.mjs)
+_models/

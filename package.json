@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "fetch-models": "node scripts/fetch-models.mjs",
+    "prebuild": "npm run fetch-models",
     "build": "eleventy",
+    "preserve": "npm run fetch-models",
     "serve": "eleventy --serve --port=8080",
+    "prewatch": "npm run fetch-models",
     "watch": "eleventy --watch"
   },
   "devDependencies": {
@@ -16,6 +20,7 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "bibtex-parse-js": "^0.0.24",
     "bootstrap-icons": "^1.13.1",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "onnxruntime-web": "1.30.0"
   }
 }

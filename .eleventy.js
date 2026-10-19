@@ -53,6 +53,16 @@ module.exports = function (eleventyConfig) {
     "node_modules/leaflet/LICENSE": "vendor/leaflet/LICENSE",
   });
 
+  // Self-hosted ONNX Runtime Web (MIT), WASM backend only, for the demo page
+  for (const file of ["ort.wasm.min.mjs", "ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.wasm"]) {
+    eleventyConfig.addPassthroughCopy({
+      [`node_modules/onnxruntime-web/dist/${file}`]: `vendor/onnxruntime-web/${file}`,
+    });
+  }
+
+  // Demo models, fetched and verified by scripts/fetch-models.mjs (npm run fetch-models)
+  eleventyConfig.addPassthroughCopy({ "_models/dist": "models" });
+
   // Rebuild when the publication list changes (read by src/_data/publications.js)
   eleventyConfig.addWatchTarget("./data/publications.bib");
 
