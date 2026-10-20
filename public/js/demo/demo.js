@@ -51,6 +51,11 @@ function init() {
     show(next.dataset.tab);
     next.focus();
   });
+  // Sticky viewers push the settings card below them (see .demo-sticky in demo.css)
+  document.querySelectorAll('.demo-viewer-sticky').forEach(viewer => {
+    const pane = viewer.closest('.demo-pane');
+    new ResizeObserver(() => pane.style.setProperty('--demo-sticky-top', `calc(var(--demo-top) + ${viewer.offsetHeight}px + 1rem)`)).observe(viewer);
+  });
   // Settings panels fold into one row on small screens
   document.querySelectorAll('.demo-settings-toggle').forEach(btn => btn.addEventListener('click', () => {
     const open = btn.closest('.demo-settings').classList.toggle('is-open');
