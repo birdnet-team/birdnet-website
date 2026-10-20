@@ -279,6 +279,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 }
 
 .v3-timeline-wrap { position: relative; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+/* Species lanes scroll after MAX_LANES (v3-tab.js sets the max-height) so the viewer keeps its height */
+.v3-timeline-scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) transparent; }
 .v3-timeline-wrap canvas { display: block; width: 100%; }
 
 .demo-viewer-foot {

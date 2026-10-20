@@ -1016,8 +1016,6 @@
   "demo.v3.how2Title": "Bei der Analyse zusehen",
   "demo.v3.how3": "Hören Sie jede Erkennung an, filtern Sie nach Ort und Datum und laden Sie eine CSV herunter.",
   "demo.v3.how3Title": "Erkunden und exportieren",
-  "demo.v3.lanesAll": "Alle {n} Arten anzeigen",
-  "demo.v3.lanesFewer": "Top {n} anzeigen",
   "demo.v3.more": "{n} weitere Arten anzeigen",
   "demo.v3.none": "Keine Arten über {threshold}. Senken Sie die Mindestkonfidenz, um schwächere Erkennungen zu sehen.",
   "demo.v3.progressAria": "Fortschritt der Analyse",

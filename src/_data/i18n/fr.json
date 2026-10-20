@@ -1016,8 +1016,6 @@
   "demo.v3.how2Title": "Suivez l'analyse",
   "demo.v3.how3": "Écoutez chaque détection, filtrez par lieu et date, et téléchargez un CSV.",
   "demo.v3.how3Title": "Explorez et exportez",
-  "demo.v3.lanesAll": "Afficher les {n} espèces",
-  "demo.v3.lanesFewer": "Afficher les {n} premières",
   "demo.v3.more": "Afficher {n} espèces de plus",
   "demo.v3.none": "Aucune espèce au-dessus de {threshold}. Abaissez la confiance minimale pour voir les détections plus faibles.",
   "demo.v3.progressAria": "Progression de l'analyse",

@@ -1030,8 +1030,6 @@
   "demo.v3.how2Title": "观看分析过程",
   "demo.v3.how3": "收听每条检测结果，按地点和日期过滤，并下载 CSV。",
   "demo.v3.how3Title": "探索并导出",
-  "demo.v3.lanesAll": "显示全部 {n} 个物种",
-  "demo.v3.lanesFewer": "显示前 {n} 个",
   "demo.v3.more": "再显示 {n} 个物种",
   "demo.v3.none": "没有高于 {threshold} 的物种。降低最低置信度可查看较弱的检测结果。",
   "demo.v3.progressAria": "分析进度",

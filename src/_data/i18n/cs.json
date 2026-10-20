@@ -1030,8 +1030,6 @@
   "demo.v3.how2Title": "Sleduj analýzu",
   "demo.v3.how3": "Poslechni si každou detekci, filtruj podle místa a data a stáhni CSV.",
   "demo.v3.how3Title": "Prozkoumej a exportuj",
-  "demo.v3.lanesAll": "Zobrazit všech {n} druhů",
-  "demo.v3.lanesFewer": "Zobrazit prvních {n}",
   "demo.v3.more": "Zobrazit dalších {n} druhů",
   "demo.v3.none": "Žádné druhy nad {threshold}. Sniž minimální jistotu a uvidíš slabší detekce.",
   "demo.v3.progressAria": "Průběh analýzy",

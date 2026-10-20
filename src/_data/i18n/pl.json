@@ -1030,8 +1030,6 @@
   "demo.v3.how2Title": "Obserwuj analizę",
   "demo.v3.how3": "Posłuchaj każdego wykrycia, filtruj według miejsca i daty i pobierz CSV.",
   "demo.v3.how3Title": "Przeglądaj i eksportuj",
-  "demo.v3.lanesAll": "Pokaż wszystkie {n} gatunki",
-  "demo.v3.lanesFewer": "Pokaż {n} najważniejszych",
   "demo.v3.more": "Pokaż kolejne {n} gatunki",
   "demo.v3.none": "Brak gatunków powyżej {threshold}. Obniż minimalną pewność, aby zobaczyć słabsze wykrycia.",
   "demo.v3.progressAria": "Postęp analizy",

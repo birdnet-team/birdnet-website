@@ -1030,8 +1030,6 @@
   "demo.v3.how2Title": "Acompanha a análise",
   "demo.v3.how3": "Ouve cada deteção, filtra por local e data e transfere um CSV.",
   "demo.v3.how3Title": "Explora e exporta",
-  "demo.v3.lanesAll": "Mostrar todas as {n} espécies",
-  "demo.v3.lanesFewer": "Mostrar as {n} principais",
   "demo.v3.more": "Mostrar mais {n} espécies",
   "demo.v3.none": "Nenhuma espécie acima de {threshold}. Baixa a confiança mínima para veres deteções mais fracas.",
   "demo.v3.progressAria": "Progresso da análise",

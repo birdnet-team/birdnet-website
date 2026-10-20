@@ -17,7 +17,7 @@ import { planChunks, SR, v3 } from './v3-service.js';
 
 const MAX_SECONDS = 15 * 60;
 const LANE_H = 22;
-const MAX_LANES = 8;
+const MAX_LANES = 8; // species lanes visible in the timeline before it scrolls
 const DETECTIONS_SHOWN = 48;
 const PALETTE = ['#60a5fa', '#fbbf24', '#34d399', '#f87171', '#a78bfa', '#22d3ee', '#f472b6', '#a3e635', '#fb923c', '#2dd4bf'];
 
@@ -55,7 +55,7 @@ export function thumb(s, cls = 'v3-thumb', lazy = cls !== 'tt-img', ring = null)
 
 export class V3Tab {
   constructor() {
-    this.state = { analysis: null, selected: null, mask: null, showAllLanes: false, listLimit: 30, expanded: new Set() };
+    this.state = { analysis: null, selected: null, mask: null, listLimit: 30, expanded: new Set() };
     this.edits = { removed: new Set(), relabel: new Map(), history: [] };
     this.visible = false;
     this.pendingRun = false;
@@ -72,6 +72,8 @@ export class V3Tab {
     this.spec.minimapOverlay = (ctx, h) => this._drawMinimapOverlay(ctx, h);
     this.timelineCanvas = $('v3-timeline');
     this.tctx = this.timelineCanvas.getContext('2d');
+    this.timelineScroll = this.timelineCanvas.parentElement;
+    this.timelineScroll.style.maxHeight = `${MAX_LANES * LANE_H + 4}px`;
     this._bind();
     this._renderModelChip();
     catalog.load().then(() => this._initNames()).catch(err => console.error(err));
@@ -108,7 +110,6 @@ export class V3Tab {
     $('v3-run').addEventListener('click', () => (this.running ? this.stop() : this.run()));
     $('v3-export-csv').addEventListener('click', () => this._exportCsv());
     $('v3-export-raven').addEventListener('click', () => this._exportRaven());
-    $('v3-lanes-toggle').addEventListener('click', () => { this.state.showAllLanes = !this.state.showAllLanes; this._refresh(); });
     v3.addEventListener('workers', () => this._renderModelChip());
 
     player.addEventListener('time', e => {
@@ -130,7 +131,7 @@ export class V3Tab {
     this.timelineCanvas.addEventListener('pointermove', e => this._hoverTimeline(e));
     this.timelineCanvas.addEventListener('pointerleave', () => { $('v3-timeline-tip').hidden = true; this.hoverChunk = null; this.spec.render(); });
     this.timelineCanvas.addEventListener('click', e => this._clickTimeline(e));
-    new ResizeObserver(() => this._drawTimeline()).observe(this.timelineCanvas.parentElement);
+    new ResizeObserver(() => this._drawTimeline()).observe(this.timelineScroll);
 
     $('v3-summary').addEventListener('click', e => {
       if (e.target.closest('[data-act="reset-edits"]')) this._resetEdits();
@@ -451,6 +452,12 @@ export class V3Tab {
     });
     this._drawTimeline();
     this.spec.render();
+    // Bring the species' lane into view
+    const lane = this._lanes().findIndex(l => l.s === this.state.selected);
+    if (lane >= 0) {
+      const box = this.timelineScroll, y = 2 + lane * LANE_H;
+      if (y < box.scrollTop || y + LANE_H > box.scrollTop + box.clientHeight) box.scrollTop = y - (box.clientHeight - LANE_H) / 2;
+    }
   }
 
   /* ---------------- rendering ---------------- */
@@ -663,25 +670,12 @@ export class V3Tab {
     });
   }
 
-  _lanes() {
-    const d = this.derived;
-    if (!d) return [];
-    let lanes = this.state.showAllLanes ? d.list : d.list.slice(0, MAX_LANES);
-    if (this.state.selected != null && !lanes.some(l => l.s === this.state.selected)) {
-      const sel = this._stat(this.state.selected);
-      if (sel) lanes = [...lanes, sel];
-    }
-    return lanes;
-  }
+  _lanes() { return this.derived?.list || []; }
 
   _drawTimeline() {
     const canvas = this.timelineCanvas, a = this.state.analysis;
     const lanes = this._lanes();
-    const toggle = $('v3-lanes-toggle');
-    const total = this.derived?.list.length || 0;
-    toggle.hidden = total <= MAX_LANES;
-    toggle.textContent = this.state.showAllLanes ? t('demo.v3.lanesFewer', 'Show top {n}', { n: MAX_LANES }) : t('demo.v3.lanesAll', 'Show all {n} species', { n: total });
-    const W = canvas.parentElement.clientWidth, H = Math.max(1, lanes.length) * LANE_H + 4, dpr = window.devicePixelRatio || 1;
+    const W = this.timelineScroll.clientWidth, H = Math.max(1, lanes.length) * LANE_H + 4, dpr = window.devicePixelRatio || 1;
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       canvas.style.height = `${H}px`;
@@ -754,7 +748,7 @@ export class V3Tab {
     tip.innerHTML = `<div class="tt-species">${thumb(hit.lane.s, 'tt-img', false, hit.lane.color)}<div><strong>${esc(catalog.name(hit.lane.s))}</strong> ${fmtPct(hit.p, 1)}<div class="tt-time">${fmtTime(c0 / SR, 1)} – ${fmtTime(c1 / SR, 1)}</div></div></div>`;
     tip.hidden = false;
     tip.style.left = `${Math.min(hit.x + 12, this.timelineCanvas.clientWidth - tip.offsetWidth - 4)}px`;
-    tip.style.top = `${Math.max(0, hit.y - tip.offsetHeight - 6)}px`;
+    tip.style.top = `${Math.max(0, hit.y - this.timelineScroll.scrollTop - tip.offsetHeight - 6)}px`;
   }
 
   _clickTimeline(e) {

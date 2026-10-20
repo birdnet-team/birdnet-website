@@ -1030,8 +1030,6 @@
   "demo.v3.how2Title": "Guarda l'analisi",
   "demo.v3.how3": "Ascolta ogni rilevamento, filtra per luogo e data e scarica un CSV.",
   "demo.v3.how3Title": "Esplora ed esporta",
-  "demo.v3.lanesAll": "Mostra tutte le {n} specie",
-  "demo.v3.lanesFewer": "Mostra le prime {n}",
   "demo.v3.more": "Mostra altre {n} specie",
   "demo.v3.none": "Nessuna specie sopra {threshold}. Abbassa la confidenza minima per vedere i rilevamenti più deboli.",
   "demo.v3.progressAria": "Avanzamento dell'analisi",
