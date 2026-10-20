@@ -76,7 +76,9 @@ export class SpecView extends EventTarget {
       scale: prefs.scale === 'mel' ? 'mel' : 'linear',
       brightness: Number.isFinite(own.brightness) ? own.brightness : 0,
       contrast: Number.isFinite(own.contrast) ? own.contrast : 0,
-      sticky: prefs.sticky !== false, // keep the viewer in view while the page scrolls
+      // Keep the viewer in view while the page scrolls; opt-in. Stored as keepInView because
+      // the old `sticky` field defaulted to on and was saved with every other display change.
+      sticky: prefs.keepInView === true,
     };
     this.root.closest('.demo-pane')?.classList.toggle('is-sticky', this.display.sticky);
     // The data rows are linear frequency bins; a mel view remaps them when tiles are drawn
@@ -89,7 +91,8 @@ export class SpecView extends EventTarget {
     const prefs = loadDisplay();
     prefs.cmap = this.display.cmap;
     prefs.scale = this.display.scale;
-    prefs.sticky = this.display.sticky;
+    prefs.keepInView = this.display.sticky;
+    delete prefs.sticky;
     prefs[this.kind] = { brightness: this.display.brightness, contrast: this.display.contrast };
     saveDisplay(prefs);
     window.dispatchEvent(new Event('demo:display'));
@@ -204,7 +207,7 @@ export class SpecView extends EventTarget {
       this._saveTimer = setTimeout(() => this._saveDisplay(), 250);
     }));
     pop.querySelector('[data-role="reset"]').addEventListener('click', () => {
-      Object.assign(this.display, { cmap: 'inferno', scale: 'linear', brightness: 0, contrast: 0, sticky: true });
+      Object.assign(this.display, { cmap: 'inferno', scale: 'linear', brightness: 0, contrast: 0, sticky: false });
       this._saveDisplay();
     });
     this._syncControls();
