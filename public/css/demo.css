@@ -109,20 +109,17 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 
 .demo-card-icon { flex-shrink: 0; width: 2.4rem; height: 2.4rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 0.7rem; font-size: 1.15rem; }
 
-.demo-feedback { border: 1px solid var(--demo-border); background: #f8fafc; }
-.demo-feedback .demo-card-icon { background: rgba(26, 95, 180, 0.1); color: var(--primary-color); }
 .demo-feedback-text { display: block; margin-bottom: 0.5rem; color: #0f172a; font-weight: 600; }
 .demo-feedback-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; color: var(--demo-muted); }
 .demo-feedback-actions a:not(.btn) { white-space: nowrap; font-weight: 500; }
 
-/* BirdNET Live app: dark with a yellow accent */
-.demo-live { background: linear-gradient(110deg, #0b0f19 0%, #1c1a10 100%); color: rgba(229, 231, 235, 0.8); box-shadow: 0 6px 20px rgba(2, 6, 23, 0.15); }
-.demo-live .demo-card-icon { background: rgba(250, 204, 21, 0.14); color: #facc15; }
+.demo-feedback, .demo-live { border: 1px solid var(--demo-border); background: #f8fafc; }
+.demo-feedback .demo-card-icon, .demo-live .demo-card-icon { background: rgba(26, 95, 180, 0.1); color: var(--primary-color); }
 .demo-live-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
-.demo-live-head strong { color: #fff; }
-.demo-live-chip { padding: 0.1rem 0.55rem; border-radius: 999px; background: #facc15; color: #111827; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
-.demo-live a { display: inline-block; margin-top: 0.35rem; color: #facc15; font-weight: 600; text-decoration: none; }
-.demo-live a:hover { color: #fde047; text-decoration: underline; }
+.demo-live-head strong { color: #0f172a; }
+.demo-live-chip { padding: 0.1rem 0.55rem; border-radius: 999px; background: rgba(26, 95, 180, 0.12); color: var(--primary-color); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.demo-live a { display: inline-block; margin-top: 0.35rem; font-weight: 600; text-decoration: none; }
+.demo-live a:hover { text-decoration: underline; }
 
 
 .demo-status { margin-left: 0.35rem; white-space: nowrap; }
