@@ -1005,6 +1005,7 @@
   "demo.spec.aria": "Spektrogram",
   "demo.spec.fit": "Pokaż wszystko",
   "demo.spec.hint": "Kliknij, aby posłuchać · Ctrl + kółko lub przyciski do powiększania · przeciągnij, aby przesunąć",
+  "demo.spec.settingsHint": "Zmień kolory, jasność i skalę częstotliwości",
   "demo.spec.zoomIn": "Powiększ",
   "demo.spec.zoomOut": "Pomniejsz",
   "demo.tabs.aria": "Modele demo",

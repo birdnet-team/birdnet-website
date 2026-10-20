@@ -1005,6 +1005,7 @@
   "demo.spec.aria": "spectrogram",
   "demo.spec.fit": "Hoch yI'ang",
   "demo.spec.hint": "yIwIv, yIQoy · Ctrl + scroll pagh leQmey: zoom · yIlup: vIH",
+  "demo.spec.settingsHint": "nguv, wov, Hz chuq je yIchoH",
   "demo.spec.zoomIn": "zoom Dung",
   "demo.spec.zoomOut": "zoom bIng",
   "demo.tabs.aria": "tobmeH model",

@@ -1005,6 +1005,7 @@
   "demo.spec.aria": "Spettrogramma",
   "demo.spec.fit": "Mostra tutto",
   "demo.spec.hint": "Clicca per ascoltare · Ctrl + rotella o i pulsanti per lo zoom · trascina per spostarti",
+  "demo.spec.settingsHint": "Cambia colori, luminosità e scala delle frequenze",
   "demo.spec.zoomIn": "Ingrandisci",
   "demo.spec.zoomOut": "Riduci",
   "demo.tabs.aria": "Modelli della demo",

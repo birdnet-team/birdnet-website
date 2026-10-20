@@ -997,6 +997,7 @@
   "demo.spec.aria": "Spektrogramm",
   "demo.spec.fit": "Alles anzeigen",
   "demo.spec.hint": "Klicken zum Anhören · Strg + Scrollen oder die Schaltflächen zum Zoomen · Ziehen zum Verschieben",
+  "demo.spec.settingsHint": "Farben, Helligkeit und Frequenzskala anpassen",
   "demo.spec.zoomIn": "Vergrößern",
   "demo.spec.zoomOut": "Verkleinern",
   "demo.tabs.aria": "Demo-Modelle",

@@ -1005,6 +1005,7 @@
   "demo.spec.aria": "频谱图",
   "demo.spec.fit": "显示全部",
   "demo.spec.hint": "点击收听 · Ctrl + 滚轮或按钮缩放 · 拖动平移",
+  "demo.spec.settingsHint": "调整颜色、亮度和频率刻度",
   "demo.spec.zoomIn": "放大",
   "demo.spec.zoomOut": "缩小",
   "demo.tabs.aria": "演示模型",
