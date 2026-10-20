@@ -1093,6 +1093,7 @@
   "demo.spec.reset": "Redefinir",
   "demo.v3.allDetections": "Mostrar todas as {n} detecções",
   "demo.settings.title": "Configurações",
+  "demo.settings.stickyViewer": "Manter o espectrograma visível",
   "demo.v3.playBestAt": "Ouvir a melhor detecção ({time})",
   "demo.bb.deleteBox": "Excluir caixa",
   "demo.bb.deleted": "Caixa {n} excluída.",

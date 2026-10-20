@@ -73,7 +73,7 @@ permalink: "/demo/"
   {{ audioSource('v3-source') }}
 
   <div id="v3-workspace" hidden>
-    <div class="demo-viewer demo-viewer-sticky">
+    <div class="demo-viewer">
       <div id="v3-spec"></div>
       <div class="v3-timeline-wrap">
         <div class="v3-timeline-scroll"><canvas id="v3-timeline" height="26"></canvas></div>
@@ -137,6 +137,10 @@ permalink: "/demo/"
           <div class="pt-3 border-top">
             {{ locationFilter('v3-location', 'demo.location.label', 'Filter by location and date') }}
             <div id="v3-geo-status" class="small text-muted"></div>
+          </div>
+          <div class="form-check form-switch mt-3 mb-0 d-none d-lg-block">
+            <input class="form-check-input demo-sticky-toggle" type="checkbox" role="switch" id="v3-sticky" checked>
+            <label class="form-check-label small fw-medium" for="v3-sticky" data-i18n="demo.settings.stickyViewer">Keep spectrogram in view</label>
           </div>
           <button type="button" id="v3-run" class="btn btn-outline-primary btn-sm w-100 mt-3" hidden><i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="demo.v3.rerun">Analyze again</span></button>
           </div>
@@ -293,7 +297,7 @@ permalink: "/demo/"
   {{ audioSource('bb-source') }}
 
   <div id="bb-workspace" hidden>
-    <div class="demo-viewer demo-viewer-sticky">
+    <div class="demo-viewer">
       <div id="bb-spec"></div>
       <div class="demo-viewer-foot">
         <span class="small demo-viewer-hint" data-i18n="demo.bb.specHint">Click a box to play and select it · drag to move or resize · add boxes with the box tool</span>
@@ -340,6 +344,10 @@ permalink: "/demo/"
           </div>
           <div class="pt-2 border-top">
             {{ locationFilter('bb-location', 'demo.bb.location', 'Limit suggestions to location and date') }}
+          </div>
+          <div class="form-check form-switch mt-3 mb-0 d-none d-lg-block">
+            <input class="form-check-input demo-sticky-toggle" type="checkbox" role="switch" id="bb-sticky" checked>
+            <label class="form-check-label small fw-medium" for="bb-sticky" data-i18n="demo.settings.stickyViewer">Keep spectrogram in view</label>
           </div>
           </div>
         </div>

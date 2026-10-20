@@ -1093,6 +1093,7 @@
   "demo.spec.reset": "Zurücksetzen",
   "demo.v3.allDetections": "Alle {n} Erkennungen anzeigen",
   "demo.settings.title": "Einstellungen",
+  "demo.settings.stickyViewer": "Spektrogramm im Blick behalten",
   "demo.v3.playBestAt": "Beste Erkennung abspielen ({time})",
   "demo.bb.deleteBox": "Box löschen",
   "demo.bb.deleted": "Box {n} gelöscht.",

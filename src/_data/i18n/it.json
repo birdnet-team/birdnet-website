@@ -1093,6 +1093,7 @@
   "demo.spec.reset": "Ripristina",
   "demo.v3.allDetections": "Mostra tutti i {n} rilevamenti",
   "demo.settings.title": "Impostazioni",
+  "demo.settings.stickyViewer": "Mantieni visibile lo spettrogramma",
   "demo.v3.playBestAt": "Ascolta il rilevamento migliore ({time})",
   "demo.bb.deleteBox": "Elimina riquadro",
   "demo.bb.deleted": "Riquadro {n} eliminato.",

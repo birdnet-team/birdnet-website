@@ -366,11 +366,11 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 }
 
 @media (min-width: 992px) {
-  .demo-sticky { position: sticky; top: var(--demo-sticky-top, var(--demo-top)); }
-  /* The spectrogram stays in view while the detections scroll; demo.js keeps
-     --demo-sticky-top on the pane equal to its height so the settings card sits under it */
-  .demo-viewer-sticky { position: sticky; top: var(--demo-top); z-index: 10; }
-  #pane-v3 .demo-sticky, #pane-birdbox .demo-sticky { max-height: calc(100vh - var(--demo-sticky-top, var(--demo-top)) - 1rem); overflow-y: auto; }
+  .demo-sticky { position: sticky; top: var(--demo-top); }
+  /* "Keep spectrogram in view" (demo.js sets is-sticky on the pane and
+     --demo-sticky-top to the viewer's height): the settings card sits under the viewer */
+  .is-sticky .demo-viewer { position: sticky; top: var(--demo-top); z-index: 10; }
+  .is-sticky .demo-sticky { top: var(--demo-sticky-top); max-height: calc(100vh - var(--demo-sticky-top) - 1rem); overflow-y: auto; }
 }
 
 .demo-taxa { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: 0.35rem; }

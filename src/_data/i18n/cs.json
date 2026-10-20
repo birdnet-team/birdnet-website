@@ -1093,6 +1093,7 @@
   "demo.spec.reset": "Obnovit",
   "demo.v3.allDetections": "Zobrazit všechny detekce ({n})",
   "demo.settings.title": "Nastavení",
+  "demo.settings.stickyViewer": "Spektrogram stále na očích",
   "demo.v3.playBestAt": "Přehrát nejlepší detekci ({time})",
   "demo.bb.deleteBox": "Smazat rámeček",
   "demo.bb.deleted": "Rámeček {n} smazán.",
