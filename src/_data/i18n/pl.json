@@ -1093,7 +1093,7 @@
   "demo.spec.reset": "Resetuj",
   "demo.v3.allDetections": "Pokaż wszystkie wykrycia ({n})",
   "demo.settings.title": "Ustawienia",
-  "demo.settings.stickyViewer": "Spektrogram zawsze widoczny",
+  "demo.spec.sticky": "Spektrogram zawsze widoczny",
   "demo.v3.playBestAt": "Odtwórz najlepsze wykrycie ({time})",
   "demo.bb.deleteBox": "Skasuj ramkę",
   "demo.bb.deleted": "Ramka {n} skasowana.",

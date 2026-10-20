@@ -1093,7 +1093,7 @@
   "demo.spec.reset": "Restablecer",
   "demo.v3.allDetections": "Mostrar las {n} detecciones",
   "demo.settings.title": "Ajustes",
-  "demo.settings.stickyViewer": "Mantener el espectrograma a la vista",
+  "demo.spec.sticky": "Mantener el espectrograma a la vista",
   "demo.v3.playBestAt": "Reproducir la mejor detección ({time})",
   "demo.bb.deleteBox": "Borrar caja",
   "demo.bb.deleted": "Caja {n} borrada.",

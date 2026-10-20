@@ -36,26 +36,6 @@ function show(name, { updateHash = true } = {}) {
   if (updateHash) history.replaceState(null, '', `#${HASH[name]}`);
 }
 
-/** "Keep spectrogram in view" switch of the V3.0 and BirdBox settings (see .is-sticky in demo.css). */
-function initStickyViewers() {
-  const KEY = 'birdnet-demo-sticky-viewer';
-  let on = true;
-  try { on = localStorage.getItem(KEY) !== 'off'; } catch { /* storage blocked */ }
-  const toggles = [...document.querySelectorAll('.demo-sticky-toggle')];
-  const apply = () => toggles.forEach(cb => { cb.checked = on; cb.closest('.demo-pane').classList.toggle('is-sticky', on); });
-  for (const cb of toggles) {
-    const pane = cb.closest('.demo-pane'), viewer = pane.querySelector('.demo-viewer');
-    // The settings card sits under the viewer, whose height changes with the timeline
-    new ResizeObserver(() => pane.style.setProperty('--demo-sticky-top', `calc(var(--demo-top) + ${viewer.offsetHeight}px + 1rem)`)).observe(viewer);
-    cb.addEventListener('change', () => {
-      on = cb.checked;
-      try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* not persisted */ }
-      apply();
-    });
-  }
-  apply();
-}
-
 function init() {
   Object.values(tabs).forEach(tab => tab.init());
   const nav = document.getElementById('demo-tabs');
@@ -71,7 +51,11 @@ function init() {
     show(next.dataset.tab);
     next.focus();
   });
-  initStickyViewers();
+  // The settings card sits under a sticky viewer, whose height changes with the timeline (see .is-sticky in demo.css)
+  document.querySelectorAll('.spec-view').forEach(el => {
+    const pane = el.closest('.demo-pane'), viewer = el.closest('.demo-viewer');
+    new ResizeObserver(() => pane.style.setProperty('--demo-sticky-top', `calc(var(--demo-top) + ${viewer.offsetHeight}px + 1rem)`)).observe(viewer);
+  });
   // Settings panels fold into one row on small screens
   document.querySelectorAll('.demo-settings-toggle').forEach(btn => btn.addEventListener('click', () => {
     const open = btn.closest('.demo-settings').classList.toggle('is-open');

@@ -1093,7 +1093,7 @@
   "demo.spec.reset": "Repor",
   "demo.v3.allDetections": "Mostrar todas as {n} deteções",
   "demo.settings.title": "Definições",
-  "demo.settings.stickyViewer": "Manter o espetrograma visível",
+  "demo.spec.sticky": "Manter o espetrograma visível",
   "demo.v3.playBestAt": "Ouvir a melhor deteção ({time})",
   "demo.bb.deleteBox": "Apagar caixa",
   "demo.bb.deleted": "Caixa {n} apagada.",

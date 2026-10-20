@@ -1093,7 +1093,7 @@
   "demo.spec.reset": "重置",
   "demo.v3.allDetections": "显示全部 {n} 条检测",
   "demo.settings.title": "设置",
-  "demo.settings.stickyViewer": "保持频谱图可见",
+  "demo.spec.sticky": "保持频谱图可见",
   "demo.v3.playBestAt": "播放最佳检测（{time}）",
   "demo.bb.deleteBox": "删除绘制的框",
   "demo.bb.deleted": "已删除框 {n}。",

@@ -334,6 +334,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .spec-popover-label:first-child { margin-top: 0; }
 .spec-popover .form-range { height: 1.1rem; }
 .spec-popover .btn-link { color: #93c5fd; font-size: 0.78rem; }
+.spec-popover .form-switch { margin: 0.6rem 0 0.1rem; font-size: 0.78rem; }
+@media (max-width: 991.98px) { .spec-popover .form-switch { display: none; } } /* nothing is sticky on small screens */
 .spec-swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; }
 .spec-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; padding: 0.2rem; border-radius: 0.55rem; background: rgba(255, 255, 255, 0.06); }
 .spec-seg button { padding: 0.2rem 0.4rem; border: 0; border-radius: 0.4rem; background: none; color: rgba(226, 232, 240, 0.75); font-size: 0.78rem; font-weight: 600; }
@@ -367,8 +369,9 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 
 @media (min-width: 992px) {
   .demo-sticky { position: sticky; top: var(--demo-top); }
-  /* "Keep spectrogram in view" (demo.js sets is-sticky on the pane and
-     --demo-sticky-top to the viewer's height): the settings card sits under the viewer */
+  /* "Keep spectrogram in view" in the spectrogram display settings (spec-view.js
+     sets is-sticky on the pane, demo.js --demo-sticky-top to the viewer's height):
+     the settings card sits under the viewer */
   .is-sticky .demo-viewer { position: sticky; top: var(--demo-top); z-index: 10; }
   .is-sticky .demo-sticky { top: var(--demo-sticky-top); max-height: calc(100vh - var(--demo-sticky-top) - 1rem); overflow-y: auto; }
 }

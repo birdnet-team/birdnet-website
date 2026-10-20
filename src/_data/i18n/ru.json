@@ -1093,7 +1093,7 @@
   "demo.spec.reset": "Сбросить",
   "demo.v3.allDetections": "Показать все обнаружения ({n})",
   "demo.settings.title": "Настройки",
-  "demo.settings.stickyViewer": "Спектрограмма всегда на виду",
+  "demo.spec.sticky": "Спектрограмма всегда на виду",
   "demo.v3.playBestAt": "Прослушать лучшее обнаружение ({time})",
   "demo.bb.deleteBox": "Стереть рамку",
   "demo.bb.deleted": "Рамка {n} стёрта.",

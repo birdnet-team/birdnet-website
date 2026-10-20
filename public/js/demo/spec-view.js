@@ -76,7 +76,9 @@ export class SpecView extends EventTarget {
       scale: prefs.scale === 'mel' ? 'mel' : 'linear',
       brightness: Number.isFinite(own.brightness) ? own.brightness : 0,
       contrast: Number.isFinite(own.contrast) ? own.contrast : 0,
+      sticky: prefs.sticky !== false, // keep the viewer in view while the page scrolls
     };
+    this.root.closest('.demo-pane')?.classList.toggle('is-sticky', this.display.sticky);
     // The data rows are linear frequency bins; a mel view remaps them when tiles are drawn
     this.axis = { ...this.opts.axis, type: this.display.scale };
     this.rowMap = null;
@@ -87,6 +89,7 @@ export class SpecView extends EventTarget {
     const prefs = loadDisplay();
     prefs.cmap = this.display.cmap;
     prefs.scale = this.display.scale;
+    prefs.sticky = this.display.sticky;
     prefs[this.kind] = { brightness: this.display.brightness, contrast: this.display.contrast };
     saveDisplay(prefs);
     window.dispatchEvent(new Event('demo:display'));
@@ -173,6 +176,10 @@ export class SpecView extends EventTarget {
             <input type="range" class="form-range" id="${this.root.id}-brightness" data-set="brightness" min="-1" max="1" step="0.05">
             <label class="spec-popover-label" for="${this.root.id}-contrast">${esc(t('demo.spec.contrast', 'Contrast'))}</label>
             <input type="range" class="form-range" id="${this.root.id}-contrast" data-set="contrast" min="-1" max="1" step="0.05">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="${this.root.id}-sticky" data-role="sticky">
+              <label class="form-check-label" for="${this.root.id}-sticky">${esc(t('demo.spec.sticky', 'Keep spectrogram in view'))}</label>
+            </div>
             <button type="button" class="btn btn-link btn-sm p-0 mt-1" data-role="reset">${esc(t('demo.spec.reset', 'Reset'))}</button>
           </div>
         </div>
@@ -185,6 +192,7 @@ export class SpecView extends EventTarget {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') toggle(false); });
     pop.querySelectorAll('[data-cmap]').forEach(sw => sw.addEventListener('click', () => { this.display.cmap = sw.dataset.cmap; this._saveDisplay(); }));
     pop.querySelectorAll('[data-scale]').forEach(btn => btn.addEventListener('click', () => { this.display.scale = btn.dataset.scale; this._saveDisplay(); }));
+    pop.querySelector('[data-role="sticky"]').addEventListener('change', e => { this.display.sticky = e.target.checked; this._saveDisplay(); });
     pop.querySelectorAll('[data-set]').forEach(input => input.addEventListener('input', () => {
       this.display[input.dataset.set] = +input.value;
       this._applyDisplay();
@@ -192,7 +200,7 @@ export class SpecView extends EventTarget {
       this._saveTimer = setTimeout(() => this._saveDisplay(), 250);
     }));
     pop.querySelector('[data-role="reset"]').addEventListener('click', () => {
-      Object.assign(this.display, { cmap: 'inferno', scale: 'linear', brightness: 0, contrast: 0 });
+      Object.assign(this.display, { cmap: 'inferno', scale: 'linear', brightness: 0, contrast: 0, sticky: true });
       this._saveDisplay();
     });
     this._syncControls();
@@ -206,6 +214,7 @@ export class SpecView extends EventTarget {
       btn.setAttribute('aria-pressed', String(btn.dataset.scale === this.display.scale));
     });
     this.tools.querySelectorAll('[data-set]').forEach(input => { input.value = this.display[input.dataset.set]; });
+    this.tools.querySelector('[data-role="sticky"]').checked = this.display.sticky;
   }
 
   /* ---------------- data ---------------- */
