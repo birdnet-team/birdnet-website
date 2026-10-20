@@ -24,6 +24,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Demo models are pinned and hash-checked in scripts/fetch-models.mjs;
+      # caching them keeps builds fast and spares the upstream LFS quota
+      - uses: actions/cache@v4
+        with:
+          path: _models
+          key: demo-models-${{ hashFiles('scripts/fetch-models.mjs') }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
