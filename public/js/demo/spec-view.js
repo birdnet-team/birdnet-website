@@ -139,12 +139,16 @@ export class SpecView extends EventTarget {
       this._bindMinimap();
     }
     this._buildToolbar();
-    this.tools?.querySelectorAll('[data-zoom]').forEach(btn => btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const z = btn.dataset.zoom;
-      if (z === 'fit') this.fit();
-      else this.zoomBy(z === 'in' ? 0.5 : 2, (this.view.t0 + this.view.t1) / 2);
-    }));
+    this.zoomBtns = {};
+    this.tools?.querySelectorAll('[data-zoom]').forEach(btn => {
+      this.zoomBtns[btn.dataset.zoom] = btn;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const z = btn.dataset.zoom;
+        if (z === 'fit') this.fit();
+        else this.zoomBy(z === 'in' ? 0.5 : 2, (this.view.t0 + this.view.t1) / 2);
+      });
+    });
     this._bindMain();
     this.resizeObserver = new ResizeObserver(() => this._resize());
     this.resizeObserver.observe(this.root);
@@ -161,7 +165,7 @@ export class SpecView extends EventTarget {
     };
     host.innerHTML = `
       <div class="spec-tools">
-        ${zoom('out', 'bi-zoom-out', 'demo.spec.zoomOut', 'Zoom out')}${zoom('in', 'bi-zoom-in', 'demo.spec.zoomIn', 'Zoom in')}${zoom('fit', 'bi-arrows-angle-expand', 'demo.spec.fit', 'Show all')}
+        ${zoom('out', 'bi-zoom-out', 'demo.spec.zoomOut', 'Zoom out')}${zoom('in', 'bi-zoom-in', 'demo.spec.zoomIn', 'Zoom in')}${zoom('fit', 'bi-arrows-expand-vertical', 'demo.spec.fit', 'Show all')}
         <div class="spec-display">
           <button type="button" class="btn spec-tool" data-role="display" aria-expanded="false" title="${esc(t('demo.spec.display', 'Display'))}" aria-label="${esc(t('demo.spec.display', 'Display'))}"><i class="bi bi-sliders2"></i></button>
           <div class="spec-popover" hidden>
@@ -442,6 +446,17 @@ export class SpecView extends EventTarget {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
     this._drawMinimap();
+    this._syncZoom();
+  }
+
+  /** Gray out zoom buttons that would not change the view (same limits as setView). */
+  _syncZoom() {
+    const { in: zoomIn, out, fit } = this.zoomBtns || {};
+    if (!fit) return;
+    const dur = Math.max(0.5, this.duration || 1), span = this.view.t1 - this.view.t0;
+    const full = !this.duration || span >= dur - 1e-3;
+    out.disabled = fit.disabled = full;
+    zoomIn.disabled = !this.duration || span <= Math.min(dur, 1.5) + 1e-3;
   }
 
   _drawAxes(ctx, W, H) {

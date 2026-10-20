@@ -310,6 +310,7 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 
 .demo-viewer .btn.spec-tool:hover, .demo-viewer .btn.spec-tool[aria-expanded="true"] { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .demo-viewer .btn.spec-tool.active { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.demo-viewer .btn.spec-tool:disabled { opacity: 0.35; }
 
 .spec-display { position: relative; }
 
