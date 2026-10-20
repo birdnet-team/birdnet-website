@@ -1005,6 +1005,7 @@
   "demo.spec.aria": "Spektrogram",
   "demo.spec.fit": "Zobrazit vše",
   "demo.spec.hint": "Kliknutím přehraješ · Ctrl + kolečko nebo tlačítka pro přiblížení · tažením posuneš",
+  "demo.spec.settingsHint": "Uprav barvy, jas a frekvenční stupnici",
   "demo.spec.zoomIn": "Přiblížit",
   "demo.spec.zoomOut": "Oddálit",
   "demo.tabs.aria": "Modely v demu",
