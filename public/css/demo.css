@@ -364,12 +364,11 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 }
 
 @media (min-width: 992px) {
-  .demo-sticky { position: sticky; top: var(--demo-top); }
-  /* Pinned workspace (demo.js sets is-fitted on the pane when there is room):
-     the detections column scrolls on its own below the viewer, and the
-     settings card scrolls within itself when it is taller than the space left */
-  .is-fitted .demo-scroll { overflow-y: auto; }
-  .is-fitted .demo-sticky { position: static; max-height: calc(100vh - var(--demo-row-top) - 1rem); overflow-y: auto; }
+  .demo-sticky { position: sticky; top: var(--demo-sticky-top, var(--demo-top)); }
+  /* The spectrogram stays in view while the detections scroll; demo.js keeps
+     --demo-sticky-top on the pane equal to its height so the settings card sits under it */
+  .demo-viewer-sticky { position: sticky; top: var(--demo-top); z-index: 10; }
+  #pane-v3 .demo-sticky, #pane-birdbox .demo-sticky { max-height: calc(100vh - var(--demo-sticky-top, var(--demo-top)) - 1rem); overflow-y: auto; }
 }
 
 .demo-taxa { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: 0.35rem; }
