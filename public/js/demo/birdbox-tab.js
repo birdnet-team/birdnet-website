@@ -12,7 +12,7 @@
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
  */
-import { AudioSource } from './audio-source.js';
+import { AudioSource, parseXcNumber } from './audio-source.js';
 import { csvField, debounce, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
@@ -29,6 +29,8 @@ const NO_MERGE = -1e6;        // song_gap that never merges
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const MS_PER_CLIP_KEY = 'birdnet-demo-birdbox-ms';
 const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
+const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
+const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
 const AVES = -1;
 const FREQ_MAX = 15000;       // top of the spectrogram and of any box
 const MIN_DUR = 0.05;         // smallest box: seconds
@@ -79,6 +81,9 @@ function suggestionWindows(t0, t1, duration) {
   }
   return out;
 }
+
+/** Xeno-canto contributor ID from the ID itself or a xeno-canto.org/contributor/… link. */
+const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/[/?#].*$/, '');
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
@@ -176,9 +181,10 @@ export class BirdBoxTab {
     let helpSeen = false;
     try { helpSeen = !!localStorage.getItem(HELP_KEY); } catch { /* storage blocked */ }
     this._showHelp(!helpSeen, false);
-    $('bb-sound-default').innerHTML = SOUND_TYPES.map(s => `<option value="${s}"${s === 'call' ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
+    $('bb-sound-default').innerHTML = `<option value="">${esc(t('demo.bb.choose', 'Choose…'))}</option>${SOUND_TYPES.map(s => `<option value="${s}">${esc(this._soundLabel(s))}</option>`).join('')}`;
+    this._restoreAnnotator();
     this._bind();
-    getManifest().then(m => isCached(m.birdbox.model)).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
+    getManifest().then(m => { this.manifest = m; return isCached(m.birdbox.model); }).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
     this._renderChip();
     if (shared.audio) this._onAudio();
   }
@@ -211,7 +217,15 @@ export class BirdBoxTab {
     gap.addEventListener('input', () => { sync(); this._update(); });
     $('bb-suggest').addEventListener('change', () => this._update());
     this.location.addEventListener('change', () => { this._resetSuggestions(); this._update(); });
-    $('bb-export-xc').addEventListener('click', () => this._exportXc());
+    const form = $('bb-xc');
+    form.addEventListener('submit', e => { e.preventDefault(); this._exportXc(); });
+    // A pasted profile link becomes the ID it ends in
+    $('bb-xcid').addEventListener('change', e => { e.target.value = xcContributor(e.target.value); this._saveAnnotator(); });
+    form.addEventListener('input', e => {
+      e.target.classList.remove('is-invalid');
+      if (Object.values(ANNOTATOR_FIELDS).includes(e.target.id)) this._saveAnnotator();
+      if (!$('bb-xc-check').hidden) this._checkXc();
+    });
     $('bb-export-csv').addEventListener('click', () => this._exportCsv());
     $('bb-export-raven').addEventListener('click', () => this._exportRaven());
     catalog.addEventListener('names', () => this._renderTable());
@@ -286,9 +300,13 @@ export class BirdBoxTab {
         return;
       }
       if (e.target.dataset.field === 'species') this._override(b, { species: +e.target.value });
-      if (e.target.dataset.field === 'sound') this._override(b, { soundType: e.target.value });
+      if (e.target.dataset.field === 'sound') {
+        this._override(b, { soundType: e.target.value || undefined });
+        e.target.classList.toggle('is-unset', !e.target.value);
+      }
       this._renderSummary();
       this.spec.render();
+      if (!$('bb-xc-check').hidden) this._checkXc();
     });
     $('bb-sound-default').addEventListener('change', () => this._renderTable());
   }
@@ -310,6 +328,21 @@ export class BirdBoxTab {
     else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · Delete removes it · Esc deselects');
     else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
     el.textContent = text;
+  }
+
+  _restoreAnnotator() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(ANNOTATOR_KEY)) || {}; } catch { /* storage blocked */ }
+    for (const [k, id] of Object.entries(ANNOTATOR_FIELDS)) {
+      const el = $(id);
+      // A license that is no longer offered falls back to the default
+      if (typeof saved[k] === 'string' && (el.tagName !== 'SELECT' || [...el.options].some(o => o.value === saved[k]))) el.value = saved[k];
+    }
+  }
+
+  _saveAnnotator() {
+    const data = Object.fromEntries(Object.entries(ANNOTATOR_FIELDS).map(([k, id]) => [k, $(id).value.trim()]));
+    try { localStorage.setItem(ANNOTATOR_KEY, JSON.stringify(data)); } catch { /* not persisted */ }
   }
 
   _renderChip() {
@@ -348,9 +381,13 @@ export class BirdBoxTab {
     if (!audio) return;
     this.pcm = audio.pcm;
     this.duration = audio.duration;
-    const xcInput = $('bb-xcnr');
+    // A file named like XC1059662.wav is most likely that recording; the field stays editable
     const m = audio.name.match(/(?:^|[^A-Za-z0-9])XC[_-]?(\d+)/i);
-    xcInput.value = m ? m[1] : '';
+    const nr = audio.xc || m?.[1];
+    $('bb-xcnr').value = nr ? `XC${nr}` : '';
+    $('bb-complete').value = '';
+    $('bb-xc').querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    $('bb-xc-check').hidden = true;
     if (this.pcm.length < 3 * SR) {
       $('bb-error').hidden = false;
       $('bb-error').textContent = t('demo.bb.tooShort', 'BirdBox needs at least 3 seconds of audio.');
@@ -430,6 +467,7 @@ export class BirdBoxTab {
     this._renderTable();
     this._renderHint();
     this.spec.render();
+    if (!$('bb-xc-check').hidden) this._checkXc();
     if (this.raw && $('bb-suggest').checked) this.suggestSoon();
   }
 
@@ -703,7 +741,8 @@ export class BirdBoxTab {
         opts.push(`<option value="pick">${esc(t('demo.bb.otherSpecies', 'Other species…'))}</option>`);
         speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb') : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}">${opts.join('')}</select>`;
       }
-      const sound = SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
+      const sound = (edit.soundType ? '' : `<option value="" selected>${esc(t('demo.bb.choose', 'Choose…'))}</option>`)
+        + SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
       const drawn = esc(t('demo.bb.drawn', 'Drawn by you')), reset = esc(t('demo.bb.resetBox', 'Restore the detected box'));
       const mark = b.manual
         ? `<i class="bi bi-pencil-fill bb-mark" title="${drawn}" aria-label="${drawn}"></i>`
@@ -715,7 +754,7 @@ export class BirdBoxTab {
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
         <td class="bb-c-species"><div class="bb-species-wrap">${speciesCell}</div></td>
-        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
+        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select${edit.soundType ? '' : ' is-unset'}" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
         <td class="bb-c-toggle"><button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
       </tr>`;
     }).join('');
@@ -791,62 +830,98 @@ export class BirdBoxTab {
 
   _baseName() { return (shared.audio?.name || 'audio').replace(/\.[^.]+$/, ''); }
 
-  /** Xeno-canto Annota-JSON, following BirdBox's xeno_canto_export.py. */
+  /**
+   * Mark what the Annota-JSON export still needs from the person; true when
+   * nothing is missing. Facts about the person and the recording are asked
+   * for, never guessed.
+   */
+  _checkXc() {
+    const missing = [];
+    const need = (id, ok, what) => {
+      $(id).classList.toggle('is-invalid', !ok);
+      if (!ok) missing.push({ id, what });
+    };
+    const unset = this._included().filter(r => !r.edit.soundType).map(r => `#${r.i + 1}`);
+    const list = unset.length > 6 ? `${unset.slice(0, 6).join(', ')}, …` : unset.join(', ');
+    need('bb-xcnr', !!parseXcNumber($('bb-xcnr').value), t('demo.bb.need.xcnr', 'the XC number'));
+    need('bb-complete', !!$('bb-complete').value, t('demo.bb.need.complete', 'whether every bird sound is boxed'));
+    need('bb-sound-default', !unset.length, t('demo.bb.need.sound', 'a sound type for {list}', { list }));
+    need('bb-annotator', !!$('bb-annotator').value.trim(), t('demo.bb.need.name', 'your name'));
+    need('bb-license', !!$('bb-license').value, t('demo.bb.need.license', 'a license'));
+    $('bb-table-wrap').classList.toggle('bb-table-check', unset.length > 0);
+    const check = $('bb-xc-check');
+    check.hidden = !missing.length;
+    check.textContent = t('demo.bb.need', 'Still needed: {list}.', { list: missing.map(m => m.what).join(' · ') });
+    return missing;
+  }
+
+  /** Xeno-canto Annota-JSON: one annotation per included box, numbered as in the table. */
   _exportXc() {
     const rows = this._included();
     if (!rows.length) { toast(t('demo.bb.noneIncluded', 'Select at least one box to export.'), 'warning'); return; }
-    const sound = shared.audio?.name || 'audio.wav';
-    const annotator = $('bb-annotator').value.trim();
-    const xcNr = $('bb-xcnr').value.trim().replace(/^XC/i, '');
-    const round = v => Number(Number(v).toFixed(3));
+    const missing = this._checkXc();
+    if (missing.length) { $(missing[0].id).focus(); return; }
+    const xcNr = parseXcNumber($('bb-xcnr').value);
+    const name = $('bb-annotator').value.trim();
+    const xcId = xcContributor($('bb-xcid').value);
+    const m = this.manifest;
+    const commit = m?.sources?.birdbox?.match(/\/tree\/([0-9a-f]{7})/)?.[1];
+    const birdboxName = `${m?.birdbox?.name || 'BirdBox Just-Bird'}${commit ? ` @ ${commit}` : ''}`;
+    const birdnetName = `BirdNET+ V${m?.v3?.version || '3.0'}`;
     const date = new Date().toISOString().slice(0, 10);
-    const annotations = rows.map((r, k) => {
-      let remarks = r.b.manual ? 'Drawn by annotator' : `Detected by BirdBox; confidence: ${r.b.avg.toFixed(3)}`;
-      if (!r.b.manual && this.edits.get(r.b.id)?.geom) remarks += '; box adjusted by annotator';
-      if (r.sp.s !== AVES && r.edit.auto && r.sp.p != null) remarks += `; species suggested by BirdNET+ V3.0 (score ${r.sp.p.toFixed(3)})`;
-      else if (r.sp.s !== AVES && !r.edit.auto) remarks += '; species set by annotator';
+    const counts = { detected: 0, adjusted: 0, drawn: 0 };
+    const annotations = rows.map(r => {
+      const adjusted = !r.b.manual && !!this.edits.get(r.b.id)?.geom;
+      counts[r.b.manual ? 'drawn' : 'detected']++;
+      if (adjusted) counts.adjusted++;
+      const box = r.b.manual ? 'Box drawn by the annotator'
+        : `Box detected by BirdBox (confidence ${r.b.avg.toFixed(3)})${adjusted ? ' and adjusted by the annotator' : ''}`;
+      const species = r.sp.s === AVES ? 'species not identified'
+        : r.edit.auto ? `species suggested by ${birdnetName}${r.sp.p != null ? ` (score ${r.sp.p.toFixed(3)})` : ''}`
+          : 'species chosen by the annotator';
       return {
-        annotation_source_id: `birdbox-${String(k + 1).padStart(6, '0')}`,
-        sound_file: sound,
+        annotation_source_id: `birdbox-${String(r.i + 1).padStart(6, '0')}`,
+        sound_file: shared.audio?.name || '',
         xc_nr: xcNr,
-        annotator: annotator || 'BirdBox',
-        annotator_xc_id: '',
-        frequency_high: round(r.g.fhi),
-        frequency_low: round(r.g.flo),
-        start_time: round(r.g.t0),
-        end_time: round(r.g.t1),
+        annotator: name,
+        annotator_xc_id: xcId,
+        frequency_high: Math.round(r.g.fhi),
+        frequency_low: Math.round(r.g.flo),
+        start_time: Number(r.g.t0.toFixed(3)),
+        end_time: Number(r.g.t1.toFixed(3)),
         scientific_name: this._sciName(r.sp.s),
         sound_type: r.edit.soundType,
         date_identified: date,
-        annotation_remarks: remarks,
+        annotation_remarks: `${box}; ${species}`,
       };
     });
-    const coverage = [...new Set(annotations.map(a => a.scientific_name).filter(Boolean))].sort().join(', ');
+    const suggested = rows.some(r => r.sp.s !== AVES && r.edit.auto);
+    const settings = `confidence ≥ ${(+$('bb-conf').value).toFixed(2)}, song gap ${(+$('bb-gap').value).toFixed(2)} s`;
     const payload = {
-      set_source: 'BirdBox detection results',
+      set_source: '',
       set_uri: '',
-      set_name: 'BirdBox detection results',
-      annotation_software_name_and_version: $('bb-suggest').checked ? 'BirdBox (Just-Bird ONNX); species suggestions: BirdNET+ V3.0-preview3.1' : 'BirdBox (Just-Bird ONNX)',
-      set_creator: annotator || 'BirdBox',
-      set_creator_id: '',
-      set_owner: '',
-      set_license: '',
+      set_name: `BirdBox annotations of XC${xcNr}`,
+      annotation_software_name_and_version: suggested ? `${birdboxName}; species suggestions: ${birdnetName}` : birdboxName,
+      set_creator: name,
+      set_creator_id: xcId ? `https://xeno-canto.org/contributor/${xcId}` : '',
+      set_owner: name,   // the set is made here from scratch, so it is the person's own
+      set_license: $('bb-license').value,
       project_uri: '',
-      project_name: 'BirdBox',
+      project_name: '',
       funding: '',
-      set_remarks: 'Generated from BirdBox bird call detections.',
-      scope: [{ taxon_coverage: coverage || 'birds', completeness: 'part' }],
+      set_remarks: `Made in the BirdNET browser demo. Boxes from BirdBox (${settings}), reviewed by the annotator: ${counts.detected} detected (${counts.adjusted} adjusted), ${counts.drawn} drawn.`,
+      scope: [{ taxon_coverage: 'Aves', completeness: $('bb-complete').value }],
       annotations,
     };
-    downloadFile(`${this._baseName()}.xeno-canto-annota.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
+    downloadFile(`XC${xcNr}.xeno-canto-annota.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
   }
 
   _exportCsv() {
-    const header = ['time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
+    const header = ['box', 'time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
     const lines = [header.join(',')];
     for (const r of this._included()) {
       const detector = r.b.manual ? ['', '', '', ''] : [r.b.avg.toFixed(6), r.b.max.toFixed(6), Math.round(r.b.n), Math.round(r.b.cls)];
-      lines.push([r.g.t0.toFixed(6), r.g.t1.toFixed(6), r.g.flo.toFixed(3), r.g.fhi.toFixed(3), ...detector, 'bird',
+      lines.push([r.i + 1, r.g.t0.toFixed(6), r.g.t1.toFixed(6), r.g.flo.toFixed(3), r.g.fhi.toFixed(3), ...detector, 'bird',
         csvField(this._sciName(r.sp.s)), csvField(r.sp.s === AVES ? '' : catalog.en[r.sp.s]), r.sp.p == null ? '' : r.sp.p.toFixed(6), csvField(r.edit.soundType)].join(','));
     }
     downloadFile(`${this._baseName()}.BirdBox.csv`, `${lines.join('\n')}\n`, 'text/csv;charset=utf-8');
@@ -854,8 +929,8 @@ export class BirdBoxTab {
 
   _exportRaven() {
     const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
-    this._included().forEach((r, k) => {
-      lines.push([k + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
+    this._included().forEach(r => {
+      lines.push([r.i + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
     });
     downloadFile(`${this._baseName()}.BirdBox.selections.txt`, `${lines.join('\n')}\n`);
   }

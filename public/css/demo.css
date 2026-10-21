@@ -815,6 +815,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-pane .bb-select:hover { border-color: var(--demo-border); background-color: #fff; }
 .demo-pane .bb-select:focus { border-color: #86b7fe; background-color: #fff; }
 .bb-c-sound .bb-select { color: #475569; }
+.bb-c-sound .bb-select.is-unset { color: #94a3b8; font-style: italic; }
+.bb-table-check .bb-c-sound .bb-select.is-unset { border-color: #dc3545; }
 
 @media (min-width: 576px) {
   .demo-table { table-layout: fixed; }
@@ -843,6 +845,10 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .bb-swatch.is-detected { border-color: #22d3ee; }
 .bb-swatch.is-drawn { border-color: #fbbf24; }
 .bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
+
+/* Xeno-canto export form */
+.bb-xc fieldset legend { margin-bottom: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--demo-muted); }
+#bb-xc-check ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
 
 .bb-toggle { width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; }
 .bb-toggle:hover { background: #f1f5f9; color: #0f172a; }
