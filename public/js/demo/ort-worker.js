@@ -82,8 +82,9 @@ async function runBirdbox(msg) {
     conf: new ort.Tensor('float32', Float32Array.of(msg.conf), [1]),
     song_gap: new ort.Tensor('float32', Float32Array.of(msg.songGap), [1]),
   };
-  const out = await session.run(feeds);
-  const tensor = out[session.outputNames[0]];
+  // Only the per-window boxes: the graph's own fusion step is skipped
+  const out = await session.run(feeds, [config.output]);
+  const tensor = out[config.output];
   const detections = own(tensor.data);
   return [{ detections, rows: tensor.dims[0] || 0 }, [detections.buffer]];
 }

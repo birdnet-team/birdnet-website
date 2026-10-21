@@ -338,17 +338,17 @@ permalink: "/demo/"
           <div class="mb-3">
             <label for="bb-conf" class="form-label small fw-medium mb-1 d-flex justify-content-between">
               <span><span data-i18n="demo.bb.conf">Confidence threshold</span></span>
-              <span id="bb-conf-val" class="text-primary fw-semibold">0.18</span>
+              <span id="bb-conf-val" class="text-primary fw-semibold">0.15</span>
             </label>
-            <input type="range" class="form-range" id="bb-conf" min="0.05" max="0.8" step="0.01" value="0.18">
+            <input type="range" class="form-range" id="bb-conf" min="0.05" max="0.8" step="0.01" value="0.15">
           </div>
           <div class="mb-3">
             <label for="bb-gap" class="form-label small fw-medium mb-1 d-flex justify-content-between">
-              <span><span data-i18n="demo.bb.gap">Song gap</span></span>
-              <span id="bb-gap-val" class="text-primary fw-semibold">0.10 s</span>
+              <span><span data-i18n="demo.bb.gap">Phrase gap</span></span>
+              <span id="bb-gap-val" class="text-primary fw-semibold">0.05 s</span>
             </label>
-            <input type="range" class="form-range" id="bb-gap" min="0" max="2" step="0.01" value="0.1">
-            <div class="form-text mt-0" data-i18n="demo.bb.gapHelp">Boxes of one song closer than this are merged.</div>
+            <input type="range" class="form-range" id="bb-gap" min="0" max="1" step="0.01" value="0.05">
+            <div class="form-text mt-0" data-i18n="demo.bb.gapHelp">Calls in the same frequency band closer than this are joined into one phrase box. 0 keeps single calls.</div>
           </div>
           <div class="form-check form-switch mb-2">
             <input class="form-check-input" type="checkbox" role="switch" id="bb-suggest" checked>
@@ -440,7 +440,7 @@ permalink: "/demo/"
   </div>
 
   <p class="demo-hint demo-hint-end">
-    <span data-i18n="demo.bb.hint">BirdBox Just-Bird finds bird vocalizations as time-frequency boxes. One 53 MB ONNX graph computes the PCEN spectrogram, runs the detector and merges boxes into songs; BirdNET V3.0 suggests the species. Exports Xeno-canto Annota-JSON.</span>
+    <span data-i18n="demo.bb.hint">BirdBox Just-Bird finds bird vocalizations as time-frequency boxes. One 35 MB ONNX graph computes the PCEN spectrogram and runs the detector, calls can be joined into phrases; BirdNET V3.0 suggests the species. Exports Xeno-canto Annota-JSON.</span>
     <a href="https://birdnet-team.github.io/BirdBox/" target="_blank" rel="noopener" data-i18n="demo.bb.linkDocs">Documentation</a> ·
     <a href="https://github.com/birdnet-team/BirdBox" target="_blank" rel="noopener">GitHub</a>
     <span id="bb-model-chip" class="demo-status"></span>

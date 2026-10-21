@@ -1,18 +1,18 @@
 /**
  * BirdBox tab: bird vocalization bounding boxes with the BirdBox Just-Bird
- * ONNX graph (PCEN, YOLO, NMS and song merging run inside the model).
+ * ONNX graph (PCEN, YOLO and NMS run inside the model).
  *
- * The graph runs once per recording at the lowest confidence with song
- * merging disabled. Because NMS only lets higher-scoring boxes suppress
- * lower ones, filtering those raw boxes by confidence and merging them with
- * the same rule as the graph reproduces any (confidence, song gap) setting
- * exactly, so both sliders update instantly. BirdNET V3.0 suggests a species
- * for every box; the boxes export as Xeno-canto Annota-JSON.
+ * The graph runs once per recording at the lowest confidence and returns its
+ * per-window boxes. birdbox-fusion.js merges them exactly like the graph's
+ * window fusion for any (confidence, phrase gap) setting, so both sliders
+ * update instantly. BirdNET V3.0 suggests a species for every box; the
+ * boxes export as Xeno-canto Annota-JSON.
  *
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
  */
 import { AudioSource, parseXcNumber } from './audio-source.js';
+import { fuseBoxes } from './birdbox-fusion.js';
 import { csvField, debounce, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
@@ -25,7 +25,6 @@ import { SR, v3 } from './v3-service.js';
 import { streamSpectrogram, thumb } from './v3-tab.js';
 
 const RAW_CONF = 0.05;        // lowest slider value
-const NO_MERGE = -1e6;        // song_gap that never merges
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const MS_PER_CLIP_KEY = 'birdnet-demo-birdbox-ms';
 const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
@@ -38,34 +37,7 @@ const MIN_DUR = 0.05;         // smallest box: seconds
 const MIN_BAND = 100;         // smallest box: Hz
 
 const $ = id => document.getElementById(id);
-const f32 = Math.fround;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-/** Merge raw boxes into songs exactly like the BirdBox graph (float32). */
-export function reconstructSongs(raw, rows, conf, gap) {
-  const c = f32(conf), g = f32(gap), idx = [];
-  for (let r = 0; r < rows; r++) if (raw[r * 8 + 4] >= c) idx.push(r);
-  if (!idx.length) return [];
-  const key = r => f32(f32(raw[r * 8 + 7] * 1e6) + raw[r * 8]);
-  idx.sort((a, b) => key(a) - key(b));
-  const songs = [];
-  const row = r => raw.subarray(r * 8, r * 8 + 8);
-  let d = row(idx[0]);
-  let st = [d[0], d[1], d[2], d[3], d[4], d[4], 1, d[7]];
-  for (let i = 1; i < idx.length; i++) {
-    d = row(idx[i]);
-    if (d[7] === st[7] && f32(d[0] - st[1]) <= g) {
-      st = [st[0], Math.max(st[1], d[1]), Math.min(st[2], d[2]), Math.max(st[3], d[3]), f32(st[4] + d[4]), Math.max(st[5], d[4]), f32(st[6] + 1), st[7]];
-    } else {
-      songs.push(st);
-      st = [d[0], d[1], d[2], d[3], d[4], d[4], 1, d[7]];
-    }
-  }
-  songs.push(st);
-  return songs
-    .map(s => ({ t0: s[0], t1: s[1], flo: s[2], fhi: s[3], avg: f32(s[4] / s[6]), max: s[5], n: s[6], cls: s[7] }))
-    .sort((a, b) => a.t0 - b.t0);
-}
 
 /** 3 s V3.0 windows covering a box (centered for short boxes). */
 function suggestionWindows(t0, t1, duration) {
@@ -101,7 +73,7 @@ class BirdBoxService {
         this.manifest = m;
         const model = await fetchAsset(m.model, onProgress);
         this.pool = new OrtPool({ name: 'birdbox', size: 1 });
-        await this.pool.start(model, {});
+        await this.pool.start(model, { output: m.output });
         return this;
       })();
       this.ready.catch(() => { this.ready = null; });
@@ -113,7 +85,8 @@ class BirdBoxService {
   async detect(audio) {
     const pool = this.busy = this.pool;
     try {
-      return await pool.run('birdbox', { audio, conf: RAW_CONF, songGap: NO_MERGE }, [audio.buffer]);
+      // song_gap only feeds the graph's fusion step, which this run skips
+      return await pool.run('birdbox', { audio, conf: RAW_CONF, songGap: 0 }, [audio.buffer]);
     } finally {
       if (this.busy === pool) this.busy = null;
     }
@@ -211,7 +184,7 @@ export class BirdBoxTab {
     const conf = $('bb-conf'), gap = $('bb-gap');
     const sync = () => {
       $('bb-conf-val').textContent = fmtNumber(+conf.value, 2);
-      $('bb-gap-val').textContent = `${fmtNumber(+gap.value, 2)} s`;
+      $('bb-gap-val').textContent = +gap.value > 0 ? `${fmtNumber(+gap.value, 2)} s` : t('demo.bb.gapOff', 'off');
     };
     sync();
     conf.addEventListener('input', () => { sync(); this._update(); });
@@ -454,7 +427,7 @@ export class BirdBoxTab {
 
   _update() {
     const conf = +$('bb-conf').value, gap = +$('bb-gap').value;
-    this.songs = this.raw ? reconstructSongs(this.raw.data, this.raw.rows, conf, gap) : [];
+    this.songs = this.raw ? fuseBoxes(this.raw.data, this.raw.rows, conf, gap) : [];
     this.songs.forEach(b => { b.id = boxKey(b); });
     this._refresh();
   }
@@ -918,7 +891,8 @@ export class BirdBoxTab {
       };
     });
     const suggested = rows.some(r => r.sp.s !== AVES && r.edit.auto);
-    const settings = `confidence ≥ ${(+$('bb-conf').value).toFixed(2)}, song gap ${(+$('bb-gap').value).toFixed(2)} s`;
+    const gap = +$('bb-gap').value;
+    const settings = `confidence > ${(+$('bb-conf').value).toFixed(2)}, phrase gap ${gap > 0 ? `${gap.toFixed(2)} s` : 'off'}`;
     const payload = {
       set_source: '',
       set_uri: '',

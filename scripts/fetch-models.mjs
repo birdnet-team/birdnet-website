@@ -15,6 +15,8 @@
  *                         as an extra graph output (weights untouched)
  *   geo/head.bin          fp16 weights + bias of the final species layer
  *   geo/labels.json       geomodel output index -> V3 label index
+ *   birdbox/<model>.onnx  BirdBox graph with its per-window boxes (before
+ *                         window fusion) exposed as an extra graph output
  *   manifest.json         sizes and SHA-256 of everything the demo loads
  *
  * Usage: node scripts/fetch-models.mjs [--force]
@@ -33,7 +35,7 @@ const FORCE = process.argv.includes('--force');
 
 // Pinned upstream sources. Bump the commit (and the expected hashes) to update.
 const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: 'c1381ac4789daee1fa5f5f30f80ec6329903e4fb' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '9aebee76cdd91d51e17a02e13e8f764549f97ff4' };
 
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 // Git LFS objects are served from media.githubusercontent.com
@@ -43,7 +45,8 @@ const V3_MODEL = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_FP16.onnx';
 const V3_LABELS = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_Labels.csv';
 const GEO_MODEL = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_FP16.onnx';
 const GEO_LABELS = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_Labels.txt';
-const BIRDBOX_MODEL = 'Just-Bird_fp32.onnx';
+const BIRDBOX_MODEL = 'Just-Bird_fp16.onnx';
+const BIRDBOX_RAW = 'raw_all';   // per-window boxes, the input of the graph's window fusion
 
 const FILES = {
   v3Model: { url: lfs(LIVE_APP, `assets/models/${V3_MODEL}`), name: V3_MODEL, sha256: '306e74f3edc5b95acc6e87ea7f3f1c701fdc0b18ec868b7615208cd6fc2f9457' },
@@ -51,7 +54,7 @@ const FILES = {
   geoModel: { url: lfs(LIVE_APP, `assets/models/${GEO_MODEL}`), name: GEO_MODEL, sha256: '198adb7bcb3cf03341ffa51fbfa7b2d295e5cd900ba09183dcfdbf6d12b5c63b' },
   geoLabels: { url: raw(LIVE_APP, `assets/models/${GEO_LABELS}`), name: GEO_LABELS },
   taxonomy: { url: raw(LIVE_APP, 'assets/models/taxonomy.csv'), name: 'taxonomy.csv' },
-  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: 'bb215c7f532b4609f4c05325df476479d4454d6d73aa2e2c087cace6b72b22fc' },
+  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '132d08f0888b4f4ad834ad968545fe412f952253cee11dec9386fada33c34787' },
 };
 
 // Species name languages shipped with the demo (taxonomy.csv column suffix).
@@ -215,13 +218,10 @@ function patchGeomodel(model) {
   const graphField = [...fields(model)].find(f => f.field === 7);
   if (!graphField) throw new Error('Geomodel: no graph in ModelProto');
   const graph = model.subarray(graphField.valueStart, graphField.valueEnd);
-  const nodes = [], tensors = new Map(), outputs = [];
+  const nodes = [], tensors = new Map();
   for (const f of fields(graph)) {
     if (f.field === 1) nodes.push(parseNode(graph, f));
     else if (f.field === 5) { const t = parseTensor(graph, f); tensors.set(t.name, t); }
-    else if (f.field === 12) {
-      for (const g of fields(graph, f.valueStart, f.valueEnd)) if (g.field === 1) outputs.push(str(graph, g));
-    }
   }
   const sigmoid = nodes.filter(n => n.op === 'Sigmoid');
   if (sigmoid.length !== 1) throw new Error(`Geomodel: expected one Sigmoid, found ${sigmoid.length}`);
@@ -232,22 +232,38 @@ function patchGeomodel(model) {
   const FLOAT16 = 10;
   if (!W?.raw || !B?.raw || W.dataType !== FLOAT16 || B.dataType !== FLOAT16) throw new Error('Geomodel: unexpected head weight layout');
   const [numSpecies, featureDim] = W.dims;
-  if (outputs.includes(featureName)) return { model, featureName, numSpecies, featureDim, head: Buffer.concat([W.raw, B.raw]) };
+  const patched = addGraphOutput(model, featureName, FLOAT16, ['batch', featureDim]);
+  return { model: patched, featureName, numSpecies, featureDim, head: Buffer.concat([W.raw, B.raw]) };
+}
 
-  // ValueInfoProto { name, type: TypeProto { tensor_type { elem_type, shape { dim[batch], dim[featureDim] } } } }
-  const shape = Buffer.concat([
-    lenField(1, lenField(2, Buffer.from('batch'))),
-    lenField(1, varintField(1, featureDim)),
-  ]);
-  const tensorType = Buffer.concat([varintField(1, FLOAT16), lenField(2, shape)]);
-  const valueInfo = Buffer.concat([lenField(1, Buffer.from(featureName)), lenField(2, lenField(1, tensorType))]);
+/**
+ * Declare an existing top-level tensor of the graph as an additional output.
+ * dims entries are symbolic names (string) or fixed sizes (number).
+ */
+function addGraphOutput(model, name, elemType, dims) {
+  const graphField = [...fields(model)].find(f => f.field === 7);
+  if (!graphField) throw new Error('No graph in ModelProto');
+  const graph = model.subarray(graphField.valueStart, graphField.valueEnd);
+  const produced = new Set(), outputs = [];
+  for (const f of fields(graph)) {
+    if (f.field === 1) parseNode(graph, f).outputs.forEach(o => produced.add(o));
+    else if (f.field === 12) {
+      for (const g of fields(graph, f.valueStart, f.valueEnd)) if (g.field === 1) outputs.push(str(graph, g));
+    }
+  }
+  if (outputs.includes(name)) return model;
+  if (!produced.has(name)) throw new Error(`No top-level tensor named ${name}`);
+
+  // ValueInfoProto { name, type: TypeProto { tensor_type { elem_type, shape { dim... } } } }
+  const shape = Buffer.concat(dims.map(d => lenField(1, typeof d === 'string' ? lenField(2, Buffer.from(d)) : varintField(1, d))));
+  const tensorType = Buffer.concat([varintField(1, elemType), lenField(2, shape)]);
+  const valueInfo = Buffer.concat([lenField(1, Buffer.from(name)), lenField(2, lenField(1, tensorType))]);
   const newGraph = Buffer.concat([graph, lenField(12, valueInfo)]);
-  const patched = Buffer.concat([
+  return Buffer.concat([
     model.subarray(0, graphField.tagStart),
     lenField(7, newGraph),
     model.subarray(graphField.end),
   ]);
-  return { model: patched, featureName, numSpecies, featureDim, head: Buffer.concat([W.raw, B.raw]) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -324,7 +340,10 @@ async function main() {
     v3Index: geoToV3,
   }));
 
-  writeIfChanged(join(DIST, 'birdbox', BIRDBOX_MODEL), readFileSync(paths.birdboxModel));
+  // The demo merges the per-window boxes itself (birdbox-fusion.js), so both
+  // sliders update without another graph run.
+  const FLOAT = 1;
+  writeIfChanged(join(DIST, 'birdbox', BIRDBOX_MODEL), addGraphOutput(readFileSync(paths.birdboxModel), BIRDBOX_RAW, FLOAT, ['num_raw', 9]));
 
   // --- Manifest -----------------------------------------------------------
   const manifest = {
@@ -358,12 +377,14 @@ async function main() {
       defaultThreshold: 0.03,
     },
     birdbox: {
-      name: 'BirdBox Just-Bird (FP32)',
+      name: 'BirdBox Just-Bird (FP16)',
       sampleRate: 32000,
       model: entry(`birdbox/${BIRDBOX_MODEL}`),
       classNames: { 0: 'bird' },
-      defaultConf: 0.18,
-      defaultSongGap: 0.1,
+      output: BIRDBOX_RAW,
+      merge: 'fusion',
+      defaultConf: 0.15,
+      defaultPhraseGap: 0.05,
       clipSeconds: 3,
       clipHopSeconds: 1.5,
     },
