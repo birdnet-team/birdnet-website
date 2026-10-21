@@ -310,7 +310,6 @@ permalink: "/demo/"
         <div id="bb-progress-text" class="small" aria-live="polite"></div>
       </div>
     </div>
-    <div id="bb-truncated" class="alert alert-warning small py-2 mt-3" hidden></div>
 
     <div class="row g-4 mt-1">
       <div class="col-lg-4">
@@ -331,14 +330,6 @@ permalink: "/demo/"
             </label>
             <input type="range" class="form-range" id="bb-gap" min="0" max="2" step="0.01" value="0.1">
             <div class="form-text mt-0" data-i18n="demo.bb.gapHelp">Boxes of one song closer than this are merged.</div>
-          </div>
-          <div class="mb-3">
-            <label for="bb-maxlen" class="form-label small fw-medium mb-1"><span data-i18n="demo.bb.maxlen">Maximum length</span></label>
-            <select id="bb-maxlen" class="form-select form-select-sm">
-              <option value="60" selected>1 min</option>
-              <option value="120">2 min</option>
-              <option value="300">5 min</option>
-            </select>
           </div>
           <div class="form-check form-switch mb-2">
             <input class="form-check-input" type="checkbox" role="switch" id="bb-suggest" checked>

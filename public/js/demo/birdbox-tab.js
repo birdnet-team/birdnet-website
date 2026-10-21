@@ -86,7 +86,7 @@ const timeKey = g => `${g.t0.toFixed(3)}|${g.t1.toFixed(3)}`;
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 
 class BirdBoxService {
-  constructor() { this.ready = null; this.pool = null; }
+  constructor() { this.ready = null; this.pool = null; this.busy = null; }
   ensure(onProgress) {
     if (!this.ready) {
       this.ready = (async () => {
@@ -100,6 +100,23 @@ class BirdBoxService {
       this.ready.catch(() => { this.ready = null; });
     }
     return this.ready;
+  }
+
+  /** One graph run over the whole recording; the graph walks it in 60 s segments. */
+  async detect(audio) {
+    const pool = this.busy = this.pool;
+    try {
+      return await pool.run('birdbox', { audio, conf: RAW_CONF, songGap: NO_MERGE }, [audio.buffer]);
+    } finally {
+      if (this.busy === pool) this.busy = null;
+    }
+  }
+
+  /** Stop a run in progress (it cannot be interrupted); the next run starts a fresh worker. */
+  abort() {
+    if (!this.busy) return;
+    this.busy.terminate();
+    this.busy = this.pool = this.ready = null;
   }
 }
 const birdbox = new BirdBoxService();
@@ -185,7 +202,6 @@ export class BirdBoxTab {
     sync();
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
-    $('bb-maxlen').addEventListener('change', () => this._onAudio());
     $('bb-suggest').addEventListener('change', () => this._update());
     this.location.addEventListener('change', () => { this._resetSuggestions(); this._update(); });
     $('bb-export-xc').addEventListener('click', () => this._exportXc());
@@ -288,6 +304,7 @@ export class BirdBoxTab {
   _onAudio() {
     const audio = shared.audio;
     this.runToken++;
+    birdbox.abort();
     this.raw = null;
     this.songs = [];
     this.userBoxes = [];
@@ -299,12 +316,8 @@ export class BirdBoxTab {
     $('bb-howto').hidden = !!audio;
     $('bb-workspace').hidden = !audio;
     if (!audio) return;
-    const maxSec = +$('bb-maxlen').value;
-    this.pcm = audio.pcm.length > maxSec * SR ? audio.pcm.subarray(0, maxSec * SR) : audio.pcm;
-    this.duration = this.pcm.length / SR;
-    const note = $('bb-truncated');
-    note.hidden = audio.duration <= maxSec;
-    note.textContent = t('demo.bb.truncated', 'Analyzing the first {max} of {total}. Increase the maximum length to cover more.', { max: fmtTime(maxSec), total: fmtTime(audio.duration) });
+    this.pcm = audio.pcm;
+    this.duration = audio.duration;
     const xcInput = $('bb-xcnr');
     const m = audio.name.match(/(?:^|[^A-Za-z0-9])XC[_-]?(\d+)/i);
     xcInput.value = m ? m[1] : '';
@@ -343,22 +356,23 @@ export class BirdBoxTab {
       const t0 = performance.now();
       // ONNX Runtime reports no progress inside one run; pace a counter on the clip grid.
       ticker = setInterval(() => {
-        const frac = Math.min(0.95, (performance.now() - t0) / (clips * msPerClip));
-        this._setProgress(0.3 + 0.7 * frac, t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips }));
+        const elapsed = performance.now() - t0, frac = Math.min(0.95, elapsed / (clips * msPerClip));
+        const left = (clips * msPerClip - elapsed) / 1000;
+        let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips });
+        if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
+        this._setProgress(0.3 + 0.7 * frac, text);
       }, 100);
-      const audio = this.pcm.slice();
-      const res = await birdbox.pool.run('birdbox', { audio, conf: RAW_CONF, songGap: NO_MERGE }, [audio.buffer]);
+      const res = await birdbox.detect(this.pcm.slice());
       const ms = performance.now() - t0;
       try { localStorage.setItem(MS_PER_CLIP_KEY, String(Math.round(ms / clips))); } catch { /* not persisted */ }
       if (token !== this.runToken) return;
       this.raw = { data: res.detections, rows: res.rows, ms };
       this._renderChip();
     } catch (err) {
+      if (token !== this.runToken || err.cancelled) return;
       console.error(err);
-      if (token === this.runToken) {
-        $('bb-error').hidden = false;
-        $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
-      }
+      $('bb-error').hidden = false;
+      $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
     } finally {
       clearInterval(ticker);
       if (token === this.runToken) {
