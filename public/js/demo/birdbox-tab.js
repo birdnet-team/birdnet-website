@@ -28,6 +28,7 @@ const RAW_CONF = 0.05;        // lowest slider value
 const NO_MERGE = -1e6;        // song_gap that never merges
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const MS_PER_CLIP_KEY = 'birdnet-demo-birdbox-ms';
+const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const AVES = -1;
 const FREQ_MAX = 15000;       // top of the spectrogram and of any box
 const MIN_DUR = 0.05;         // smallest box: seconds
@@ -165,10 +166,16 @@ export class BirdBoxTab {
       move: p => this._editMove(p),
       up: (p, commit) => this._editUp(commit),
     };
-    const drawLabel = esc(t('demo.bb.draw', 'Draw a box'));
-    this.spec.tools?.insertAdjacentHTML('afterbegin', `<button type="button" class="btn spec-tool" data-role="draw" aria-pressed="false" title="${drawLabel}" aria-label="${drawLabel}"><i class="bi bi-bounding-box"></i></button>`);
+    const drawLabel = esc(t('demo.bb.draw', 'Draw a box (B)')), helpLabel = esc(t('demo.bb.help.title', 'How to edit boxes'));
+    this.spec.tools?.insertAdjacentHTML('afterbegin', `<button type="button" class="btn spec-tool" data-role="help" aria-expanded="false" aria-controls="bb-help" title="${helpLabel}" aria-label="${helpLabel}"><i class="bi bi-question-circle"></i></button><button type="button" class="btn spec-tool" data-role="draw" aria-pressed="false" title="${drawLabel}" aria-label="${drawLabel}"><i class="bi bi-bounding-box"></i></button>`);
     this.drawBtn = this.spec.tools?.querySelector('[data-role="draw"]');
     this.drawBtn?.addEventListener('click', e => { e.stopPropagation(); this._setDrawMode(!this.drawMode); });
+    this.helpBtn = this.spec.tools?.querySelector('[data-role="help"]');
+    this.helpBtn?.addEventListener('click', e => { e.stopPropagation(); this._showHelp($('bb-help').hidden); });
+    $('bb-help').querySelector('[data-role="close"]').addEventListener('click', () => this._showHelp(false));
+    let helpSeen = false;
+    try { helpSeen = !!localStorage.getItem(HELP_KEY); } catch { /* storage blocked */ }
+    this._showHelp(!helpSeen, false);
     $('bb-sound-default').innerHTML = SOUND_TYPES.map(s => `<option value="${s}"${s === 'call' ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
     this._bind();
     getManifest().then(m => isCached(m.birdbox.model)).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
@@ -233,14 +240,18 @@ export class BirdBoxTab {
         : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b></div>`;
       this.spec.showTooltip(`<div class="tt-time">#${n} · ${fmtTime(g.t0, 2)} – ${fmtTime(g.t1, 2)}</div><div>${fmtNumber(g.flo)}–${fmtNumber(g.fhi)} Hz</div>${origin}${sp.s !== AVES ? `<div class="tt-species mt-1">${thumb(sp.s, 'tt-img')}<span>${esc(catalog.name(sp.s))}${sp.p != null ? ` <b>${fmtPct(sp.p, 0)}</b>` : ''}</span></div>` : ''}`, d.x, d.y);
     });
+    // Editing keys work anywhere on the tab except while typing in a field or a dialog
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && this.visible && (this.drawMode || this.gesture)) this._setDrawMode(false);
-    });
-    this.spec.main.addEventListener('keydown', e => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) {
-        this._removeBox(this.boxes.find(b => b.id === this.selectedId));
-        e.preventDefault();
-      }
+      if (!this.visible || !this.raw || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest?.('input, select, textarea, [contenteditable], .modal')) return;
+      if (e.key === 'Escape') {
+        if (this.drawMode || this.gesture) this._setDrawMode(false);
+        else if (this.selectedId != null) this._select(null);
+        else return;
+      } else if (e.key === 'b' || e.key === 'B') this._setDrawMode(!this.drawMode);
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) this._removeBox(this.boxes.find(b => b.id === this.selectedId));
+      else return;
+      e.preventDefault();
     });
 
     const table = $('bb-table');
@@ -280,6 +291,25 @@ export class BirdBoxTab {
       this.spec.render();
     });
     $('bb-sound-default').addEventListener('change', () => this._renderTable());
+  }
+
+  _showHelp(show, remember = true) {
+    $('bb-help').hidden = !show;
+    this.helpBtn?.classList.toggle('active', show);
+    this.helpBtn?.setAttribute('aria-expanded', String(show));
+    if (!show && remember) try { localStorage.setItem(HELP_KEY, '1'); } catch { /* not persisted */ }
+  }
+
+  /** What the pointer does right now, under the spectrogram. */
+  _renderHint() {
+    const el = $('bb-edit-hint');
+    if (!el) return;
+    let text;
+    if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here when detection is done.');
+    else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
+    else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · Delete removes it · Esc deselects');
+    else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
+    el.textContent = text;
   }
 
   _renderChip() {
@@ -398,6 +428,7 @@ export class BirdBoxTab {
     this.spec.main.classList.toggle('is-editing', this.drawMode || this.selectedId != null);
     this._renderSummary();
     this._renderTable();
+    this._renderHint();
     this.spec.render();
     if (this.raw && $('bb-suggest').checked) this.suggestSoon();
   }
@@ -531,6 +562,7 @@ export class BirdBoxTab {
     this.drawBtn?.setAttribute('aria-pressed', String(on));
     this.spec.main.classList.toggle('is-editing', on || this.selectedId != null);
     if (on) { this.hoverId = null; this.spec.showTooltip(null); }
+    this._renderHint();
     this.spec.render();
   }
 
@@ -701,6 +733,7 @@ export class BirdBoxTab {
       if (g.t0 < this.spec.view.t0 || g.t1 > this.spec.view.t1) this.spec.setView(g.t0 - span * 0.3, g.t0 - span * 0.3 + span);
       if (play) player.play(Math.max(0, g.t0 - 0.15), g.t1 + 0.15);
     }
+    this._renderHint();
     this.spec.render();
   }
 

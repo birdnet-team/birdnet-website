@@ -300,10 +300,27 @@ permalink: "/demo/"
       <div id="bb-spec"></div>
       <div class="demo-viewer-foot">
         <div class="small demo-viewer-hint">
-          <span data-i18n="demo.bb.specHint">Click a box to play and select it · drag to move or resize · add boxes with the box tool</span>
+          <span id="bb-edit-hint" class="bb-edit-hint" aria-live="polite"></span>
           <span><i class="bi bi-sliders2" aria-hidden="true"></i> <span data-i18n="demo.spec.settingsHint">Change colors, brightness and frequency scale</span></span>
         </div>
         <div class="spec-tools-host"></div>
+      </div>
+      <div id="bb-help" class="bb-help" hidden>
+        <button type="button" class="btn-close btn-close-white" data-role="close" aria-label="Close" data-i18n-aria="demo.bb.help.close"></button>
+        <dl>
+          <dt data-i18n="demo.bb.help.selectT">Select and listen</dt>
+          <dd data-i18n="demo.bb.help.select">Click a box on the spectrogram or its number in the table.</dd>
+          <dt data-i18n="demo.bb.help.moveT">Move and resize</dt>
+          <dd data-i18n="demo.bb.help.move">Drag a selected box to move it; drag its edges or corners to resize it.</dd>
+          <dt data-i18n="demo.bb.help.drawT">Draw a box</dt>
+          <dd><span data-i18n="demo.bb.help.draw1">Turn on the box tool</span> <i class="bi bi-bounding-box" aria-hidden="true"></i> <span data-i18n="demo.bb.help.draw2">or press B, then drag across the sound.</span></dd>
+          <dt data-i18n="demo.bb.help.removeT">Remove</dt>
+          <dd data-i18n="demo.bb.help.remove">Press Delete or use × in the table. Detected boxes turn dashed and can be restored; drawn ones can be undone.</dd>
+          <dt data-i18n="demo.bb.help.navT">Zoom and scroll</dt>
+          <dd data-i18n="demo.bb.help.nav">Ctrl + wheel or pinch zooms, Shift + wheel or dragging the background scrolls, Space plays.</dd>
+          <dt data-i18n="demo.bb.help.colorsT">Colors</dt>
+          <dd><span class="bb-swatch is-detected"></span><span data-i18n="demo.bb.help.detected">detected</span> <span class="bb-swatch is-drawn"></span><span data-i18n="demo.bb.help.drawn">drawn by you</span> <span class="bb-swatch is-removed"></span><span data-i18n="demo.bb.help.removed">removed</span></dd>
+        </dl>
       </div>
       <div id="bb-progress" class="demo-progress" hidden>
         <div class="progress" role="progressbar" aria-label="Detection progress" data-i18n-aria="demo.bb.progressAria"><div class="progress-bar" style="width:0%"></div></div>

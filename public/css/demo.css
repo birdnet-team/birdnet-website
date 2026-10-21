@@ -825,6 +825,25 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   .demo-table .bb-c-toggle { width: 3.2rem; }
 }
 
+/* Editing help under the BirdBox spectrogram */
+.demo-viewer-hint > .bb-edit-hint { color: rgba(226, 232, 240, 0.85); }
+@media (max-width: 575.98px) {
+  .demo-viewer-hint:has(.bb-edit-hint) { visibility: visible; }
+  .demo-viewer-hint > .bb-edit-hint { white-space: normal; }
+}
+.bb-help { position: relative; padding: 0.75rem 2.5rem 0.8rem 0.9rem; border-top: 1px solid rgba(255, 255, 255, 0.06); color: rgba(226, 232, 240, 0.85); font-size: 0.8rem; line-height: 1.45; }
+.bb-help .btn-close { position: absolute; top: 0.6rem; right: 0.7rem; width: 0.6rem; height: 0.6rem; }
+.bb-help dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+.bb-help dt { font-weight: 600; color: #fff; }
+.bb-help dd { margin: 0; }
+.bb-help dd .bi { color: #22d3ee; }
+@media (max-width: 575.98px) { .bb-help dl { grid-template-columns: 1fr; gap: 0 0; } .bb-help dd { margin-bottom: 0.4rem; } }
+.bb-swatch { display: inline-block; width: 0.85rem; height: 0.6rem; margin: 0 0.3rem 0 0.15rem; border: 2px solid; border-radius: 1px; vertical-align: -0.05rem; }
+.bb-swatch:not(:first-child) { margin-left: 0.75rem; }
+.bb-swatch.is-detected { border-color: #22d3ee; }
+.bb-swatch.is-drawn { border-color: #fbbf24; }
+.bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
+
 .bb-toggle { width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; }
 .bb-toggle:hover { background: #f1f5f9; color: #0f172a; }
 
