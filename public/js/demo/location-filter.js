@@ -46,7 +46,7 @@ export class LocationFilter extends EventTarget {
   _bind() {
     const update = patch => {
       const cur = shared.location || { enabled: false, lat: NaN, lon: NaN, date: today() };
-      shared.setLocation({ ...cur, ...patch });
+      shared.setLocation({ ...cur, ...patch, from: null });   // now the person's own, not the recording's
     };
     this.$('enable').addEventListener('change', e => update({ enabled: e.target.checked }));
     const coords = () => update({ lat: parseFloat(this.$('lat').value), lon: parseFloat(this.$('lon').value) });
@@ -100,7 +100,7 @@ export class LocationFilter extends EventTarget {
       badge.textContent = t('demo.settings.locationActive', 'Active');
       this.$('summary').innerHTML = esc(t('demo.location.summary', '{lat}°, {lon}° · {week}', {
         lat: fmtNumber(loc.lat, 2), lon: fmtNumber(loc.lon, 2), week: weekLabel(locationWeek(loc)),
-      }));
+      })) + (loc.from ? ` · ${esc(loc.from)}` : '');
     }
     this.dispatchEvent(new Event('change'));
   }

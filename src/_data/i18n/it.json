@@ -1006,6 +1006,8 @@
   "demo.source.xcInvalid": "Inserisci un numero Xeno-canto come XC1059662 o incolla il link della registrazione.",
   "demo.source.xcLabel": "oppure carica da Xeno-canto",
   "demo.source.xcLoad": "Carica",
+  "demo.source.xcLocation": "I suggerimenti di specie ora usano luogo e data di XC{nr}: {place}.",
+  "demo.source.xcLocationOff": "Il filtro di luogo è disattivato: proveniva da {from} e questa registrazione non ha un luogo.",
   "demo.source.xcNetwork": "Impossibile caricare XC{nr} da Xeno-canto. Puoi scaricarla lì e aprire il file qui:",
   "demo.source.xcNotFound": "Xeno-canto non ha una registrazione XC{nr} scaricabile.",
   "demo.source.xcOpen": "Apri XC{nr} su Xeno-canto",

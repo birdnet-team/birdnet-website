@@ -998,6 +998,8 @@
   "demo.source.xcInvalid": "Geben Sie eine Xeno-canto-Nummer wie XC1059662 ein oder fügen Sie den Link zur Aufnahme ein.",
   "demo.source.xcLabel": "oder von Xeno-canto laden",
   "demo.source.xcLoad": "Laden",
+  "demo.source.xcLocation": "Artvorschläge nutzen jetzt Ort und Datum von XC{nr}: {place}.",
+  "demo.source.xcLocationOff": "Der Ortsfilter ist aus: Er gehörte zu {from}, und diese Aufnahme hat keinen Ort.",
   "demo.source.xcNetwork": "XC{nr} konnte nicht von Xeno-canto geladen werden. Sie können die Aufnahme dort herunterladen und hier als Datei öffnen:",
   "demo.source.xcNotFound": "Xeno-canto hat keine herunterladbare Aufnahme XC{nr}.",
   "demo.source.xcOpen": "XC{nr} auf Xeno-canto öffnen",

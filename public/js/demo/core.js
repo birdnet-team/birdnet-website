@@ -188,7 +188,7 @@ class Store extends EventTarget {
   constructor() {
     super();
     this.audio = null;     // { name, pcm, duration, url, isSample, sourceRate, channels }
-    this.location = null;  // { lat, lon }
+    this.location = null;  // { enabled, lat, lon, date, from }: from names the recording it came from
   }
   setAudio(audio) {
     this.audio = audio;

@@ -1006,6 +1006,8 @@
   "demo.source.xcInvalid": "请输入 Xeno-canto 编号（如 XC1059662），或粘贴录音链接。",
   "demo.source.xcLabel": "或从 Xeno-canto 加载",
   "demo.source.xcLoad": "加载",
+  "demo.source.xcLocation": "物种建议现在使用 XC{nr} 的录制地点和日期：{place}。",
+  "demo.source.xcLocationOff": "位置筛选已关闭：它来自 {from}，而这条录音没有位置信息。",
   "demo.source.xcNetwork": "无法从 Xeno-canto 加载 XC{nr}。你可以在那里下载录音，然后在这里打开文件：",
   "demo.source.xcNotFound": "Xeno-canto 上没有可下载的录音 XC{nr}。",
   "demo.source.xcOpen": "在 Xeno-canto 上打开 XC{nr}",

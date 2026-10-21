@@ -1006,6 +1006,8 @@
   "demo.source.xcInvalid": "Введите номер Xeno-canto, например XC1059662, или вставьте ссылку на запись.",
   "demo.source.xcLabel": "или загрузите с Xeno-canto",
   "demo.source.xcLoad": "Загрузить",
+  "demo.source.xcLocation": "Подсказки видов теперь учитывают место и дату записи XC{nr}: {place}.",
+  "demo.source.xcLocationOff": "Фильтр по месту выключен: он относился к {from}, а у этой записи нет места.",
   "demo.source.xcNetwork": "Не удалось загрузить XC{nr} с Xeno-canto. Вы можете скачать запись там и открыть файл здесь:",
   "demo.source.xcNotFound": "На Xeno-canto нет доступной для скачивания записи XC{nr}.",
   "demo.source.xcOpen": "Открыть XC{nr} на Xeno-canto",

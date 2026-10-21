@@ -1006,6 +1006,8 @@
   "demo.source.xcInvalid": "Escreve um número do Xeno-canto como XC1059662 ou cola a ligação da gravação.",
   "demo.source.xcLabel": "ou carrega do Xeno-canto",
   "demo.source.xcLoad": "Carregar",
+  "demo.source.xcLocation": "As sugestões de espécies usam agora o local e a data de XC{nr}: {place}.",
+  "demo.source.xcLocationOff": "O filtro de local está desligado: vinha de {from} e esta gravação não tem local.",
   "demo.source.xcNetwork": "Não foi possível carregar XC{nr} do Xeno-canto. Podes descarregá-la lá e abrir o ficheiro aqui:",
   "demo.source.xcNotFound": "O Xeno-canto não tem uma gravação XC{nr} para descarregar.",
   "demo.source.xcOpen": "Abrir XC{nr} no Xeno-canto",
