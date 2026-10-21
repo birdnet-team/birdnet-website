@@ -12,6 +12,13 @@
         <button type="button" class="btn btn-outline-danger btn-sm" data-role="record"><i class="bi bi-mic me-1"></i><span data-i18n="demo.source.record">Record</span></button>
         <button type="button" class="btn btn-link btn-sm text-muted" data-role="back" hidden><span data-i18n="demo.source.back">Keep current file</span></button>
       </div>
+      <form class="demo-xc" data-role="xc-form" novalidate>
+        <label class="small text-muted" for="{{ id }}-xc" data-i18n="demo.source.xcLabel">or load from Xeno-canto</label>
+        <div class="input-group input-group-sm">
+          <input type="text" class="form-control" id="{{ id }}-xc" data-role="xc" placeholder="XC1059662" autocomplete="off" spellcheck="false">
+          <button type="submit" class="btn btn-outline-primary"><i class="bi bi-cloud-download me-1"></i><span data-i18n="demo.source.xcLoad">Load</span></button>
+        </div>
+      </form>
       <input type="file" accept="audio/*,.wav,.flac,.mp3,.ogg,.opus,.m4a,.aac,.webm" hidden data-role="input">
     </div>
     <div data-role="recording" class="demo-drop-recording" hidden>
@@ -31,7 +38,7 @@
     <button type="button" class="btn btn-primary demo-play" data-role="play" aria-label="Play" data-i18n-aria="demo.player.play"><i class="bi bi-play-fill"></i></button>
     <i data-role="icon" class="bi bi-file-earmark-music text-primary fs-5"></i>
     <div class="min-width-0 flex-grow-1">
-      <div class="fw-semibold text-truncate" data-role="name"></div>
+      <div class="fw-semibold text-truncate"><span data-role="name"></span><a data-role="xc-link" class="demo-xc-link" target="_blank" rel="noopener" hidden><i class="bi bi-box-arrow-up-right"></i></a></div>
       <div class="small text-muted text-truncate" data-role="meta"></div>
     </div>
     <span class="small text-muted font-monospace d-none d-sm-inline" data-role="time">0:00 / 0:00</span>

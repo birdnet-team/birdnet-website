@@ -177,6 +177,11 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   line-height: 1;
 }
 
+.demo-xc { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.35rem 0.6rem; margin-top: 0.9rem; }
+.demo-xc .input-group { width: auto; flex-wrap: nowrap; }
+.demo-xc .form-control { width: 11rem; flex: 0 1 auto; }
+.demo-xc-link { margin-left: 0.4rem; font-size: 0.8rem; text-decoration: none; }
+
 .demo-source-status:empty { display: none; }
 .demo-source-status { margin-top: 0.5rem; text-align: center; color: var(--demo-muted); }
 
