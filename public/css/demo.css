@@ -177,6 +177,11 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   line-height: 1;
 }
 
+.demo-xc { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.35rem 0.6rem; margin-top: 0.9rem; }
+.demo-xc .input-group { width: auto; flex-wrap: nowrap; }
+.demo-xc .form-control { width: 11rem; flex: 0 1 auto; }
+.demo-xc-link { margin-left: 0.4rem; font-size: 0.8rem; text-decoration: none; }
+
 .demo-source-status:empty { display: none; }
 .demo-source-status { margin-top: 0.5rem; text-align: center; color: var(--demo-muted); }
 
@@ -810,6 +815,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-pane .bb-select:hover { border-color: var(--demo-border); background-color: #fff; }
 .demo-pane .bb-select:focus { border-color: #86b7fe; background-color: #fff; }
 .bb-c-sound .bb-select { color: #475569; }
+.bb-c-sound .bb-select.is-unset { color: #94a3b8; font-style: italic; }
+.bb-table-check .bb-c-sound .bb-select.is-unset { border-color: #dc3545; }
 
 @media (min-width: 576px) {
   .demo-table { table-layout: fixed; }
@@ -817,11 +824,42 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   .demo-table .bb-c-time { width: 8.4rem; }
   .demo-table .bb-c-conf { width: 3.8rem; }
   .demo-table .bb-c-sound { width: 8.5rem; }
-  .demo-table .bb-c-toggle { width: 3.2rem; }
+  .demo-table .bb-c-toggle { width: 4.3rem; }
+  .demo-table .bb-c-toggle .bb-verify, .demo-table .bb-c-toggle .bb-toggle { width: 1.7rem; }
 }
+
+/* Editing help under the BirdBox spectrogram */
+.demo-viewer-hint > .bb-edit-hint { color: rgba(226, 232, 240, 0.85); }
+@media (max-width: 575.98px) {
+  .demo-viewer-hint:has(.bb-edit-hint) { visibility: visible; }
+  .demo-viewer-hint > .bb-edit-hint { white-space: normal; }
+}
+.bb-help { position: relative; padding: 0.75rem 2.5rem 0.8rem 0.9rem; border-top: 1px solid rgba(255, 255, 255, 0.06); color: rgba(226, 232, 240, 0.85); font-size: 0.8rem; line-height: 1.45; }
+.bb-help .btn-close { position: absolute; top: 0.6rem; right: 0.7rem; width: 0.6rem; height: 0.6rem; }
+.bb-help dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+.bb-help dt { font-weight: 600; color: #fff; }
+.bb-help dd { margin: 0; }
+.bb-help dd .bi { color: #22d3ee; }
+@media (max-width: 575.98px) { .bb-help dl { grid-template-columns: 1fr; gap: 0 0; } .bb-help dd { margin-bottom: 0.4rem; } }
+.bb-swatch { display: inline-block; width: 0.85rem; height: 0.6rem; margin: 0 0.3rem 0 0.15rem; border: 2px solid; border-radius: 1px; vertical-align: -0.05rem; }
+.bb-swatch:not(:first-child) { margin-left: 0.75rem; }
+.bb-swatch.is-detected { border-color: #22d3ee; }
+.bb-swatch.is-verified { border-color: #4ade80; }
+.bb-swatch.is-drawn { border-color: #fbbf24; }
+.bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
+
+/* Xeno-canto export form */
+.bb-xc fieldset legend { margin-bottom: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--demo-muted); }
+#bb-xc-check ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
 
 .bb-toggle { width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; }
 .bb-toggle:hover { background: #f1f5f9; color: #0f172a; }
+.bb-c-toggle { white-space: nowrap; }
+.bb-verify { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; font-size: 1rem; vertical-align: middle; }
+button.bb-verify:hover { background: #f0fdf4; color: #16a34a; }
+.bb-verify.is-on { color: #16a34a; }
+.bb-verify.is-drawn { color: #d97706; }
+.demo-table tbody tr.is-excluded .bb-verify { opacity: 0.4; }
 
 /* Phones: each box becomes a two-line row */
 @media (max-width: 575.98px) {

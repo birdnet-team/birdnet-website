@@ -12,7 +12,7 @@
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
  */
-import { AudioSource } from './audio-source.js';
+import { AudioSource, parseXcNumber } from './audio-source.js';
 import { csvField, debounce, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
@@ -28,7 +28,11 @@ const RAW_CONF = 0.05;        // lowest slider value
 const NO_MERGE = -1e6;        // song_gap that never merges
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const MS_PER_CLIP_KEY = 'birdnet-demo-birdbox-ms';
+const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
+const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
+const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
 const AVES = -1;
+const SPECIES_MIN = 0.35;     // weaker suggestions leave a box unidentified; they stay in its species list
 const FREQ_MAX = 15000;       // top of the spectrogram and of any box
 const MIN_DUR = 0.05;         // smallest box: seconds
 const MIN_BAND = 100;         // smallest box: Hz
@@ -79,6 +83,9 @@ function suggestionWindows(t0, t1, duration) {
   return out;
 }
 
+/** Xeno-canto contributor ID from the ID itself or a xeno-canto.org/contributor/… link. */
+const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/[/?#].*$/, '');
+
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
 /** Species suggestions depend only on the time span (the windows cover all frequencies). */
@@ -86,7 +93,7 @@ const timeKey = g => `${g.t0.toFixed(3)}|${g.t1.toFixed(3)}`;
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 
 class BirdBoxService {
-  constructor() { this.ready = null; this.pool = null; }
+  constructor() { this.ready = null; this.pool = null; this.busy = null; }
   ensure(onProgress) {
     if (!this.ready) {
       this.ready = (async () => {
@@ -100,6 +107,23 @@ class BirdBoxService {
       this.ready.catch(() => { this.ready = null; });
     }
     return this.ready;
+  }
+
+  /** One graph run over the whole recording; the graph walks it in 60 s segments. */
+  async detect(audio) {
+    const pool = this.busy = this.pool;
+    try {
+      return await pool.run('birdbox', { audio, conf: RAW_CONF, songGap: NO_MERGE }, [audio.buffer]);
+    } finally {
+      if (this.busy === pool) this.busy = null;
+    }
+  }
+
+  /** Stop a run in progress (it cannot be interrupted); the next run starts a fresh worker. */
+  abort() {
+    if (!this.busy) return;
+    this.busy.terminate();
+    this.busy = this.pool = this.ready = null;
   }
 }
 const birdbox = new BirdBoxService();
@@ -148,13 +172,20 @@ export class BirdBoxTab {
       move: p => this._editMove(p),
       up: (p, commit) => this._editUp(commit),
     };
-    const drawLabel = esc(t('demo.bb.draw', 'Draw a box'));
-    this.spec.tools?.insertAdjacentHTML('afterbegin', `<button type="button" class="btn spec-tool" data-role="draw" aria-pressed="false" title="${drawLabel}" aria-label="${drawLabel}"><i class="bi bi-bounding-box"></i></button>`);
+    const drawLabel = esc(t('demo.bb.draw', 'Draw a box (B)')), helpLabel = esc(t('demo.bb.help.title', 'How to edit boxes'));
+    this.spec.tools?.insertAdjacentHTML('afterbegin', `<button type="button" class="btn spec-tool" data-role="help" aria-expanded="false" aria-controls="bb-help" title="${helpLabel}" aria-label="${helpLabel}"><i class="bi bi-question-circle"></i></button><button type="button" class="btn spec-tool" data-role="draw" aria-pressed="false" title="${drawLabel}" aria-label="${drawLabel}"><i class="bi bi-bounding-box"></i></button>`);
     this.drawBtn = this.spec.tools?.querySelector('[data-role="draw"]');
     this.drawBtn?.addEventListener('click', e => { e.stopPropagation(); this._setDrawMode(!this.drawMode); });
-    $('bb-sound-default').innerHTML = SOUND_TYPES.map(s => `<option value="${s}"${s === 'call' ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
+    this.helpBtn = this.spec.tools?.querySelector('[data-role="help"]');
+    this.helpBtn?.addEventListener('click', e => { e.stopPropagation(); this._showHelp($('bb-help').hidden); });
+    $('bb-help').querySelector('[data-role="close"]').addEventListener('click', () => this._showHelp(false));
+    let helpSeen = false;
+    try { helpSeen = !!localStorage.getItem(HELP_KEY); } catch { /* storage blocked */ }
+    this._showHelp(!helpSeen, false);
+    $('bb-sound-default').innerHTML = `<option value="">${esc(t('demo.bb.choose', 'Choose…'))}</option>${SOUND_TYPES.map(s => `<option value="${s}">${esc(this._soundLabel(s))}</option>`).join('')}`;
+    this._restoreAnnotator();
     this._bind();
-    getManifest().then(m => isCached(m.birdbox.model)).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
+    getManifest().then(m => { this.manifest = m; return isCached(m.birdbox.model); }).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
     this._renderChip();
     if (shared.audio) this._onAudio();
   }
@@ -185,10 +216,17 @@ export class BirdBoxTab {
     sync();
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
-    $('bb-maxlen').addEventListener('change', () => this._onAudio());
     $('bb-suggest').addEventListener('change', () => this._update());
     this.location.addEventListener('change', () => { this._resetSuggestions(); this._update(); });
-    $('bb-export-xc').addEventListener('click', () => this._exportXc());
+    const form = $('bb-xc');
+    form.addEventListener('submit', e => { e.preventDefault(); this._exportXc(); });
+    // A pasted profile link becomes the ID it ends in
+    $('bb-xcid').addEventListener('change', e => { e.target.value = xcContributor(e.target.value); this._saveAnnotator(); });
+    form.addEventListener('input', e => {
+      e.target.classList.remove('is-invalid');
+      if (Object.values(ANNOTATOR_FIELDS).includes(e.target.id)) this._saveAnnotator();
+      if (!$('bb-xc-check').hidden) this._checkXc();
+    });
     $('bb-export-csv').addEventListener('click', () => this._exportCsv());
     $('bb-export-raven').addEventListener('click', () => this._exportRaven());
     catalog.addEventListener('names', () => this._renderTable());
@@ -214,17 +252,22 @@ export class BirdBoxTab {
       const g = this._geom(b), sp = this._species(b), n = this.boxes.indexOf(b) + 1;
       const origin = b.manual
         ? `<div>${esc(t('demo.bb.drawn', 'Drawn by you'))}</div>`
-        : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b></div>`;
+        : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b>${this._edit(b).verified ? ` · ${esc(t('demo.bb.verified', 'Verified by you'))}` : ''}</div>`;
       this.spec.showTooltip(`<div class="tt-time">#${n} · ${fmtTime(g.t0, 2)} – ${fmtTime(g.t1, 2)}</div><div>${fmtNumber(g.flo)}–${fmtNumber(g.fhi)} Hz</div>${origin}${sp.s !== AVES ? `<div class="tt-species mt-1">${thumb(sp.s, 'tt-img')}<span>${esc(catalog.name(sp.s))}${sp.p != null ? ` <b>${fmtPct(sp.p, 0)}</b>` : ''}</span></div>` : ''}`, d.x, d.y);
     });
+    // Editing keys work anywhere on the tab except while typing in a field or a dialog
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && this.visible && (this.drawMode || this.gesture)) this._setDrawMode(false);
-    });
-    this.spec.main.addEventListener('keydown', e => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) {
-        this._removeBox(this.boxes.find(b => b.id === this.selectedId));
-        e.preventDefault();
-      }
+      if (!this.visible || !this.raw || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest?.('input, select, textarea, [contenteditable], .modal')) return;
+      if (e.key === 'Escape') {
+        if (this.drawMode || this.gesture) this._setDrawMode(false);
+        else if (this.selectedId != null) this._select(null);
+        else return;
+      } else if (e.key === 'b' || e.key === 'B') this._setDrawMode(!this.drawMode);
+      else if ((e.key === 'v' || e.key === 'V') && this.selectedId != null) this._toggleVerified(this.boxes.find(b => b.id === this.selectedId));
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) this._removeBox(this.boxes.find(b => b.id === this.selectedId));
+      else return;
+      e.preventDefault();
     });
 
     const table = $('bb-table');
@@ -234,6 +277,7 @@ export class BirdBoxTab {
       if (!b) return;
       if (e.target.closest('[data-play]')) { e.stopPropagation(); this._select(b.id, { play: true, scroll: true }); return; }
       if (e.target.closest('[data-act="toggle"]')) { e.stopPropagation(); this._removeBox(b); return; }
+      if (e.target.closest('[data-act="verify"]')) { e.stopPropagation(); this._toggleVerified(b); return; }
       if (e.target.closest('[data-act="reset-geom"]')) {
         e.stopPropagation();
         this._override(b, { geom: undefined });
@@ -252,18 +296,54 @@ export class BirdBoxTab {
           suggestions: this.suggestions.get(timeKey(this._geom(b))) || [],
           filter: i => catalog.className(i) === 'Aves',
         });
-        if (target != null) this._override(b, { species: target });
-        this._renderTable();
-        this._renderSummary();
-        this.spec.render();
+        if (target != null) this._setSpecies(b, target);
+        else this._renderTable();   // put the select back on the current species
         return;
       }
-      if (e.target.dataset.field === 'species') this._override(b, { species: +e.target.value });
-      if (e.target.dataset.field === 'sound') this._override(b, { soundType: e.target.value });
+      if (e.target.dataset.field === 'species') { this._setSpecies(b, +e.target.value); return; }
+      if (e.target.dataset.field === 'sound') {
+        this._override(b, { soundType: e.target.value || undefined });
+        e.target.classList.toggle('is-unset', !e.target.value);
+      }
       this._renderSummary();
       this.spec.render();
+      if (!$('bb-xc-check').hidden) this._checkXc();
     });
     $('bb-sound-default').addEventListener('change', () => this._renderTable());
+  }
+
+  _showHelp(show, remember = true) {
+    $('bb-help').hidden = !show;
+    this.helpBtn?.classList.toggle('active', show);
+    this.helpBtn?.setAttribute('aria-expanded', String(show));
+    if (!show && remember) try { localStorage.setItem(HELP_KEY, '1'); } catch { /* not persisted */ }
+  }
+
+  /** What the pointer does right now, under the spectrogram. */
+  _renderHint() {
+    const el = $('bb-edit-hint');
+    if (!el) return;
+    let text;
+    if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here when detection is done.');
+    else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
+    else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · V verifies it · Delete removes it · Esc deselects');
+    else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
+    el.textContent = text;
+  }
+
+  _restoreAnnotator() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(ANNOTATOR_KEY)) || {}; } catch { /* storage blocked */ }
+    for (const [k, id] of Object.entries(ANNOTATOR_FIELDS)) {
+      const el = $(id);
+      // A license that is no longer offered falls back to the default
+      if (typeof saved[k] === 'string' && (el.tagName !== 'SELECT' || [...el.options].some(o => o.value === saved[k]))) el.value = saved[k];
+    }
+  }
+
+  _saveAnnotator() {
+    const data = Object.fromEntries(Object.entries(ANNOTATOR_FIELDS).map(([k, id]) => [k, $(id).value.trim()]));
+    try { localStorage.setItem(ANNOTATOR_KEY, JSON.stringify(data)); } catch { /* not persisted */ }
   }
 
   _renderChip() {
@@ -288,6 +368,7 @@ export class BirdBoxTab {
   _onAudio() {
     const audio = shared.audio;
     this.runToken++;
+    birdbox.abort();
     this.raw = null;
     this.songs = [];
     this.userBoxes = [];
@@ -299,15 +380,15 @@ export class BirdBoxTab {
     $('bb-howto').hidden = !!audio;
     $('bb-workspace').hidden = !audio;
     if (!audio) return;
-    const maxSec = +$('bb-maxlen').value;
-    this.pcm = audio.pcm.length > maxSec * SR ? audio.pcm.subarray(0, maxSec * SR) : audio.pcm;
-    this.duration = this.pcm.length / SR;
-    const note = $('bb-truncated');
-    note.hidden = audio.duration <= maxSec;
-    note.textContent = t('demo.bb.truncated', 'Analyzing the first {max} of {total}. Increase the maximum length to cover more.', { max: fmtTime(maxSec), total: fmtTime(audio.duration) });
-    const xcInput = $('bb-xcnr');
+    this.pcm = audio.pcm;
+    this.duration = audio.duration;
+    // A file named like XC1059662.wav is most likely that recording; the field stays editable
     const m = audio.name.match(/(?:^|[^A-Za-z0-9])XC[_-]?(\d+)/i);
-    xcInput.value = m ? m[1] : '';
+    const nr = audio.xc || m?.[1];
+    $('bb-xcnr').value = nr ? `XC${nr}` : '';
+    $('bb-complete').value = '';
+    $('bb-xc').querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    $('bb-xc-check').hidden = true;
     if (this.pcm.length < 3 * SR) {
       $('bb-error').hidden = false;
       $('bb-error').textContent = t('demo.bb.tooShort', 'BirdBox needs at least 3 seconds of audio.');
@@ -343,22 +424,23 @@ export class BirdBoxTab {
       const t0 = performance.now();
       // ONNX Runtime reports no progress inside one run; pace a counter on the clip grid.
       ticker = setInterval(() => {
-        const frac = Math.min(0.95, (performance.now() - t0) / (clips * msPerClip));
-        this._setProgress(0.3 + 0.7 * frac, t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips }));
+        const elapsed = performance.now() - t0, frac = Math.min(0.95, elapsed / (clips * msPerClip));
+        const left = (clips * msPerClip - elapsed) / 1000;
+        let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips });
+        if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
+        this._setProgress(0.3 + 0.7 * frac, text);
       }, 100);
-      const audio = this.pcm.slice();
-      const res = await birdbox.pool.run('birdbox', { audio, conf: RAW_CONF, songGap: NO_MERGE }, [audio.buffer]);
+      const res = await birdbox.detect(this.pcm.slice());
       const ms = performance.now() - t0;
       try { localStorage.setItem(MS_PER_CLIP_KEY, String(Math.round(ms / clips))); } catch { /* not persisted */ }
       if (token !== this.runToken) return;
       this.raw = { data: res.detections, rows: res.rows, ms };
       this._renderChip();
     } catch (err) {
+      if (token !== this.runToken || err.cancelled) return;
       console.error(err);
-      if (token === this.runToken) {
-        $('bb-error').hidden = false;
-        $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
-      }
+      $('bb-error').hidden = false;
+      $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
     } finally {
       clearInterval(ticker);
       if (token === this.runToken) {
@@ -384,7 +466,9 @@ export class BirdBoxTab {
     this.spec.main.classList.toggle('is-editing', this.drawMode || this.selectedId != null);
     this._renderSummary();
     this._renderTable();
+    this._renderHint();
     this.spec.render();
+    if (!$('bb-xc-check').hidden) this._checkXc();
     if (this.raw && $('bb-suggest').checked) this.suggestSoon();
   }
 
@@ -456,11 +540,25 @@ export class BirdBoxTab {
     const cands = $('bb-suggest').checked ? this.suggestions.get(timeKey(this._geom(b))) : null;
     const top = cands?.[0];
     return {
-      species: o.species ?? (top && top.p >= 0.25 ? top.s : AVES),
+      species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
       auto: o.species == null,
       soundType: o.soundType ?? $('bb-sound-default').value,
       include: o.include ?? true,
+      verified: !!b.manual || !!o.verified,   // drawn boxes are the person's own
     };
+  }
+
+  /** A species the person picks is their judgment, so the box counts as verified. */
+  _setSpecies(b, species) {
+    this._override(b, { species, verified: true });
+    this._refresh();
+  }
+
+  /** Verify a detected box (or take it back); drawn boxes always count as verified. */
+  _toggleVerified(b) {
+    if (!b || b.manual) return;
+    this._override(b, { verified: !this._edit(b).verified || undefined, include: undefined });
+    this._refresh();
   }
 
   _override(b, patch) {
@@ -517,6 +615,7 @@ export class BirdBoxTab {
     this.drawBtn?.setAttribute('aria-pressed', String(on));
     this.spec.main.classList.toggle('is-editing', on || this.selectedId != null);
     if (on) { this.hoverId = null; this.spec.showTooltip(null); }
+    this._renderHint();
     this.spec.render();
   }
 
@@ -615,7 +714,7 @@ export class BirdBoxTab {
     const b = this.boxes.find(x => x.id === gs.id);
     if (commit && live && b) {
       if (b.manual) Object.assign(b, live.g);
-      else this._override(b, { geom: live.g });
+      else this._override(b, { geom: live.g, verified: true });   // adjusting a box is a human judgment
     }
     this._refresh();
   }
@@ -631,6 +730,7 @@ export class BirdBoxTab {
     const species = new Set(included.map(b => this._edit(b).species).filter(s => s !== AVES));
     const stats = [
       [this.boxes.length, t('demo.bb.sum.boxes', 'boxes')],
+      [included.filter(b => this._edit(b).verified).length, t('demo.bb.sum.verified', 'verified by you')],
       [species.size, t('demo.bb.sum.species', 'suggested species')],
       [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')],
     ];
@@ -657,20 +757,25 @@ export class BirdBoxTab {
         opts.push(`<option value="pick">${esc(t('demo.bb.otherSpecies', 'Other species…'))}</option>`);
         speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb') : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}">${opts.join('')}</select>`;
       }
-      const sound = SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
+      const sound = (edit.soundType ? '' : `<option value="" selected>${esc(t('demo.bb.choose', 'Choose…'))}</option>`)
+        + SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
       const drawn = esc(t('demo.bb.drawn', 'Drawn by you')), reset = esc(t('demo.bb.resetBox', 'Restore the detected box'));
       const mark = b.manual
         ? `<i class="bi bi-pencil-fill bb-mark" title="${drawn}" aria-label="${drawn}"></i>`
         : this.edits.get(b.id)?.geom ? `<button type="button" class="bb-mark bb-reset" data-act="reset-geom" title="${reset}" aria-label="${reset}"><i class="bi bi-arrow-counterclockwise"></i></button>` : '';
       const removeLabel = esc(b.manual ? t('demo.bb.deleteBox', 'Delete box') : edit.include ? t('demo.bb.remove', 'Remove box') : t('demo.bb.restore', 'Restore box'));
       const removeIcon = b.manual ? 'bi-trash3' : edit.include ? 'bi-x-lg' : 'bi-arrow-counterclockwise';
+      const verifyLabel = esc(edit.verified ? t('demo.bb.unverify', 'Verified by you · click to undo') : t('demo.bb.verify', 'Verify box (V)'));
+      const verify = b.manual
+        ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
+        : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
       return `<tr data-i="${i}" class="${b.id === this.selectedId ? 'is-selected' : ''}${edit.include ? '' : ' is-excluded'}">
         <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"><i class="bi bi-play-fill"></i>${i + 1}</button></td>
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
         <td class="bb-c-species"><div class="bb-species-wrap">${speciesCell}</div></td>
-        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
-        <td class="bb-c-toggle"><button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
+        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select${edit.soundType ? '' : ' is-unset'}" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
+        <td class="bb-c-toggle">${verify}<button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
       </tr>`;
     }).join('');
   }
@@ -687,6 +792,7 @@ export class BirdBoxTab {
       if (g.t0 < this.spec.view.t0 || g.t1 > this.spec.view.t1) this.spec.setView(g.t0 - span * 0.3, g.t0 - span * 0.3 + span);
       if (play) player.play(Math.max(0, g.t0 - 0.15), g.t1 + 0.15);
     }
+    this._renderHint();
     this.spec.render();
   }
 
@@ -698,18 +804,19 @@ export class BirdBoxTab {
       if (x1 < 0 || x0 > h.width) return;
       const y0 = h.freqToY(g.fhi), y1 = h.freqToY(g.flo), edit = this._edit(b);
       const selected = b.id === this.selectedId, active = selected || b.id === this.hoverId;
-      const base = b.manual ? '#fbbf24' : '#22d3ee';
+      const base = b.manual ? '#fbbf24' : edit.verified ? '#4ade80' : '#22d3ee';
       const color = !edit.include ? 'rgba(148,163,184,0.7)' : active ? '#ffffff' : base;
       ctx.strokeStyle = color;
       ctx.lineWidth = active ? 2.5 : 1.5;
       ctx.setLineDash(edit.include ? [] : [4, 3]);
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
-      if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+      if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
       const sp = this._species(b);
-      let label = sp.s !== AVES ? `${i + 1} · ${catalog.name(sp.s)}` : b.manual ? String(i + 1) : `${i + 1} · ${fmtNumber(b.avg, 2)}`;
+      const num = `${i + 1}${edit.verified && !b.manual ? ' ✓' : ''}`;
+      let label = sp.s !== AVES ? `${num} · ${catalog.name(sp.s)}` : b.manual || edit.verified ? num : `${num} · ${fmtNumber(b.avg, 2)}`;
       // Keep crowded views readable: numbers only unless the label fits or the box is active
-      if (!active && ctx.measureText(label).width > Math.max(x1 - x0, 0) + 24) label = String(i + 1);
+      if (!active && ctx.measureText(label).width > Math.max(x1 - x0, 0) + 24) label = num;
       const tw = ctx.measureText(label).width + 8, ly = Math.max(14, y0 - 2);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.9;
@@ -744,62 +851,99 @@ export class BirdBoxTab {
 
   _baseName() { return (shared.audio?.name || 'audio').replace(/\.[^.]+$/, ''); }
 
-  /** Xeno-canto Annota-JSON, following BirdBox's xeno_canto_export.py. */
+  /**
+   * Mark what the Annota-JSON export still needs from the person; true when
+   * nothing is missing. Facts about the person and the recording are asked
+   * for, never guessed.
+   */
+  _checkXc() {
+    const missing = [];
+    const need = (id, ok, what) => {
+      $(id).classList.toggle('is-invalid', !ok);
+      if (!ok) missing.push({ id, what });
+    };
+    const unset = this._included().filter(r => !r.edit.soundType).map(r => `#${r.i + 1}`);
+    const list = unset.length > 6 ? `${unset.slice(0, 6).join(', ')}, …` : unset.join(', ');
+    need('bb-xcnr', !!parseXcNumber($('bb-xcnr').value), t('demo.bb.need.xcnr', 'the XC number'));
+    need('bb-complete', !!$('bb-complete').value, t('demo.bb.need.complete', 'whether every bird sound is boxed'));
+    need('bb-sound-default', !unset.length, t('demo.bb.need.sound', 'a sound type for {list}', { list }));
+    need('bb-annotator', !!$('bb-annotator').value.trim(), t('demo.bb.need.name', 'your name'));
+    need('bb-license', !!$('bb-license').value, t('demo.bb.need.license', 'a license'));
+    $('bb-table-wrap').classList.toggle('bb-table-check', unset.length > 0);
+    const check = $('bb-xc-check');
+    check.hidden = !missing.length;
+    check.textContent = t('demo.bb.need', 'Still needed: {list}.', { list: missing.map(m => m.what).join(' · ') });
+    return missing;
+  }
+
+  /** Xeno-canto Annota-JSON: one annotation per included box, numbered as in the table. */
   _exportXc() {
     const rows = this._included();
     if (!rows.length) { toast(t('demo.bb.noneIncluded', 'Select at least one box to export.'), 'warning'); return; }
-    const sound = shared.audio?.name || 'audio.wav';
-    const annotator = $('bb-annotator').value.trim();
-    const xcNr = $('bb-xcnr').value.trim().replace(/^XC/i, '');
-    const round = v => Number(Number(v).toFixed(3));
+    const missing = this._checkXc();
+    if (missing.length) { $(missing[0].id).focus(); return; }
+    const xcNr = parseXcNumber($('bb-xcnr').value);
+    const name = $('bb-annotator').value.trim();
+    const xcId = xcContributor($('bb-xcid').value);
+    const m = this.manifest;
+    const commit = m?.sources?.birdbox?.match(/\/tree\/([0-9a-f]{7})/)?.[1];
+    const birdboxName = `${m?.birdbox?.name || 'BirdBox Just-Bird'}${commit ? ` @ ${commit}` : ''}`;
+    const birdnetName = `BirdNET+ V${m?.v3?.version || '3.0'}`;
     const date = new Date().toISOString().slice(0, 10);
-    const annotations = rows.map((r, k) => {
-      let remarks = r.b.manual ? 'Drawn by annotator' : `Detected by BirdBox; confidence: ${r.b.avg.toFixed(3)}`;
-      if (!r.b.manual && this.edits.get(r.b.id)?.geom) remarks += '; box adjusted by annotator';
-      if (r.sp.s !== AVES && r.edit.auto && r.sp.p != null) remarks += `; species suggested by BirdNET+ V3.0 (score ${r.sp.p.toFixed(3)})`;
-      else if (r.sp.s !== AVES && !r.edit.auto) remarks += '; species set by annotator';
+    const counts = { drawn: 0, verified: 0, unverified: 0 };
+    // Drawn, adjusted and verified boxes are the person's; the others stay BirdBox's
+    const annotations = rows.map(r => {
+      const adjusted = !r.b.manual && !!this.edits.get(r.b.id)?.geom;
+      const human = r.edit.verified;
+      counts[r.b.manual ? 'drawn' : human ? 'verified' : 'unverified']++;
+      const box = r.b.manual ? 'Box drawn by the annotator'
+        : `Box detected by BirdBox (confidence ${r.b.avg.toFixed(3)}), ${human ? `${adjusted ? 'adjusted and ' : ''}verified by the annotator` : 'not verified'}`;
+      const species = r.sp.s === AVES ? 'species not identified'
+        : r.edit.auto ? `species suggested by ${birdnetName}${r.sp.p != null ? ` (score ${r.sp.p.toFixed(3)})` : ''}${human ? ', confirmed by the annotator' : ''}`
+          : 'species chosen by the annotator';
       return {
-        annotation_source_id: `birdbox-${String(k + 1).padStart(6, '0')}`,
-        sound_file: sound,
+        annotation_source_id: `birdbox-${String(r.i + 1).padStart(6, '0')}`,
+        sound_file: shared.audio?.name || '',
         xc_nr: xcNr,
-        annotator: annotator || 'BirdBox',
-        annotator_xc_id: '',
-        frequency_high: round(r.g.fhi),
-        frequency_low: round(r.g.flo),
-        start_time: round(r.g.t0),
-        end_time: round(r.g.t1),
+        annotator: human ? name : 'BirdBox',
+        annotator_xc_id: human ? xcId : '',
+        frequency_high: Math.round(r.g.fhi),
+        frequency_low: Math.round(r.g.flo),
+        start_time: Number(r.g.t0.toFixed(3)),
+        end_time: Number(r.g.t1.toFixed(3)),
         scientific_name: this._sciName(r.sp.s),
         sound_type: r.edit.soundType,
         date_identified: date,
-        annotation_remarks: remarks,
+        annotation_remarks: `${box}; ${species}`,
       };
     });
-    const coverage = [...new Set(annotations.map(a => a.scientific_name).filter(Boolean))].sort().join(', ');
+    const suggested = rows.some(r => r.sp.s !== AVES && r.edit.auto);
+    const settings = `confidence ≥ ${(+$('bb-conf').value).toFixed(2)}, song gap ${(+$('bb-gap').value).toFixed(2)} s`;
     const payload = {
-      set_source: 'BirdBox detection results',
+      set_source: '',
       set_uri: '',
-      set_name: 'BirdBox detection results',
-      annotation_software_name_and_version: $('bb-suggest').checked ? 'BirdBox (Just-Bird ONNX); species suggestions: BirdNET+ V3.0-preview3.1' : 'BirdBox (Just-Bird ONNX)',
-      set_creator: annotator || 'BirdBox',
-      set_creator_id: '',
-      set_owner: '',
-      set_license: '',
+      set_name: `BirdBox annotations of XC${xcNr}`,
+      annotation_software_name_and_version: suggested ? `${birdboxName}; species suggestions: ${birdnetName}` : birdboxName,
+      set_creator: name,
+      set_creator_id: xcId ? `https://xeno-canto.org/contributor/${xcId}` : '',
+      set_owner: name,   // the set is made here from scratch, so it is the person's own
+      set_license: $('bb-license').value,
       project_uri: '',
-      project_name: 'BirdBox',
+      project_name: '',
       funding: '',
-      set_remarks: 'Generated from BirdBox bird call detections.',
-      scope: [{ taxon_coverage: coverage || 'birds', completeness: 'part' }],
+      set_remarks: `Made in the BirdNET browser demo. Boxes from BirdBox (${settings}): ${counts.verified} verified by the annotator, ${counts.unverified} not verified (annotator "BirdBox"); ${counts.drawn} drawn by the annotator.`,
+      scope: [{ taxon_coverage: 'Aves', completeness: $('bb-complete').value }],
       annotations,
     };
-    downloadFile(`${this._baseName()}.xeno-canto-annota.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
+    downloadFile(`XC${xcNr}.xeno-canto-annota.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
   }
 
   _exportCsv() {
-    const header = ['time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
+    const header = ['box', 'time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
     const lines = [header.join(',')];
     for (const r of this._included()) {
       const detector = r.b.manual ? ['', '', '', ''] : [r.b.avg.toFixed(6), r.b.max.toFixed(6), Math.round(r.b.n), Math.round(r.b.cls)];
-      lines.push([r.g.t0.toFixed(6), r.g.t1.toFixed(6), r.g.flo.toFixed(3), r.g.fhi.toFixed(3), ...detector, 'bird',
+      lines.push([r.i + 1, r.g.t0.toFixed(6), r.g.t1.toFixed(6), r.g.flo.toFixed(3), r.g.fhi.toFixed(3), ...detector, 'bird',
         csvField(this._sciName(r.sp.s)), csvField(r.sp.s === AVES ? '' : catalog.en[r.sp.s]), r.sp.p == null ? '' : r.sp.p.toFixed(6), csvField(r.edit.soundType)].join(','));
     }
     downloadFile(`${this._baseName()}.BirdBox.csv`, `${lines.join('\n')}\n`, 'text/csv;charset=utf-8');
@@ -807,8 +951,8 @@ export class BirdBoxTab {
 
   _exportRaven() {
     const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
-    this._included().forEach((r, k) => {
-      lines.push([k + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
+    this._included().forEach(r => {
+      lines.push([r.i + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
     });
     downloadFile(`${this._baseName()}.BirdBox.selections.txt`, `${lines.join('\n')}\n`);
   }

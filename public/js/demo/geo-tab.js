@@ -178,7 +178,7 @@ export class GeoTab {
     $('geo-panel-close').addEventListener('click', () => this._closePanel());
     $('geo-use-location').addEventListener('click', () => {
       if (!this.point) return;
-      shared.setLocation({ ...(shared.location || {}), enabled: true, lat: +this.point.lat.toFixed(4), lon: +this.point.lon.toFixed(4), date: (shared.location?.date) || new Date().toISOString().slice(0, 10) });
+      shared.setLocation({ ...(shared.location || {}), from: null, enabled: true, lat: +this.point.lat.toFixed(4), lon: +this.point.lon.toFixed(4), date: (shared.location?.date) || new Date().toISOString().slice(0, 10) });
       toast(t('demo.geo.locationSet', 'Location set for the audio analysis filter.'), 'success');
     });
     $('geo-panel').addEventListener('click', e => {
@@ -508,7 +508,7 @@ export class GeoTab {
   async _onClick(latlng) {
     const lat = Math.max(-90, Math.min(90, latlng.lat)), lon = ((latlng.lng + 540) % 360) - 180;
     if (this.pickMode) {
-      shared.setLocation({ ...(shared.location || {}), enabled: true, lat: +lat.toFixed(4), lon: +lon.toFixed(4), date: shared.location?.date || new Date().toISOString().slice(0, 10) });
+      shared.setLocation({ ...(shared.location || {}), from: null, enabled: true, lat: +lat.toFixed(4), lon: +lon.toFixed(4), date: shared.location?.date || new Date().toISOString().slice(0, 10) });
       this._endPick(true);
       return;
     }

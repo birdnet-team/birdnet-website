@@ -288,9 +288,9 @@ permalink: "/demo/"
 {# ======================================================================= #}
 <section id="pane-birdbox" class="demo-pane" data-pane="birdbox" role="tabpanel" aria-labelledby="tab-birdbox" hidden>
   <div class="demo-howto" id="bb-howto">
-    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.v3.how1Title">Load a recording</strong><div class="small text-muted" data-i18n="demo.bb.how1">Audio loaded in the V3.0 tab is available here too.</div></div></div>
-    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.bb.how2Title">Review the boxes</strong><div class="small text-muted" data-i18n="demo.bb.how2">Click a box to hear it, drag it to adjust, or draw boxes the detector missed.</div></div></div>
-    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.bb.how3Title">Share with Xeno-canto</strong><div class="small text-muted" data-i18n="demo.bb.how3">Confirm or change the species and sound type, then download Annota-JSON.</div></div></div>
+    <div class="demo-howto-step"><span>1</span><div><strong data-i18n="demo.v3.how1Title">Load a recording</strong><div class="small text-muted" data-i18n="demo.bb.how1">Open a file, record, or enter a Xeno-canto number. Audio from the V3.0 tab is available here too.</div></div></div>
+    <div class="demo-howto-step"><span>2</span><div><strong data-i18n="demo.bb.how2Title">Review the boxes</strong><div class="small text-muted" data-i18n="demo.bb.how2">Click a box to hear it, then verify or adjust it, or draw boxes the detector missed.</div></div></div>
+    <div class="demo-howto-step"><span>3</span><div><strong data-i18n="demo.bb.how3Title">Share with Xeno-canto</strong><div class="small text-muted" data-i18n="demo.bb.how3">Check species and sound types, add your details, then download Annota-JSON.</div></div></div>
   </div>
 
   {{ audioSource('bb-source') }}
@@ -300,17 +300,35 @@ permalink: "/demo/"
       <div id="bb-spec"></div>
       <div class="demo-viewer-foot">
         <div class="small demo-viewer-hint">
-          <span data-i18n="demo.bb.specHint">Click a box to play and select it · drag to move or resize · add boxes with the box tool</span>
+          <span id="bb-edit-hint" class="bb-edit-hint" aria-live="polite"></span>
           <span><i class="bi bi-sliders2" aria-hidden="true"></i> <span data-i18n="demo.spec.settingsHint">Change colors, brightness and frequency scale</span></span>
         </div>
         <div class="spec-tools-host"></div>
+      </div>
+      <div id="bb-help" class="bb-help" hidden>
+        <button type="button" class="btn-close btn-close-white" data-role="close" aria-label="Close" data-i18n-aria="demo.bb.help.close"></button>
+        <dl>
+          <dt data-i18n="demo.bb.help.selectT">Select and listen</dt>
+          <dd data-i18n="demo.bb.help.select">Click a box on the spectrogram or its number in the table.</dd>
+          <dt data-i18n="demo.bb.help.verifyT">Verify</dt>
+          <dd><span data-i18n="demo.bb.help.verify1">When a box, its species and sound type are right, click</span> <i class="bi bi-check-circle" aria-hidden="true"></i> <span data-i18n="demo.bb.help.verify2">in the table or press V. Boxes you verify, adjust or draw are exported under your name; the others under BirdBox.</span></dd>
+          <dt data-i18n="demo.bb.help.moveT">Move and resize</dt>
+          <dd data-i18n="demo.bb.help.move">Drag a selected box to move it; drag its edges or corners to resize it.</dd>
+          <dt data-i18n="demo.bb.help.drawT">Draw a box</dt>
+          <dd><span data-i18n="demo.bb.help.draw1">Turn on the box tool</span> <i class="bi bi-bounding-box" aria-hidden="true"></i> <span data-i18n="demo.bb.help.draw2">or press B, then drag across the sound.</span></dd>
+          <dt data-i18n="demo.bb.help.removeT">Remove</dt>
+          <dd data-i18n="demo.bb.help.remove">Press Delete or use × in the table. Detected boxes turn dashed and can be restored; drawn ones can be undone.</dd>
+          <dt data-i18n="demo.bb.help.navT">Zoom and scroll</dt>
+          <dd data-i18n="demo.bb.help.nav">Ctrl + wheel or pinch zooms, Shift + wheel or dragging the background scrolls, Space plays.</dd>
+          <dt data-i18n="demo.bb.help.colorsT">Colors</dt>
+          <dd><span class="bb-swatch is-detected"></span><span data-i18n="demo.bb.help.detected">detected</span> <span class="bb-swatch is-verified"></span><span data-i18n="demo.bb.help.verified">verified by you</span> <span class="bb-swatch is-drawn"></span><span data-i18n="demo.bb.help.drawn">drawn by you</span> <span class="bb-swatch is-removed"></span><span data-i18n="demo.bb.help.removed">removed</span></dd>
+        </dl>
       </div>
       <div id="bb-progress" class="demo-progress" hidden>
         <div class="progress" role="progressbar" aria-label="Detection progress" data-i18n-aria="demo.bb.progressAria"><div class="progress-bar" style="width:0%"></div></div>
         <div id="bb-progress-text" class="small" aria-live="polite"></div>
       </div>
     </div>
-    <div id="bb-truncated" class="alert alert-warning small py-2 mt-3" hidden></div>
 
     <div class="row g-4 mt-1">
       <div class="col-lg-4">
@@ -331,14 +349,6 @@ permalink: "/demo/"
             </label>
             <input type="range" class="form-range" id="bb-gap" min="0" max="2" step="0.01" value="0.1">
             <div class="form-text mt-0" data-i18n="demo.bb.gapHelp">Boxes of one song closer than this are merged.</div>
-          </div>
-          <div class="mb-3">
-            <label for="bb-maxlen" class="form-label small fw-medium mb-1"><span data-i18n="demo.bb.maxlen">Maximum length</span></label>
-            <select id="bb-maxlen" class="form-select form-select-sm">
-              <option value="60" selected>1 min</option>
-              <option value="120">2 min</option>
-              <option value="300">5 min</option>
-            </select>
           </div>
           <div class="form-check form-switch mb-2">
             <input class="form-check-input" type="checkbox" role="switch" id="bb-suggest" checked>
@@ -369,29 +379,62 @@ permalink: "/demo/"
             <tbody></tbody>
           </table>
         </div>
-        <div class="demo-panel mt-3">
-          <div class="fw-semibold small mb-2"><span data-i18n="demo.bb.xcTitle">Xeno-canto export</span></div>
-          <div class="row g-2">
-            <div class="col-sm-4">
-              <label for="bb-xcnr" class="form-label small mb-1" data-i18n="demo.bb.xcnr">XC recording number</label>
-              <input type="text" id="bb-xcnr" class="form-control form-control-sm" placeholder="e.g. 1059662" data-i18n-placeholder="demo.bb.xcnrPlaceholder" inputmode="numeric">
+        <form id="bb-xc" class="demo-panel bb-xc mt-3" novalidate>
+          <div class="fw-semibold small mb-1" data-i18n="demo.bb.xcTitle">Share with Xeno-canto</div>
+          <p class="small text-muted mb-3"><span data-i18n="demo.bb.xcIntro">Annota-JSON adds your boxes to a recording on Xeno-canto. We only fill in what we know; the rest comes from you.</span> <a href="https://xeno-canto.org/article/321" target="_blank" rel="noopener" data-i18n="demo.bb.xcLink">About Annota-JSON</a></p>
+          <fieldset>
+            <legend data-i18n="demo.bb.xcRecording">The recording</legend>
+            <div class="row g-2">
+              <div class="col-sm-4">
+                <label for="bb-xcnr" class="form-label small mb-1" data-i18n="demo.bb.xcnr">XC number</label>
+                <input type="text" id="bb-xcnr" class="form-control form-control-sm" placeholder="XC1059662" required autocomplete="off" spellcheck="false">
+                <div class="invalid-feedback" data-i18n="demo.bb.xcnrInvalid">The Xeno-canto number of this recording, e.g. XC1059662.</div>
+              </div>
+              <div class="col-sm-4">
+                <label for="bb-complete" class="form-label small mb-1" data-i18n="demo.bb.complete">Is every bird sound boxed?</label>
+                <select id="bb-complete" class="form-select form-select-sm" required>
+                  <option value="" selected disabled data-i18n="demo.bb.choose">Choose…</option>
+                  <option value="all" data-i18n="demo.bb.completeAll">Yes, every bird sound</option>
+                  <option value="part" data-i18n="demo.bb.completePart">No, only some</option>
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <label for="bb-sound-default" class="form-label small mb-1" data-i18n="demo.bb.soundDefault">Sound type of all boxes</label>
+                <select id="bb-sound-default" class="form-select form-select-sm"></select>
+                <div class="invalid-feedback" data-i18n="demo.bb.soundMissing">Choose a sound type here or for each box in the table.</div>
+              </div>
             </div>
-            <div class="col-sm-4">
-              <label for="bb-annotator" class="form-label small mb-1" data-i18n="demo.bb.annotator">Annotator</label>
-              <input type="text" id="bb-annotator" class="form-control form-control-sm" placeholder="Your name (optional)" data-i18n-placeholder="demo.bb.annotatorPlaceholder" autocomplete="name">
+          </fieldset>
+          <fieldset class="mt-3">
+            <legend data-i18n="demo.bb.xcYou">You</legend>
+            <div class="row g-2">
+              <div class="col-sm-4">
+                <label for="bb-annotator" class="form-label small mb-1" data-i18n="demo.bb.annotator">Your name</label>
+                <input type="text" id="bb-annotator" class="form-control form-control-sm" required autocomplete="name">
+              </div>
+              <div class="col-sm-4">
+                <label for="bb-xcid" class="form-label small mb-1"><span data-i18n="demo.bb.xcid">Xeno-canto ID</span> <span class="text-muted" data-i18n="demo.bb.optional">(optional)</span></label>
+                <input type="text" id="bb-xcid" class="form-control form-control-sm" autocomplete="off" spellcheck="false">
+                <div class="form-text mt-0" data-i18n="demo.bb.xcidHelp">The code at the end of your Xeno-canto profile link.</div>
+              </div>
+              <div class="col-sm-4">
+                <label for="bb-license" class="form-label small mb-1" data-i18n="demo.bb.license">License for your boxes</label>
+                <select id="bb-license" class="form-select form-select-sm" required>
+                  <option value="CC-BY-SA-4.0" selected>CC BY-SA 4.0</option>
+                  <option value="CC-BY-NC-SA-4.0">CC BY-NC-SA 4.0</option>
+                  <option value="CC0-1.0">CC0 1.0</option>
+                </select>
+              </div>
             </div>
-            <div class="col-sm-4">
-              <label for="bb-sound-default" class="form-label small mb-1" data-i18n="demo.bb.soundDefault">Default sound type</label>
-              <select id="bb-sound-default" class="form-select form-select-sm"></select>
-            </div>
-          </div>
+          </fieldset>
+          <div id="bb-xc-check" class="small text-danger mt-3" role="alert" hidden></div>
           <div class="d-flex flex-wrap gap-2 mt-3">
-            <button type="button" id="bb-export-xc" class="btn btn-sm btn-primary" disabled><i class="bi bi-filetype-json me-1"></i><span data-i18n="demo.bb.exportXc">Download Annota-JSON</span></button>
+            <button type="submit" id="bb-export-xc" class="btn btn-sm btn-primary" disabled><i class="bi bi-filetype-json me-1"></i><span data-i18n="demo.bb.exportXc">Download Annota-JSON</span></button>
             <button type="button" id="bb-export-csv" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-filetype-csv me-1"></i>CSV</button>
             <button type="button" id="bb-export-raven" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-table me-1"></i><span data-i18n="demo.v3.exportRaven">Raven selection table</span></button>
           </div>
-          <div class="form-text"><span data-i18n="demo.bb.xcHelp">Scientific names follow the Xeno-canto taxonomy. Unidentified boxes are exported as Aves.</span> <a href="https://xeno-canto.org/article/321" target="_blank" rel="noopener" data-i18n="demo.bb.xcLink">About Annota-JSON</a></div>
-        </div>
+          <div class="form-text"><span data-i18n="demo.bb.xcHelp">Boxes you verified, adjusted or drew carry your name; the others are marked as unverified BirdBox detections. Names follow the Xeno-canto taxonomy, and boxes without a species are exported as Aves. Your details are remembered in this browser.</span></div>
+        </form>
       </div>
     </div>
   </div>
