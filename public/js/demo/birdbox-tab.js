@@ -32,6 +32,7 @@ const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
 const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
 const AVES = -1;
+const SPECIES_MIN = 0.35;     // weaker suggestions leave a box unidentified; they stay in its species list
 const FREQ_MAX = 15000;       // top of the spectrogram and of any box
 const MIN_DUR = 0.05;         // smallest box: seconds
 const MIN_BAND = 100;         // smallest box: Hz
@@ -539,7 +540,7 @@ export class BirdBoxTab {
     const cands = $('bb-suggest').checked ? this.suggestions.get(timeKey(this._geom(b))) : null;
     const top = cands?.[0];
     return {
-      species: o.species ?? (top && top.p >= 0.25 ? top.s : AVES),
+      species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
       auto: o.species == null,
       soundType: o.soundType ?? $('bb-sound-default').value,
       include: o.include ?? true,
