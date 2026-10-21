@@ -824,7 +824,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   .demo-table .bb-c-time { width: 8.4rem; }
   .demo-table .bb-c-conf { width: 3.8rem; }
   .demo-table .bb-c-sound { width: 8.5rem; }
-  .demo-table .bb-c-toggle { width: 3.2rem; }
+  .demo-table .bb-c-toggle { width: 4.3rem; }
+  .demo-table .bb-c-toggle .bb-verify, .demo-table .bb-c-toggle .bb-toggle { width: 1.7rem; }
 }
 
 /* Editing help under the BirdBox spectrogram */
@@ -843,6 +844,7 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .bb-swatch { display: inline-block; width: 0.85rem; height: 0.6rem; margin: 0 0.3rem 0 0.15rem; border: 2px solid; border-radius: 1px; vertical-align: -0.05rem; }
 .bb-swatch:not(:first-child) { margin-left: 0.75rem; }
 .bb-swatch.is-detected { border-color: #22d3ee; }
+.bb-swatch.is-verified { border-color: #4ade80; }
 .bb-swatch.is-drawn { border-color: #fbbf24; }
 .bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
 
@@ -852,6 +854,12 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 
 .bb-toggle { width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; }
 .bb-toggle:hover { background: #f1f5f9; color: #0f172a; }
+.bb-c-toggle { white-space: nowrap; }
+.bb-verify { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 0.4rem; background: none; color: #94a3b8; font-size: 1rem; vertical-align: middle; }
+button.bb-verify:hover { background: #f0fdf4; color: #16a34a; }
+.bb-verify.is-on { color: #16a34a; }
+.bb-verify.is-drawn { color: #d97706; }
+.demo-table tbody tr.is-excluded .bb-verify { opacity: 0.4; }
 
 /* Phones: each box becomes a two-line row */
 @media (max-width: 575.98px) {

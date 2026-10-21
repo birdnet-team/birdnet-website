@@ -251,7 +251,7 @@ export class BirdBoxTab {
       const g = this._geom(b), sp = this._species(b), n = this.boxes.indexOf(b) + 1;
       const origin = b.manual
         ? `<div>${esc(t('demo.bb.drawn', 'Drawn by you'))}</div>`
-        : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b></div>`;
+        : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b>${this._edit(b).verified ? ` · ${esc(t('demo.bb.verified', 'Verified by you'))}` : ''}</div>`;
       this.spec.showTooltip(`<div class="tt-time">#${n} · ${fmtTime(g.t0, 2)} – ${fmtTime(g.t1, 2)}</div><div>${fmtNumber(g.flo)}–${fmtNumber(g.fhi)} Hz</div>${origin}${sp.s !== AVES ? `<div class="tt-species mt-1">${thumb(sp.s, 'tt-img')}<span>${esc(catalog.name(sp.s))}${sp.p != null ? ` <b>${fmtPct(sp.p, 0)}</b>` : ''}</span></div>` : ''}`, d.x, d.y);
     });
     // Editing keys work anywhere on the tab except while typing in a field or a dialog
@@ -263,6 +263,7 @@ export class BirdBoxTab {
         else if (this.selectedId != null) this._select(null);
         else return;
       } else if (e.key === 'b' || e.key === 'B') this._setDrawMode(!this.drawMode);
+      else if ((e.key === 'v' || e.key === 'V') && this.selectedId != null) this._toggleVerified(this.boxes.find(b => b.id === this.selectedId));
       else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) this._removeBox(this.boxes.find(b => b.id === this.selectedId));
       else return;
       e.preventDefault();
@@ -275,6 +276,7 @@ export class BirdBoxTab {
       if (!b) return;
       if (e.target.closest('[data-play]')) { e.stopPropagation(); this._select(b.id, { play: true, scroll: true }); return; }
       if (e.target.closest('[data-act="toggle"]')) { e.stopPropagation(); this._removeBox(b); return; }
+      if (e.target.closest('[data-act="verify"]')) { e.stopPropagation(); this._toggleVerified(b); return; }
       if (e.target.closest('[data-act="reset-geom"]')) {
         e.stopPropagation();
         this._override(b, { geom: undefined });
@@ -293,13 +295,11 @@ export class BirdBoxTab {
           suggestions: this.suggestions.get(timeKey(this._geom(b))) || [],
           filter: i => catalog.className(i) === 'Aves',
         });
-        if (target != null) this._override(b, { species: target });
-        this._renderTable();
-        this._renderSummary();
-        this.spec.render();
+        if (target != null) this._setSpecies(b, target);
+        else this._renderTable();   // put the select back on the current species
         return;
       }
-      if (e.target.dataset.field === 'species') this._override(b, { species: +e.target.value });
+      if (e.target.dataset.field === 'species') { this._setSpecies(b, +e.target.value); return; }
       if (e.target.dataset.field === 'sound') {
         this._override(b, { soundType: e.target.value || undefined });
         e.target.classList.toggle('is-unset', !e.target.value);
@@ -325,7 +325,7 @@ export class BirdBoxTab {
     let text;
     if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here when detection is done.');
     else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
-    else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · Delete removes it · Esc deselects');
+    else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · V verifies it · Delete removes it · Esc deselects');
     else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
     el.textContent = text;
   }
@@ -543,7 +543,21 @@ export class BirdBoxTab {
       auto: o.species == null,
       soundType: o.soundType ?? $('bb-sound-default').value,
       include: o.include ?? true,
+      verified: !!b.manual || !!o.verified,   // drawn boxes are the person's own
     };
+  }
+
+  /** A species the person picks is their judgment, so the box counts as verified. */
+  _setSpecies(b, species) {
+    this._override(b, { species, verified: true });
+    this._refresh();
+  }
+
+  /** Verify a detected box (or take it back); drawn boxes always count as verified. */
+  _toggleVerified(b) {
+    if (!b || b.manual) return;
+    this._override(b, { verified: !this._edit(b).verified || undefined, include: undefined });
+    this._refresh();
   }
 
   _override(b, patch) {
@@ -699,7 +713,7 @@ export class BirdBoxTab {
     const b = this.boxes.find(x => x.id === gs.id);
     if (commit && live && b) {
       if (b.manual) Object.assign(b, live.g);
-      else this._override(b, { geom: live.g });
+      else this._override(b, { geom: live.g, verified: true });   // adjusting a box is a human judgment
     }
     this._refresh();
   }
@@ -715,6 +729,7 @@ export class BirdBoxTab {
     const species = new Set(included.map(b => this._edit(b).species).filter(s => s !== AVES));
     const stats = [
       [this.boxes.length, t('demo.bb.sum.boxes', 'boxes')],
+      [included.filter(b => this._edit(b).verified).length, t('demo.bb.sum.verified', 'verified by you')],
       [species.size, t('demo.bb.sum.species', 'suggested species')],
       [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')],
     ];
@@ -749,13 +764,17 @@ export class BirdBoxTab {
         : this.edits.get(b.id)?.geom ? `<button type="button" class="bb-mark bb-reset" data-act="reset-geom" title="${reset}" aria-label="${reset}"><i class="bi bi-arrow-counterclockwise"></i></button>` : '';
       const removeLabel = esc(b.manual ? t('demo.bb.deleteBox', 'Delete box') : edit.include ? t('demo.bb.remove', 'Remove box') : t('demo.bb.restore', 'Restore box'));
       const removeIcon = b.manual ? 'bi-trash3' : edit.include ? 'bi-x-lg' : 'bi-arrow-counterclockwise';
+      const verifyLabel = esc(edit.verified ? t('demo.bb.unverify', 'Verified by you · click to undo') : t('demo.bb.verify', 'Verify box (V)'));
+      const verify = b.manual
+        ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
+        : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
       return `<tr data-i="${i}" class="${b.id === this.selectedId ? 'is-selected' : ''}${edit.include ? '' : ' is-excluded'}">
         <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"><i class="bi bi-play-fill"></i>${i + 1}</button></td>
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
         <td class="bb-c-species"><div class="bb-species-wrap">${speciesCell}</div></td>
         <td class="bb-c-sound"><select class="form-select form-select-sm bb-select${edit.soundType ? '' : ' is-unset'}" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
-        <td class="bb-c-toggle"><button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
+        <td class="bb-c-toggle">${verify}<button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
       </tr>`;
     }).join('');
   }
@@ -784,18 +803,19 @@ export class BirdBoxTab {
       if (x1 < 0 || x0 > h.width) return;
       const y0 = h.freqToY(g.fhi), y1 = h.freqToY(g.flo), edit = this._edit(b);
       const selected = b.id === this.selectedId, active = selected || b.id === this.hoverId;
-      const base = b.manual ? '#fbbf24' : '#22d3ee';
+      const base = b.manual ? '#fbbf24' : edit.verified ? '#4ade80' : '#22d3ee';
       const color = !edit.include ? 'rgba(148,163,184,0.7)' : active ? '#ffffff' : base;
       ctx.strokeStyle = color;
       ctx.lineWidth = active ? 2.5 : 1.5;
       ctx.setLineDash(edit.include ? [] : [4, 3]);
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
-      if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+      if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
       const sp = this._species(b);
-      let label = sp.s !== AVES ? `${i + 1} · ${catalog.name(sp.s)}` : b.manual ? String(i + 1) : `${i + 1} · ${fmtNumber(b.avg, 2)}`;
+      const num = `${i + 1}${edit.verified && !b.manual ? ' ✓' : ''}`;
+      let label = sp.s !== AVES ? `${num} · ${catalog.name(sp.s)}` : b.manual || edit.verified ? num : `${num} · ${fmtNumber(b.avg, 2)}`;
       // Keep crowded views readable: numbers only unless the label fits or the box is active
-      if (!active && ctx.measureText(label).width > Math.max(x1 - x0, 0) + 24) label = String(i + 1);
+      if (!active && ctx.measureText(label).width > Math.max(x1 - x0, 0) + 24) label = num;
       const tw = ctx.measureText(label).width + 8, ly = Math.max(14, y0 - 2);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.9;
@@ -869,22 +889,23 @@ export class BirdBoxTab {
     const birdboxName = `${m?.birdbox?.name || 'BirdBox Just-Bird'}${commit ? ` @ ${commit}` : ''}`;
     const birdnetName = `BirdNET+ V${m?.v3?.version || '3.0'}`;
     const date = new Date().toISOString().slice(0, 10);
-    const counts = { detected: 0, adjusted: 0, drawn: 0 };
+    const counts = { drawn: 0, verified: 0, unverified: 0 };
+    // Drawn, adjusted and verified boxes are the person's; the others stay BirdBox's
     const annotations = rows.map(r => {
       const adjusted = !r.b.manual && !!this.edits.get(r.b.id)?.geom;
-      counts[r.b.manual ? 'drawn' : 'detected']++;
-      if (adjusted) counts.adjusted++;
+      const human = r.edit.verified;
+      counts[r.b.manual ? 'drawn' : human ? 'verified' : 'unverified']++;
       const box = r.b.manual ? 'Box drawn by the annotator'
-        : `Box detected by BirdBox (confidence ${r.b.avg.toFixed(3)})${adjusted ? ' and adjusted by the annotator' : ''}`;
+        : `Box detected by BirdBox (confidence ${r.b.avg.toFixed(3)}), ${human ? `${adjusted ? 'adjusted and ' : ''}verified by the annotator` : 'not verified'}`;
       const species = r.sp.s === AVES ? 'species not identified'
-        : r.edit.auto ? `species suggested by ${birdnetName}${r.sp.p != null ? ` (score ${r.sp.p.toFixed(3)})` : ''}`
+        : r.edit.auto ? `species suggested by ${birdnetName}${r.sp.p != null ? ` (score ${r.sp.p.toFixed(3)})` : ''}${human ? ', confirmed by the annotator' : ''}`
           : 'species chosen by the annotator';
       return {
         annotation_source_id: `birdbox-${String(r.i + 1).padStart(6, '0')}`,
         sound_file: shared.audio?.name || '',
         xc_nr: xcNr,
-        annotator: name,
-        annotator_xc_id: xcId,
+        annotator: human ? name : 'BirdBox',
+        annotator_xc_id: human ? xcId : '',
         frequency_high: Math.round(r.g.fhi),
         frequency_low: Math.round(r.g.flo),
         start_time: Number(r.g.t0.toFixed(3)),
@@ -909,7 +930,7 @@ export class BirdBoxTab {
       project_uri: '',
       project_name: '',
       funding: '',
-      set_remarks: `Made in the BirdNET browser demo. Boxes from BirdBox (${settings}), reviewed by the annotator: ${counts.detected} detected (${counts.adjusted} adjusted), ${counts.drawn} drawn.`,
+      set_remarks: `Made in the BirdNET browser demo. Boxes from BirdBox (${settings}): ${counts.verified} verified by the annotator, ${counts.unverified} not verified (annotator "BirdBox"); ${counts.drawn} drawn by the annotator.`,
       scope: [{ taxon_coverage: 'Aves', completeness: $('bb-complete').value }],
       annotations,
     };
