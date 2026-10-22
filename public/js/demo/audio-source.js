@@ -3,7 +3,7 @@
  * demo tab. Decoded audio goes to the shared store, so every tab sees the
  * same file.
  */
-import { decodeAudio, Recorder, SAMPLE_RATE } from './audio.js';
+import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, shared, t, toast } from './core.js';
 import { player } from './player.js';
 
@@ -250,15 +250,19 @@ export class AudioSource {
   }
 
   _showDrop(show) {
+    const a = shared.audio;
     this.$('drop').hidden = !show;
-    this.$('bar').hidden = show || !shared.audio;
-    this.$('back').hidden = !shared.audio;
+    this.$('bar').hidden = show || !a;
+    this.$('back').hidden = !a;
+    // Recordings longer than MAX_SECONDS were cut while decoding
+    this.$('truncated').hidden = show || !(a?.fullDuration > a?.duration + 0.5);
   }
 
   render() {
     const a = shared.audio;
     this._showDrop(!a);
     if (!a) return;
+    this.$('truncated').textContent = t('demo.source.truncated', 'This recording is {total} long. The demo analyzes the first {max} minutes.', { total: fmtTime(a.fullDuration), max: MAX_SECONDS / 60 });
     this.$('name').textContent = a.xc ? `XC${a.xc}${a.tags?.title ? ` · ${a.tags.title}` : ''}` : a.name;
     const link = this.$('xc-link');
     link.hidden = !a.xc;

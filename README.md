@@ -57,6 +57,7 @@ browser: a Kaiser-windowed sinc filter, flat to 14.6 kHz with about 100 dB
 stopband from 16 kHz. It differs from librosa's default (soxr_hq) by less than
 -80 dB below 12 kHz; only the 14-16 kHz transition band differs noticeably.
 PCM WAV files at 32 kHz load bit-identical to `librosa.load(sr=32000, mono=True)`.
+The demo analyzes at most the first 61 minutes of a recording.
 
 ## Project map data
 

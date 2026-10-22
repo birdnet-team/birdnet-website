@@ -15,7 +15,6 @@ import { catalog, CLASS_INFO, classLabel } from './species.js';
 import { imageUrl, speciesInfo } from './taxonomy.js';
 import { planChunks, SR, v3 } from './v3-service.js';
 
-const MAX_SECONDS = 15 * 60;
 const LANE_H = 22;
 const MAX_LANES = 8; // species lanes visible in the timeline before it scrolls
 const DETECTIONS_SHOWN = 48;
@@ -205,10 +204,8 @@ export class V3Tab {
     $('v3-workspace').hidden = !audio;
     $('v3-error').hidden = true;
     if (!audio) return;
-    const pcm = audio.pcm.length > MAX_SECONDS * SR ? audio.pcm.subarray(0, MAX_SECONDS * SR) : audio.pcm;
-    this.pcm = pcm;
-    this.duration = pcm.length / SR;
-    $('v3-truncated').hidden = audio.duration <= MAX_SECONDS;
+    this.pcm = audio.pcm;
+    this.duration = audio.duration;
     this.spec.clear();
     this.specPending = true;
     if (this.visible) this._startSpec();

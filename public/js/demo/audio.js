@@ -19,6 +19,8 @@
 import { makeConverter } from './resample.js';
 
 export const SAMPLE_RATE = 32000;
+/** Longest stretch of a recording the demo analyzes; longer files are cut. */
+export const MAX_SECONDS = 61 * 60;
 
 const MAX_DECODE_RATE = 48000;
 const JOB_SECONDS = 20;
@@ -157,19 +159,21 @@ function bufferRange(buffer, i0, i1) {
 }
 
 /**
- * Decode an audio file to mono Float32 PCM at 32 kHz.
+ * Decode an audio file to mono Float32 PCM at 32 kHz, at most MAX_SECONDS.
  * @param {Blob} file
  * @param {{onProgress?: (fraction: number) => void}} [options]
- * @returns {Promise<{pcm: Float32Array, duration: number, sourceRate: number|null, channels: number}>}
+ * @returns {Promise<{pcm: Float32Array, duration: number, fullDuration: number, sourceRate: number|null, channels: number}>}
  */
 export async function decodeAudio(file, { onProgress } = {}) {
-  let pcm, sourceRate, channels;
+  const maxOut = MAX_SECONDS * SAMPLE_RATE;
+  let pcm, sourceRate, channels, fullDuration;
   const wav = await parseWav(file).catch(() => null);
   if (wav) {
     if (!wav.frames) throw new Error('empty');
     ({ rate: sourceRate, channels } = wav);
+    fullDuration = wav.frames / sourceRate;
     const conv = makeConverter(sourceRate, SAMPLE_RATE, wav.frames);
-    pcm = await convert({ inRate: sourceRate, nIn: wav.frames, length: conv ? conv.length : wav.frames, wav, onProgress });
+    pcm = await convert({ inRate: sourceRate, nIn: wav.frames, length: Math.min(maxOut, conv ? conv.length : wav.frames), wav, onProgress });
   } else {
     const encoded = await file.arrayBuffer();
     sourceRate = sniffSampleRate(encoded);
@@ -177,14 +181,15 @@ export async function decodeAudio(file, { onProgress } = {}) {
     if (!buffer.length) throw new Error('empty');
     const rate = buffer.sampleRate;
     channels = buffer.numberOfChannels;
+    fullDuration = buffer.length / rate;
     const conv = makeConverter(rate, SAMPLE_RATE, buffer.length);
-    const length = conv ? conv.length : buffer.length;
+    const length = Math.min(maxOut, conv ? conv.length : buffer.length);
     pcm = conv
       ? await convert({ inRate: rate, nIn: buffer.length, length, input: (i0, i1) => bufferRange(buffer, i0, i1), onProgress })
       : bufferRange(buffer, 0, length);
   }
   if (!pcm.length) throw new Error('empty');
-  return { pcm, duration: pcm.length / SAMPLE_RATE, sourceRate, channels };
+  return { pcm, duration: pcm.length / SAMPLE_RATE, fullDuration, sourceRate, channels };
 }
 
 /** Best container the browser can record into. */
