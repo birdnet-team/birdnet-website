@@ -83,12 +83,25 @@ class V3Service extends EventTarget {
     const S = catalog.count;
     const scores = new Float32Array(chunks.length * S);
     const t0 = performance.now();
-    await Promise.all(chunks.map(([s, e], i) =>
-      this.scoreWindow(pcm, s, e, len, { gen: `v3-${gen}` }).then(out => {
+    // Windows are cut from the recording as they are queued, a few per
+    // worker ahead, so an hour of audio never sits in the queue at once.
+    let next = 0;
+    const lane = async () => {
+      while (next < chunks.length && gen === this.gen) {
+        const i = next++, [s, e] = chunks[i];
+        let out;
+        try {
+          out = await this.scoreWindow(pcm, s, e, len, { gen: `v3-${gen}` });
+        } catch (err) {
+          if (err.cancelled) return;
+          throw err;
+        }
         if (gen !== this.gen) return;
         scores.set(out, i * S);
         onChunk?.(i, out);
-      }, err => { if (!err.cancelled) throw err; })));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(chunks.length, 2 * this.pool.size) }, lane));
     this._idle();
     return { chunks, scores, ms: performance.now() - t0, cancelled: gen !== this.gen };
   }

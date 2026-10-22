@@ -5,9 +5,25 @@
  *         0 Hz up to fMax, 12 kHz by default), with each band's noise floor
  *         subtracted so calls stand out.
  *
+ * The page keeps the audio: the worker gets its length and asks for the
+ * sample ranges it needs, a block at a time, so an hour of audio is never
+ * copied in full.
+ *   in:  { type: 'stft', id, length, sampleRate, fMax }  then  { type: 'pcm', data: Float32Array[] } per request
+ *   out: { type: 'want', ranges: [[start, end], ...] }   samples outside the recording come back as zeros
+ *
  * Results stream back in slices of frames (Uint8 levels, frame-major):
  *   { type: 'meta', id, frames, rows, fps, floor }  then  { type: 'slice', id, start, data }  then  { type: 'done', id }
  */
+
+let answer = null;
+
+/** Ask the page for sample ranges; resolves with one Float32Array per range. */
+function want(ranges) {
+  return new Promise(resolve => {
+    answer = resolve;
+    postMessage({ type: 'want', ranges });
+  });
+}
 
 const fftCache = new Map();
 
@@ -57,14 +73,15 @@ function percentile(sorted, q) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
 }
 
-function stft(id, pcm, sampleRate, fMax = 12000) {
+async function stft(id, length, sampleRate, fMax = 12000) {
   const N = 1024, HOP = Math.round(sampleRate / 100), ROWS = Math.round(Math.min(fMax, sampleRate / 2) / (sampleRate / N));
-  const frames = Math.max(1, Math.floor((pcm.length - N) / HOP) + 1);
+  const frames = Math.max(1, Math.floor((length - N) / HOP) + 1);
   const win = new Float64Array(N);
   for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
   const re = new Float64Array(N), im = new Float64Array(N);
-  const frameDb = (f, out) => {
-    const off = f * HOP;
+  // pcm holds samples from pcmStart on
+  const frameDb = (pcm, pcmStart, f, out) => {
+    const off = f * HOP - pcmStart;
     for (let i = 0; i < N; i++) { re[i] = (pcm[off + i] || 0) * win[i]; im[i] = 0; }
     fft(re, im);
     for (let k = 0; k < ROWS; k++) out[k] = 10 * Math.log10(re[k] * re[k] + im[k] * im[k] + 1e-12);
@@ -72,9 +89,11 @@ function stft(id, pcm, sampleRate, fMax = 12000) {
   // Display contrast: subtract each band's noise floor (median level over a
   // sample of frames), so calls stand out over wind and traffic rumble.
   const sampleCount = Math.min(frames, 600), tmp = new Float32Array(ROWS);
+  const sampled = Array.from({ length: sampleCount }, (_, s) => Math.floor((s + 0.5) * frames / sampleCount));
+  const sampledPcm = await want(sampled.map(f => [f * HOP, f * HOP + N]));
   const byRow = Array.from({ length: ROWS }, () => new Float32Array(sampleCount));
   for (let s = 0; s < sampleCount; s++) {
-    frameDb(Math.floor((s + 0.5) * frames / sampleCount), tmp);
+    frameDb(sampledPcm[s], sampled[s] * HOP, sampled[s], tmp);
     for (let k = 0; k < ROWS; k++) byRow[k][s] = tmp[k];
   }
   const noise = new Float32Array(ROWS), residual = new Float32Array(sampleCount * ROWS);
@@ -91,8 +110,9 @@ function stft(id, pcm, sampleRate, fMax = 12000) {
   const SLICE = 1024;
   for (let start = 0; start < frames; start += SLICE) {
     const end = Math.min(frames, start + SLICE), data = new Uint8Array((end - start) * ROWS);
+    const [pcm] = await want([[start * HOP, (end - 1) * HOP + N]]);
     for (let f = start; f < end; f++) {
-      frameDb(f, tmp);
+      frameDb(pcm, start * HOP, f, tmp);
       const o = (f - start) * ROWS;
       for (let k = 0; k < ROWS; k++) {
         const v = (tmp[k] - noise[k] - lo) / (hi - lo);
@@ -104,9 +124,10 @@ function stft(id, pcm, sampleRate, fMax = 12000) {
   postMessage({ type: 'done', id });
 }
 
-self.onmessage = ({ data: msg }) => {
+self.onmessage = async ({ data: msg }) => {
+  if (msg.type === 'pcm') { answer?.(msg.data); return; }
   try {
-    if (msg.type === 'stft') stft(msg.id, msg.pcm, msg.sampleRate, msg.fMax);
+    if (msg.type === 'stft') await stft(msg.id, msg.length, msg.sampleRate, msg.fMax);
   } catch (err) {
     postMessage({ type: 'error', id: msg.id, error: String(err?.message || err) });
   }

@@ -3,7 +3,7 @@
  * demo tab. Decoded audio goes to the shared store, so every tab sees the
  * same file.
  */
-import { decodeAudio, Recorder, SAMPLE_RATE } from './audio.js';
+import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, shared, t, toast } from './core.js';
 import { player } from './player.js';
 
@@ -16,9 +16,8 @@ let loadToken = 0;
 export async function loadFile(file, { isSample = false, xc = null, onStatus } = {}) {
   const token = ++loadToken;
   onStatus?.('decoding');
-  const buffer = await file.arrayBuffer();
-  const tags = readXcTags(buffer);
-  const decoded = await decodeAudio(buffer);
+  const tags = readXcTags(await file.slice(0, 1 << 20).arrayBuffer());
+  const decoded = await decodeAudio(file, { onProgress: f => { if (token === loadToken) onStatus?.('decoding', f); } });
   if (token !== loadToken) return null;
   const url = URL.createObjectURL(file);
   if (shared.audio?.url) URL.revokeObjectURL(shared.audio.url);
@@ -173,7 +172,7 @@ export class AudioSource {
     const input = this.$('input');
     this.$('choose').addEventListener('click', () => input.click());
     input.addEventListener('change', () => { if (input.files[0]) this._load(input.files[0]); input.value = ''; });
-    this.$('sample').addEventListener('click', () => this._run(() => loadSample(s => this._status(s))));
+    this.$('sample').addEventListener('click', () => this._run(() => loadSample((s, f) => this._status(s, null, f))));
     this.$('record').addEventListener('click', () => this._startRecording());
     this.$('stop').addEventListener('click', () => this._stopRecording());
     this.$('cancel').addEventListener('click', () => this._cancelRecording());
@@ -189,7 +188,7 @@ export class AudioSource {
         return;
       }
       this._run(() => loadXenoCanto(nr, {
-        onStatus: s => this._status(s, nr),
+        onStatus: (s, f) => this._status(s, nr, f),
         onProgress: (loaded, total) => {
           this.$('status').textContent = t('demo.source.xcFetching', 'Loading XC{nr} from Xeno-canto…', { nr })
             + (total ? ` ${fmtPct(loaded / total, 0)}` : ` ${fmtBytes(loaded)}`);
@@ -213,11 +212,11 @@ export class AudioSource {
     });
   }
 
-  _status(stage, nr) {
+  _status(stage, nr, fraction) {
     const msg = {
       fetching: t('demo.source.fetching', 'Loading sample…'),
       xc: t('demo.source.xcFetching', 'Loading XC{nr} from Xeno-canto…', { nr }),
-      decoding: t('demo.source.decoding', 'Decoding audio…'),
+      decoding: t('demo.source.decoding', 'Decoding audio…') + (fraction != null ? ` ${fmtPct(fraction, 0)}` : ''),
     }[stage];
     this.$('status').textContent = msg || '';
     this.root.classList.toggle('is-busy', !!msg);
@@ -247,19 +246,23 @@ export class AudioSource {
       this._message('warning', t('demo.source.notAudio', 'This does not look like an audio file.'));
       return;
     }
-    this._run(() => loadFile(file, { onStatus: s => this._status(s) }));
+    this._run(() => loadFile(file, { onStatus: (s, f) => this._status(s, null, f) }));
   }
 
   _showDrop(show) {
+    const a = shared.audio;
     this.$('drop').hidden = !show;
-    this.$('bar').hidden = show || !shared.audio;
-    this.$('back').hidden = !shared.audio;
+    this.$('bar').hidden = show || !a;
+    this.$('back').hidden = !a;
+    // Recordings longer than MAX_SECONDS were cut while decoding
+    this.$('truncated').hidden = show || !(a?.fullDuration > a?.duration + 0.5);
   }
 
   render() {
     const a = shared.audio;
     this._showDrop(!a);
     if (!a) return;
+    this.$('truncated').textContent = t('demo.source.truncated', 'This recording is {total} long. The demo analyzes the first {max} minutes.', { total: fmtTime(a.fullDuration), max: MAX_SECONDS / 60 });
     this.$('name').textContent = a.xc ? `XC${a.xc}${a.tags?.title ? ` · ${a.tags.title}` : ''}` : a.name;
     const link = this.$('xc-link');
     link.hidden = !a.xc;
@@ -318,7 +321,7 @@ export class AudioSource {
     this.recorder = null;
     this.$('idle').hidden = false;
     this.$('recording').hidden = true;
-    if (file) this._run(() => loadFile(file, { onStatus: s => this._status(s) }));
+    if (file) this._run(() => loadFile(file, { onStatus: (s, f) => this._status(s, null, f) }));
   }
 
   async _cancelRecording() {

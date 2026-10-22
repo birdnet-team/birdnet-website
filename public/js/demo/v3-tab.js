@@ -15,7 +15,6 @@ import { catalog, CLASS_INFO, classLabel } from './species.js';
 import { imageUrl, speciesInfo } from './taxonomy.js';
 import { planChunks, SR, v3 } from './v3-service.js';
 
-const MAX_SECONDS = 15 * 60;
 const LANE_H = 22;
 const MAX_LANES = 8; // species lanes visible in the timeline before it scrolls
 const DETECTIONS_SHOWN = 48;
@@ -24,14 +23,27 @@ const PALETTE = ['#60a5fa', '#fbbf24', '#34d399', '#f87171', '#a78bfa', '#22d3ee
 const $ = id => document.getElementById(id);
 const detKey = (c, s) => `${c}:${s}`;
 
+/** Samples [start, end) of pcm as a new array, zero outside it. */
+function pcmRange(pcm, start, end) {
+  const out = new Float32Array(end - start), a = Math.max(0, start), b = Math.min(pcm.length, end);
+  if (b > a) out.set(pcm.subarray(a, b), a - start);
+  return out;
+}
+
 /**
  * Compute a spectrogram in a worker owned by the viewer and stream it in.
- * Starting a new job stops the viewer's previous one.
+ * The worker asks for the samples it needs block by block. Starting a new
+ * job stops the viewer's previous one.
  */
 export function streamSpectrogram(view, pcm, type, duration) {
   view._specWorker?.terminate();
   const worker = view._specWorker = new Worker(new URL('./spec-worker.js', import.meta.url));
   worker.onmessage = ({ data }) => {
+    if (data.type === 'want') {
+      const parts = data.ranges.map(([a, b]) => pcmRange(pcm, a, b));
+      worker.postMessage({ type: 'pcm', data: parts }, parts.map(p => p.buffer));
+      return;
+    }
     if (data.type === 'meta') view.setSource({ frames: data.frames, rows: data.rows, fps: data.fps, duration, floor: data.floor || 0 });
     else if (data.type === 'slice') view.addSlice(data.start, data.data);
     else if (data.type === 'error') console.error('spectrogram:', data.error);
@@ -40,7 +52,7 @@ export function streamSpectrogram(view, pcm, type, duration) {
       if (view._specWorker === worker) view._specWorker = null;
     }
   };
-  worker.postMessage({ type, id: 1, pcm, sampleRate: SR, fMax: view.axis?.fMax });
+  worker.postMessage({ type, id: 1, length: pcm.length, sampleRate: SR, fMax: view.axis?.fMax });
 }
 
 /**
@@ -192,10 +204,8 @@ export class V3Tab {
     $('v3-workspace').hidden = !audio;
     $('v3-error').hidden = true;
     if (!audio) return;
-    const pcm = audio.pcm.length > MAX_SECONDS * SR ? audio.pcm.subarray(0, MAX_SECONDS * SR) : audio.pcm;
-    this.pcm = pcm;
-    this.duration = pcm.length / SR;
-    $('v3-truncated').hidden = audio.duration <= MAX_SECONDS;
+    this.pcm = audio.pcm;
+    this.duration = audio.duration;
     this.spec.clear();
     this.specPending = true;
     if (this.visible) this._startSpec();
