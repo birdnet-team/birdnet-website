@@ -4,8 +4,9 @@
  * same file.
  */
 import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
-import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, shared, t, toast } from './core.js';
+import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
 import { player } from './player.js';
+import { localStart, readRecordingStart, utcLabel } from './recording-time.js';
 
 const MAX_RECORD_SECONDS = 300;
 const XC_EXT = { mpeg: 'mp3', mp3: 'mp3', wav: 'wav', 'x-wav': 'wav', wave: 'wav', flac: 'flac', 'x-flac': 'flac', ogg: 'ogg' };
@@ -13,15 +14,19 @@ const XC_EXT = { mpeg: 'mp3', mp3: 'mp3', wav: 'wav', 'x-wav': 'wav', wave: 'wav
 let loadToken = 0;
 
 /** Decode a File and publish it as the current recording. */
-export async function loadFile(file, { isSample = false, xc = null, onStatus } = {}) {
+export async function loadFile(file, { isSample = false, xc = null, start = null, onStatus } = {}) {
   const token = ++loadToken;
   onStatus?.('decoding');
   const tags = readXcTags(await file.slice(0, 1 << 20).arrayBuffer());
-  const decoded = await decodeAudio(file, { onProgress: f => { if (token === loadToken) onStatus?.('decoding', f); } });
+  // The sample is cut from several recordings, so it has no one start time
+  const [decoded, fileStart] = await Promise.all([
+    decodeAudio(file, { onProgress: f => { if (token === loadToken) onStatus?.('decoding', f); } }),
+    start || isSample ? null : readRecordingStart(file),
+  ]);
   if (token !== loadToken) return null;
   const url = URL.createObjectURL(file);
   if (shared.audio?.url) URL.revokeObjectURL(shared.audio.url);
-  const audio = { name: file.name, size: file.size, file, url, isSample, xc: xc || tags?.xc || null, tags, ...decoded };
+  const audio = { name: file.name, size: file.size, file, url, isSample, xc: xc || tags?.xc || null, tags, start: start || fileStart, ...decoded };
   player.setSource(url);
   useRecordingLocation(tags);   // before the tabs see the audio, so their first suggestions use it
   shared.setAudio(audio);
@@ -277,7 +282,15 @@ export class AudioSource {
     else if (a.sourceRate) meta.push(t('demo.source.resampled', '{rate} kHz → 32 kHz', { rate: (a.sourceRate / 1000).toLocaleString() }));
     if (a.channels > 1) meta.push(t('demo.source.mono', '{n} channels → mono', { n: a.channels }));
     if (a.tags?.place) meta.push([a.tags.place, a.tags.date].filter(Boolean).join(', '));
-    this.$('meta').textContent = meta.join(' · ');
+    const metaEl = this.$('meta');
+    metaEl.title = '';
+    if (a.start) {
+      const when = new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'medium', timeZone: 'UTC' }).format(a.start.ms);
+      meta.push(t('demo.source.startTime', 'Start {time}', { time: [when, utcLabel(a.start.tz)].filter(Boolean).join(' ') }));
+      const source = { fileName: t('demo.source.startFileName', 'file name'), device: t('demo.source.startDevice', 'clock of this device') }[a.start.source] || a.start.source;
+      metaEl.title = `${meta.join(' · ')}\n${t('demo.source.startFrom', 'Start time from: {source}. CSV and Raven exports add clock times to the detections.', { source })}`;
+    }
+    metaEl.textContent = meta.join(' · ');
     this.$('icon').className = `bi ${a.isSample ? 'bi-music-note-beamed' : a.xc ? 'bi-globe2' : a.name.startsWith('recording_') ? 'bi-mic-fill' : 'bi-file-earmark-music'}`;
     this.$('time').textContent = `${fmtTime(player.time)} / ${fmtTime(a.duration)}`;
     this._renderPlay();
@@ -317,11 +330,12 @@ export class AudioSource {
   }
 
   async _stopRecording() {
+    const start = this.recorder?.startDate;
     const file = await this.recorder?.stop();
     this.recorder = null;
     this.$('idle').hidden = false;
     this.$('recording').hidden = true;
-    if (file) this._run(() => loadFile(file, { onStatus: (s, f) => this._status(s, null, f) }));
+    if (file) this._run(() => loadFile(file, { start: start && localStart(start), onStatus: (s, f) => this._status(s, null, f) }));
   }
 
   async _cancelRecording() {

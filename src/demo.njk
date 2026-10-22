@@ -147,6 +147,21 @@ permalink: "/demo/"
       <div class="col-lg-8">
         <div id="v3-error" class="alert alert-danger small" hidden></div>
         <div id="v3-summary" class="mb-3"></div>
+        <details class="demo-explain mb-3">
+          <summary><i class="bi bi-question-circle" aria-hidden="true"></i><span data-i18n="demo.v3.explain.title">What do the percentages mean?</span></summary>
+          <dl>
+            <dt data-i18n="demo.v3.explain.whatT">What it measures</dt>
+            <dd data-i18n="demo.v3.explain.what">How closely the sound in one stretch of the recording (a 3-second window by default) matches what BirdNET learned about a species from many example recordings. Only the sound counts; the model does not know where or when you recorded.</dd>
+            <dt data-i18n="demo.v3.explain.notT">What it is not</dt>
+            <dd data-i18n="demo.v3.explain.not">It is not the chance that the identification is right. A detection at 80% is not correct 8 times out of 10, and the same number means different things for different species: some reach high scores easily, others rarely do, even when they are right.</dd>
+            <dt data-i18n="demo.v3.explain.whyT">Why it goes up or down</dt>
+            <dd data-i18n="demo.v3.explain.why">Clear, loud, complete calls close to the microphone score high. Distance, wind, rain, traffic, overlapping voices or a call cut off at the edge of a window lower the score. Each species is scored on its own, so the numbers do not add up to 100%, and similar-sounding species can both score high.</dd>
+            <dt data-i18n="demo.v3.explain.pageT">On this page</dt>
+            <dd data-i18n="demo.v3.explain.page">A species card shows its highest score in the recording; the list inside shows the score of each window. Min. confidence hides everything below it: higher values give fewer but more reliable detections, lower values find more but also more mistakes. The location filter does not change the scores; it only hides species not expected at that place and time.</dd>
+            <dt data-i18n="demo.v3.explain.checkT">Check before you trust</dt>
+            <dd data-i18n="demo.v3.explain.check">Listen to the detections and look at the spectrogram, especially for low scores and for rare or unexpected species.</dd>
+          </dl>
+        </details>
         <div id="v3-results"></div>
         <div class="d-flex flex-wrap gap-2 mt-3">
           <button type="button" id="v3-export-csv" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-filetype-csv me-1"></i><span data-i18n="demo.v3.exportCsv">Download CSV</span></button>
@@ -363,6 +378,17 @@ permalink: "/demo/"
         <div id="bb-error" class="alert alert-danger small" hidden></div>
         <div id="bb-summary" class="mb-2"></div>
         <div id="bb-suggest-status" class="small text-muted mb-2" aria-live="polite"></div>
+        <details class="demo-explain mb-2">
+          <summary><i class="bi bi-question-circle" aria-hidden="true"></i><span data-i18n="demo.bb.explain.title">What do the numbers mean?</span></summary>
+          <dl>
+            <dt data-i18n="demo.bb.explain.confT">Conf.</dt>
+            <dd data-i18n="demo.bb.explain.conf">How sure BirdBox is that the box holds a bird sound, from 0 to 1. It does not say which species. A box joined from several calls shows their average; hover over the number to see the highest.</dd>
+            <dt data-i18n="demo.bb.explain.speciesT">Species %</dt>
+            <dd data-i18n="demo.bb.explain.species">BirdNET V3.0's confidence score for the sound around the box: how closely it matches that species. Below 35%, the box keeps no species, but you can still pick one from the suggestions.</dd>
+            <dt data-i18n="demo.bb.explain.notT">Not a probability</dt>
+            <dd data-i18n="demo.bb.explain.not">A high number does not prove a box right, and a low one does not prove it wrong. Faint, distant or overlapping calls score lower. Listen to a box before you verify it.</dd>
+          </dl>
+        </details>
         <div id="bb-table-wrap" class="demo-table-wrap" hidden>
           <table id="bb-table" class="table table-sm align-middle mb-0 demo-table">
             <thead>

@@ -18,6 +18,7 @@ import { activeMask, LocationFilter } from './location-filter.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
 import { OrtPool } from './ort-pool.js';
 import { player } from './player.js';
+import { isoTime, RAVEN_CLOCK, ravenClock } from './recording-time.js';
 import { SpecView } from './spec-view.js';
 import { pickSpecies } from './picker.js';
 import { catalog } from './species.js';
@@ -918,21 +919,27 @@ export class BirdBoxTab {
     downloadFile(`XC${xcNr}.xeno-canto-annota.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
   }
 
+  /** Clock times are added when the recording's start is known. */
   _exportCsv() {
+    const start = shared.audio?.start;
     const header = ['box', 'time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
+    if (start) header.push('datetime_start', 'datetime_end');
     const lines = [header.join(',')];
     for (const r of this._included()) {
       const detector = r.b.manual ? ['', '', '', ''] : [r.b.avg.toFixed(6), r.b.max.toFixed(6), Math.round(r.b.n), Math.round(r.b.cls)];
+      const clock = start ? [isoTime(start, r.g.t0), isoTime(start, r.g.t1)] : [];
       lines.push([r.i + 1, r.g.t0.toFixed(6), r.g.t1.toFixed(6), r.g.flo.toFixed(3), r.g.fhi.toFixed(3), ...detector, 'bird',
-        csvField(this._sciName(r.sp.s)), csvField(r.sp.s === AVES ? '' : catalog.en[r.sp.s]), r.sp.p == null ? '' : r.sp.p.toFixed(6), csvField(r.edit.soundType)].join(','));
+        csvField(this._sciName(r.sp.s)), csvField(r.sp.s === AVES ? '' : catalog.en[r.sp.s]), r.sp.p == null ? '' : r.sp.p.toFixed(6), csvField(r.edit.soundType), ...clock].join(','));
     }
     downloadFile(`${this._baseName()}.BirdBox.csv`, `${lines.join('\n')}\n`, 'text/csv;charset=utf-8');
   }
 
   _exportRaven() {
-    const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
+    const start = shared.audio?.start;
+    const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', ...(start ? RAVEN_CLOCK : []), 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
     this._included().forEach(r => {
-      lines.push([r.i + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
+      const clock = start ? ravenClock(start, r.g.t0, r.g.t1) : [];
+      lines.push([r.i + 1, 'Spectrogram 1', 1, r.g.t0.toFixed(3), r.g.t1.toFixed(3), ...clock, Math.round(r.g.flo), Math.round(r.g.fhi), this._sciName(r.sp.s), r.b.manual ? '' : r.b.avg.toFixed(3)].join('\t'));
     });
     downloadFile(`${this._baseName()}.BirdBox.selections.txt`, `${lines.join('\n')}\n`);
   }
