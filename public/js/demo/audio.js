@@ -222,6 +222,7 @@ export class Recorder {
     this.recorder.ondataavailable = e => { if (e.data.size) this.chunks.push(e.data); };
     this.recorder.start(1000);
     this.startedAt = performance.now();
+    this.startDate = new Date();
     this.timer = setInterval(() => {
       this.onTick?.(this.elapsed);
       if (this.elapsed >= this.maxSeconds) this.stop();

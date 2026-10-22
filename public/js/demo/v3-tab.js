@@ -10,6 +10,7 @@ import { csvField, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, pyRo
 import { activeMask, LocationFilter } from './location-filter.js';
 import { pickSpecies } from './picker.js';
 import { player } from './player.js';
+import { isoTime, RAVEN_CLOCK, ravenClock } from './recording-time.js';
 import { SpecView } from './spec-view.js';
 import { catalog, CLASS_INFO, classLabel } from './species.js';
 import { imageUrl, speciesInfo } from './taxonomy.js';
@@ -846,20 +847,26 @@ export class V3Tab {
     return (shared.audio?.name || 'audio').replace(/\.[^.]+$/, '');
   }
 
-  /** Columns and number formatting of the V3.0 command-line analyzer. */
+  /**
+   * Columns and number formatting of the V3.0 command-line analyzer, plus
+   * clock times when the recording's start is known.
+   */
   _exportCsv() {
-    const name = shared.audio?.name || 'audio';
-    const lines = ['name,start_sec,end_sec,confidence,label'];
+    const name = shared.audio?.name || 'audio', start = shared.audio?.start;
+    const lines = [`name,start_sec,end_sec,confidence,label${start ? ',start_datetime,end_datetime' : ''}`];
     for (const r of this._rows()) {
-      lines.push([csvField(name), pyRound(r.start, 3), pyRound(r.end, 3), pyRound(r.p, 6), csvField(`${catalog.sci[r.s]}_${catalog.en[r.s]}`)].join(','));
+      const clock = start ? [isoTime(start, r.start), isoTime(start, r.end)] : [];
+      lines.push([csvField(name), pyRound(r.start, 3), pyRound(r.end, 3), pyRound(r.p, 6), csvField(`${catalog.sci[r.s]}_${catalog.en[r.s]}`), ...clock].join(','));
     }
     downloadFile(`${this._baseName()}.BirdNET_V3.results.csv`, `${lines.join('\n')}\n`, 'text/csv;charset=utf-8');
   }
 
   _exportRaven() {
-    const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', 'Low Freq (Hz)', 'High Freq (Hz)', 'Common Name', 'Scientific Name', 'Confidence'].join('\t')];
+    const start = shared.audio?.start;
+    const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', ...(start ? RAVEN_CLOCK : []), 'Low Freq (Hz)', 'High Freq (Hz)', 'Common Name', 'Scientific Name', 'Confidence'].join('\t')];
     this._rows().forEach((r, i) => {
-      lines.push([i + 1, 'Spectrogram 1', 1, r.start.toFixed(3), r.end.toFixed(3), 0, 16000, catalog.name(r.s), catalog.sci[r.s], r.p.toFixed(4)].join('\t'));
+      const clock = start ? ravenClock(start, r.start, r.end) : [];
+      lines.push([i + 1, 'Spectrogram 1', 1, r.start.toFixed(3), r.end.toFixed(3), ...clock, 0, 16000, catalog.name(r.s), catalog.sci[r.s], r.p.toFixed(4)].join('\t'));
     });
     downloadFile(`${this._baseName()}.BirdNET_V3.selections.txt`, `${lines.join('\n')}\n`);
   }
