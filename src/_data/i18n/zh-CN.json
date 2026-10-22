@@ -965,6 +965,7 @@
   "demo.bb.status.detecting": "正在检测鸣声 · 片段 {n} / {total}",
   "demo.bb.status.downloading": "正在下载 BirdBox 模型：{done} / {total}",
   "demo.bb.status.left": "大约还需 {time}",
+  "demo.bb.status.overtime": "正在检测鸣声 · 比预计时间长，已用 {time}",
   "demo.bb.status.preparing": "正在准备 BirdBox…",
   "demo.bb.suggest": "使用 BirdNET V3.0 建议物种",
   "demo.bb.suggest.downloading": "正在下载用于物种建议的 BirdNET V3.0：{pct}",

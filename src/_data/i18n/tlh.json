@@ -965,6 +965,7 @@
   "demo.bb.status.detecting": "ghogh SamtaH · clip {n} / {total}",
   "demo.bb.status.downloading": "BirdBox model SuqtaH: {done} / {total}",
   "demo.bb.status.left": "{time} ratlh",
+  "demo.bb.status.overtime": "ghogh SamtaH · nI'law' · {time} ratlhpu'",
   "demo.bb.status.preparing": "BirdBox ghuHmoHtaH…",
   "demo.bb.suggest": "BirdNET V3.0 lo'taHvIS Segh yIngu'",
   "demo.bb.suggest.downloading": "Segh ngu'meyvaD BirdNET V3.0 SuqtaH: {pct}",

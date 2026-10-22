@@ -960,6 +960,7 @@
   "demo.bb.status.detecting": "Lautäußerungen werden erkannt · Clip {n} von {total}",
   "demo.bb.status.downloading": "BirdBox-Modell wird heruntergeladen: {done} von {total}",
   "demo.bb.status.left": "noch etwa {time}",
+  "demo.bb.status.overtime": "Lautäußerungen werden erkannt · dauert länger als geschätzt, bisher {time}",
   "demo.bb.status.preparing": "BirdBox wird vorbereitet…",
   "demo.bb.suggest": "Arten mit BirdNET V3.0 vorschlagen",
   "demo.bb.suggest.downloading": "BirdNET V3.0 für Artvorschläge wird heruntergeladen: {pct}",

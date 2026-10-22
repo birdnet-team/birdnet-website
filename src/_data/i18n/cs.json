@@ -965,6 +965,7 @@
   "demo.bb.status.detecting": "Detekce hlasů · klip {n} z {total}",
   "demo.bb.status.downloading": "Stahování modelu BirdBox: {done} z {total}",
   "demo.bb.status.left": "zbývá asi {time}",
+  "demo.bb.status.overtime": "Detekce hlasů · trvá déle, než se odhadovalo, zatím {time}",
   "demo.bb.status.preparing": "Příprava BirdBox…",
   "demo.bb.suggest": "Navrhovat druhy pomocí BirdNET V3.0",
   "demo.bb.suggest.downloading": "Stahování BirdNET V3.0 pro návrhy druhů: {pct}",

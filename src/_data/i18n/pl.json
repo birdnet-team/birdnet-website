@@ -965,6 +965,7 @@
   "demo.bb.status.detecting": "Wykrywanie głosów · klip {n} z {total}",
   "demo.bb.status.downloading": "Pobieranie modelu BirdBox: {done} z {total}",
   "demo.bb.status.left": "zostało ok. {time}",
+  "demo.bb.status.overtime": "Wykrywanie głosów · trwa dłużej, niż szacowano, na razie {time}",
   "demo.bb.status.preparing": "Przygotowywanie BirdBox…",
   "demo.bb.suggest": "Proponuj gatunki za pomocą BirdNET V3.0",
   "demo.bb.suggest.downloading": "Pobieranie BirdNET V3.0 do propozycji gatunków: {pct}",

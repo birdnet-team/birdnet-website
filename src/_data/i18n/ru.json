@@ -965,6 +965,7 @@
   "demo.bb.status.detecting": "Поиск голосов · клип {n} из {total}",
   "demo.bb.status.downloading": "Загрузка модели BirdBox: {done} из {total}",
   "demo.bb.status.left": "осталось около {time}",
+  "demo.bb.status.overtime": "Поиск голосов · дольше, чем ожидалось, прошло {time}",
   "demo.bb.status.preparing": "Подготовка BirdBox…",
   "demo.bb.suggest": "Предлагать виды с помощью BirdNET V3.0",
   "demo.bb.suggest.downloading": "Загрузка BirdNET V3.0 для подсказок видов: {pct}",

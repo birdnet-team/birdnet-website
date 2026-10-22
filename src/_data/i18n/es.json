@@ -960,6 +960,7 @@
   "demo.bb.status.detecting": "Detectando vocalizaciones · clip {n} de {total}",
   "demo.bb.status.downloading": "Descargando el modelo BirdBox: {done} de {total}",
   "demo.bb.status.left": "faltan unos {time}",
+  "demo.bb.status.overtime": "Detectando vocalizaciones · tarda más de lo estimado, {time} hasta ahora",
   "demo.bb.status.preparing": "Preparando BirdBox…",
   "demo.bb.suggest": "Sugerir especies con BirdNET V3.0",
   "demo.bb.suggest.downloading": "Descargando BirdNET V3.0 para sugerir especies: {pct}",

@@ -394,11 +394,17 @@ export class BirdBoxTab {
       const clips = Math.max(1, Math.ceil((this.duration - 3) / 1.5) + 1);
       let msPerClip = 280;
       try { msPerClip = +localStorage.getItem(MS_PER_CLIP_KEY) || msPerClip; } catch { /* storage blocked */ }
-      const t0 = performance.now();
+      const t0 = performance.now(), estimate = clips * msPerClip;
       // ONNX Runtime reports no progress inside one run; pace a counter on the clip grid.
       ticker = setInterval(() => {
-        const elapsed = performance.now() - t0, frac = Math.min(0.95, elapsed / (clips * msPerClip));
-        const left = (clips * msPerClip - elapsed) / 1000;
+        const elapsed = performance.now() - t0;
+        if (elapsed > 0.95 * estimate) {
+          // Slower than this device's last run: keep the bar creeping and say so instead of freezing
+          const frac = 0.95 + 0.04 * (1 - 0.95 * estimate / elapsed);
+          this._setProgress(0.3 + 0.7 * frac, t('demo.bb.status.overtime', 'Detecting vocalizations · taking longer than estimated, {time} so far', { time: fmtTime(elapsed / 1000) }));
+          return;
+        }
+        const frac = elapsed / estimate, left = (estimate - elapsed) / 1000;
         let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips });
         if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
         this._setProgress(0.3 + 0.7 * frac, text);
