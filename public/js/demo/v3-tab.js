@@ -591,7 +591,7 @@ export class V3Tab {
           <div class="v3-sci text-truncate"><i>${esc(sci)}</i> · ${esc(classLabel(cls))}</div>
         </div>
         <div class="v3-side">
-          <div class="v3-conf"></div>
+          <div class="v3-conf" title="${esc(t('demo.v3.confTitle', 'Highest confidence score of this species in the recording'))}"></div>
           <div class="v3-count"><span></span><i class="bi bi-chevron-down v3-chev"></i></div>
         </div>
         <button type="button" class="v3-play" data-act="play"><i class="bi bi-play-fill"></i><i class="bi bi-pause-fill"></i></button>

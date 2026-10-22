@@ -415,6 +415,19 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 
 .demo-empty-note { padding: 1rem; border-radius: var(--demo-radius); background: #f8fafc; color: var(--demo-muted); font-size: 0.9rem; }
 
+/* ---------- "What does the number mean?" ---------- */
+
+.demo-explain { border: 1px solid #e2e8f0; border-radius: var(--demo-radius); background: #f8fafc; font-size: 0.85rem; line-height: 1.45; }
+.demo-explain > summary { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.75rem; color: var(--demo-muted); font-weight: 500; cursor: pointer; list-style: none; }
+.demo-explain > summary::-webkit-details-marker { display: none; }
+.demo-explain > summary::after { content: '\f282'; margin-left: auto; font-family: 'bootstrap-icons'; font-size: 0.75rem; transition: transform 0.15s; }
+.demo-explain[open] > summary::after { transform: rotate(180deg); }
+.demo-explain > summary:hover { color: #0f172a; }
+.demo-explain dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; padding: 0.1rem 0.75rem 0.7rem; color: #334155; }
+.demo-explain dt { font-weight: 600; color: #0f172a; }
+.demo-explain dd { margin: 0; }
+@media (max-width: 575.98px) { .demo-explain dl { grid-template-columns: 1fr; gap: 0; } .demo-explain dd { margin-bottom: 0.45rem; } }
+
 /* ---------- V3.0 species cards ---------- */
 
 .v3-species-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
