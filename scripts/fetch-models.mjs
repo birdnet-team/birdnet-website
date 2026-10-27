@@ -35,7 +35,7 @@ const FORCE = process.argv.includes('--force');
 
 // Pinned upstream sources. Bump the commit (and the expected hashes) to update.
 const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '9aebee76cdd91d51e17a02e13e8f764549f97ff4' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '60469c385032e9402444d71b3ae246f9eb9855e4' };
 
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 // Git LFS objects are served from media.githubusercontent.com
@@ -54,7 +54,7 @@ const FILES = {
   geoModel: { url: lfs(LIVE_APP, `assets/models/${GEO_MODEL}`), name: GEO_MODEL, sha256: '198adb7bcb3cf03341ffa51fbfa7b2d295e5cd900ba09183dcfdbf6d12b5c63b' },
   geoLabels: { url: raw(LIVE_APP, `assets/models/${GEO_LABELS}`), name: GEO_LABELS },
   taxonomy: { url: raw(LIVE_APP, 'assets/models/taxonomy.csv'), name: 'taxonomy.csv' },
-  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '132d08f0888b4f4ad834ad968545fe412f952253cee11dec9386fada33c34787' },
+  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '11786b06b67a46620d09d1a468bec15df901506d00eede6a417e2db1371e70ab' },
 };
 
 // Species name languages shipped with the demo (taxonomy.csv column suffix).
