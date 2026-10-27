@@ -933,7 +933,7 @@
   "demo.bb.help.verify1": "box, Segh 'ej ghogh Segh lugh, vaj nav Daq",
   "demo.bb.help.verify2": "yIwIv pagh V yIpoQ. box DawIv'eghmoHbogh, DachoHbogh pagh DaghItlhbogh ponglIj ghaj; latlh BirdBox pong ghaj.",
   "demo.bb.help.verifyT": "yIwIv'eghmoH",
-  "demo.bb.hint": "BirdBox Just-Bird bo'Degh ghogh Sam, poH-frequency box Hoch. wa' 35 MB ONNX graph PCEN spectrogram chenmoH, detector Qap, ghogh mu'tlhegh moj; BirdNET V3.0 Segh ngu'. Xeno-canto Annota-JSON export.",
+  "demo.bb.hint": "BirdBox Just-Bird bo'Degh ghogh Sam, poH-frequency box Hoch. wa' 20 MB ONNX graph PCEN spectrogram chenmoH, detector Qap, ghogh mu'tlhegh moj; BirdNET V3.0 Segh ngu'. Xeno-canto Annota-JSON export.",
   "demo.bb.hint.draw": "ghogh Dung yIHotlh, box ghItlhmeH · Esc mev",
   "demo.bb.hint.idle": "box yIwIv 'ej yIQoy · B yIpoQ, box chu' ghItlhmeH",
   "demo.bb.hint.selected": "box yIHotlh, HotlhmeH; HeH yIHotlh, tInmoHmeH · V wIv'eghmoH · Delete teq · Esc wIvbe'",

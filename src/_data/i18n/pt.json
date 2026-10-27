@@ -933,7 +933,7 @@
   "demo.bb.help.verify1": "Quando a caixa, a espécie e o tipo de som estiverem certos, clica em",
   "demo.bb.help.verify2": "na tabela ou carrega em V. As caixas que verificas, ajustas ou desenhas são exportadas com o teu nome; as restantes com o do BirdBox.",
   "demo.bb.help.verifyT": "Verificar",
-  "demo.bb.hint": "O BirdBox Just-Bird encontra vocalizações de aves como caixas tempo-frequência. Um único grafo ONNX de 35 MB calcula o espectrograma PCEN, executa o detetor e pode unir chamamentos em frases; o BirdNET V3.0 sugere a espécie. Exporta Annota-JSON do Xeno-canto.",
+  "demo.bb.hint": "O BirdBox Just-Bird encontra vocalizações de aves como caixas tempo-frequência. Um único grafo ONNX de 20 MB calcula o espectrograma PCEN, executa o detetor e pode unir chamamentos em frases; o BirdNET V3.0 sugere a espécie. Exporta Annota-JSON do Xeno-canto.",
   "demo.bb.hint.draw": "Arrasta sobre um som para desenhar uma caixa · Esc cancela",
   "demo.bb.hint.idle": "Clica numa caixa para a ouvir e selecionar · carrega em B para desenhar uma nova",
   "demo.bb.hint.selected": "Arrasta a caixa para a mover ou as arestas para a redimensionar · V verifica-a · Delete remove-a · Esc anula a seleção",

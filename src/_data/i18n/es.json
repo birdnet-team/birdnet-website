@@ -1120,7 +1120,7 @@
   "demo.v3.tt.none": "Nada por encima del umbral",
   "demo.v3.window": "Ventana",
   "demo.week.label": "Semana {week} · {range}",
-  "demo.bb.hint": "BirdBox Just-Bird encuentra vocalizaciones de aves como cajas tiempo-frecuencia. Un único grafo ONNX de 35 MB calcula el espectrograma PCEN, ejecuta el detector y puede unir llamadas en frases; BirdNET V3.0 sugiere la especie. Exporta Annota-JSON de Xeno-canto.",
+  "demo.bb.hint": "BirdBox Just-Bird encuentra vocalizaciones de aves como cajas tiempo-frecuencia. Un único grafo ONNX de 20 MB calcula el espectrograma PCEN, ejecuta el detector y puede unir llamadas en frases; BirdNET V3.0 sugiere la especie. Exporta Annota-JSON de Xeno-canto.",
   "demo.bb.hint.draw": "Arrastra sobre un sonido para dibujar una caja · Esc cancela",
   "demo.bb.hint.idle": "Haz clic en una caja para escucharla y seleccionarla · pulsa B para dibujar una nueva",
   "demo.bb.hint.selected": "Arrastra la caja para moverla o sus bordes para redimensionarla · V la verifica · Supr la quita · Esc deselecciona",

@@ -1120,7 +1120,7 @@
   "demo.v3.tt.none": "Nichts über der Schwelle",
   "demo.v3.window": "Fenster",
   "demo.week.label": "Woche {week} · {range}",
-  "demo.bb.hint": "BirdBox Just-Bird findet Vogelrufe als Zeit-Frequenz-Boxen. Ein einziger 35-MB-ONNX-Graph berechnet das PCEN-Spektrogramm, führt den Detektor aus und kann Rufe zu Phrasen verbinden; BirdNET V3.0 schlägt die Art vor. Exportiert Xeno-canto Annota-JSON.",
+  "demo.bb.hint": "BirdBox Just-Bird findet Vogelrufe als Zeit-Frequenz-Boxen. Ein einziger 20-MB-ONNX-Graph berechnet das PCEN-Spektrogramm, führt den Detektor aus und kann Rufe zu Phrasen verbinden; BirdNET V3.0 schlägt die Art vor. Exportiert Xeno-canto Annota-JSON.",
   "demo.bb.hint.draw": "Ziehen Sie über einen Laut, um eine Box zu zeichnen · Esc bricht ab",
   "demo.bb.hint.idle": "Klicken Sie auf eine Box, um sie anzuhören und auszuwählen · B zeichnet eine neue",
   "demo.bb.hint.selected": "Box ziehen zum Verschieben, Kanten ziehen zum Ändern der Größe · V bestätigt sie · Entf entfernt sie · Esc hebt die Auswahl auf",

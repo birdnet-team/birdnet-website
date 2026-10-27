@@ -933,7 +933,7 @@
   "demo.bb.help.verify1": "Gdy ramka, gatunek i typ głosu się zgadzają, kliknij",
   "demo.bb.help.verify2": "w tabeli lub naciśnij V. Ramki zatwierdzone, poprawione lub narysowane przez ciebie są eksportowane pod twoim nazwiskiem, pozostałe pod nazwą BirdBox.",
   "demo.bb.help.verifyT": "Zatwierdzanie",
-  "demo.bb.hint": "BirdBox Just-Bird znajduje głosy ptaków jako ramki czas-częstotliwość. Jeden graf ONNX o rozmiarze 35 MB oblicza spektrogram PCEN, uruchamia detektor i może łączyć głosy we frazy; BirdNET V3.0 proponuje gatunek. Eksportuje Annota-JSON dla Xeno-canto.",
+  "demo.bb.hint": "BirdBox Just-Bird znajduje głosy ptaków jako ramki czas-częstotliwość. Jeden graf ONNX o rozmiarze 20 MB oblicza spektrogram PCEN, uruchamia detektor i może łączyć głosy we frazy; BirdNET V3.0 proponuje gatunek. Eksportuje Annota-JSON dla Xeno-canto.",
   "demo.bb.hint.draw": "Przeciągnij nad dźwiękiem, aby narysować ramkę · Esc anuluje",
   "demo.bb.hint.idle": "Kliknij ramkę, aby ją odsłuchać i zaznaczyć · naciśnij B, aby narysować nową",
   "demo.bb.hint.selected": "Przeciągnij ramkę, aby ją przesunąć, lub krawędzie, aby zmienić rozmiar · V zatwierdza · Delete usuwa · Esc odznacza",
