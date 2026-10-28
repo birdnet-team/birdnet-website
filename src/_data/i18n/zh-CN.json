@@ -933,7 +933,7 @@
   "demo.bb.help.verify1": "当框、物种和声音类型都正确时，点击表格中的",
   "demo.bb.help.verify2": "或按 V。你确认、调整或绘制的框以你的名义导出，其余框以 BirdBox 的名义导出。",
   "demo.bb.help.verifyT": "确认",
-  "demo.bb.hint": "BirdBox Just-Bird 以时频框的形式找出鸟类鸣声。一个 35 MB 的 ONNX 图计算 PCEN 频谱图、运行检测器，并可将鸣叫合并为乐句；BirdNET V3.0 给出物种建议。可导出 Xeno-canto Annota-JSON。",
+  "demo.bb.hint": "BirdBox Just-Bird 以时频框的形式找出鸟类鸣声。一个 20 MB 的 ONNX 图计算 PCEN 频谱图、运行检测器，并可将鸣叫合并为乐句；BirdNET V3.0 给出物种建议。可导出 Xeno-canto Annota-JSON。",
   "demo.bb.hint.draw": "在声音上拖动即可绘制框 · Esc 取消",
   "demo.bb.hint.idle": "点击框即可收听并选中 · 按 B 绘制新框",
   "demo.bb.hint.selected": "拖动框可移动，拖动边可调整大小 · V 确认 · Delete 移除 · Esc 取消选择",

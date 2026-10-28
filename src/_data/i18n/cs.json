@@ -933,7 +933,7 @@
   "demo.bb.help.verify1": "Když rámeček, druh i typ hlasu sedí, klikni na",
   "demo.bb.help.verify2": "v tabulce nebo stiskni V. Rámečky, které potvrdíš, upravíš nebo nakreslíš, se exportují pod tvým jménem, ostatní pod BirdBox.",
   "demo.bb.help.verifyT": "Potvrdit",
-  "demo.bb.hint": "BirdBox Just-Bird hledá ptačí hlasy jako časově-frekvenční rámečky. Jediný ONNX graf o velikosti 35 MB spočítá PCEN spektrogram, spustí detektor a může spojit hlasy do frází; BirdNET V3.0 navrhne druh. Exportuje Annota-JSON pro Xeno-canto.",
+  "demo.bb.hint": "BirdBox Just-Bird hledá ptačí hlasy jako časově-frekvenční rámečky. Jediný ONNX graf o velikosti 20 MB spočítá PCEN spektrogram, spustí detektor a může spojit hlasy do frází; BirdNET V3.0 navrhne druh. Exportuje Annota-JSON pro Xeno-canto.",
   "demo.bb.hint.draw": "Táhni přes zvuk a nakresli rámeček · Esc ruší",
   "demo.bb.hint.idle": "Klikni na rámeček, poslechni si ho a vyber · B nakreslí nový",
   "demo.bb.hint.selected": "Tažením rámeček přesuneš, tažením okrajů změníš velikost · V ho potvrdí · Delete ho odebere · Esc zruší výběr",
