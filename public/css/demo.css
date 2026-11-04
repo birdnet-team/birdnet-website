@@ -787,7 +787,8 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-table thead th { background: #f8fafc; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--demo-muted); white-space: nowrap; }
 .demo-table thead th, .demo-table tbody td { padding: 0.3rem 0.5rem; border-color: #f1f5f9; }   /* as specific as .table in main.css */
 .demo-table tbody tr { cursor: pointer; transition: background-color 0.15s ease; }
-.demo-table tbody tr:hover { background: #f8fafc; }
+.demo-table { --bs-table-bg: transparent; }   /* Bootstrap's cell background would hide the row colors */
+.demo-table tbody tr.is-hover { background: #f1f5f9; box-shadow: inset 3px 0 0 #67e8f9; }   /* the row or its box is hovered */
 .demo-table tbody tr.is-selected { background: rgba(34, 211, 238, 0.1); box-shadow: inset 3px 0 0 #06b6d4; }
 .demo-table tbody tr.is-excluded td:not(.bb-c-toggle) { opacity: 0.4; }
 .demo-table tbody tr.is-excluded .bb-select { text-decoration: line-through; }
@@ -847,6 +848,9 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
   .demo-table .bb-c-sound { width: 8.5rem; }
   .demo-table .bb-c-toggle { width: 4.3rem; }
   .demo-table .bb-c-toggle .bb-verify, .demo-table .bb-c-toggle .bb-toggle { width: 1.7rem; }
+  /* Safari paints no box-shadow on table rows */
+  .demo-table tbody tr.is-hover > td:first-child { box-shadow: inset 3px 0 0 #67e8f9; }
+  .demo-table tbody tr.is-selected > td:first-child { box-shadow: inset 3px 0 0 #06b6d4; }
 }
 
 /* Editing help under the BirdBox spectrogram */

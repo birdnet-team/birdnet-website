@@ -225,7 +225,7 @@ export class BirdBoxTab {
     this.spec.addEventListener('hover', e => {
       const d = e.detail;
       const b = d && d.freq != null && !this.gesture && !this.drawMode ? this._boxAt(d.time, d.freq) : null;
-      if ((b?.id ?? null) !== this.hoverId) { this.hoverId = b?.id ?? null; this.spec.render(); }
+      this._setHover(b?.id ?? null);
       if (!b) { this.spec.showTooltip(null); return; }
       const g = this._geom(b), sp = this._species(b), n = this.boxes.indexOf(b) + 1;
       const origin = b.manual
@@ -249,6 +249,12 @@ export class BirdBoxTab {
     });
 
     const table = $('bb-table');
+    // Hovering a row highlights its box, as hovering a box highlights its row
+    table.addEventListener('mouseover', e => {
+      const tr = e.target.closest('tr[data-i]');
+      this._setHover(tr ? this.boxes[+tr.dataset.i]?.id ?? null : null);
+    });
+    table.addEventListener('mouseleave', () => this._setHover(null));
     table.addEventListener('click', e => {
       const tr = e.target.closest('tr[data-i]');
       const b = tr ? this.boxes[+tr.dataset.i] : null;
@@ -598,7 +604,7 @@ export class BirdBoxTab {
     this.drawBtn?.classList.toggle('active', on);
     this.drawBtn?.setAttribute('aria-pressed', String(on));
     this.spec.main.classList.toggle('is-editing', on || this.selectedId != null);
-    if (on) { this.hoverId = null; this.spec.showTooltip(null); }
+    if (on) { this._setHover(null); this.spec.showTooltip(null); }
     this._renderHint();
     this.spec.render();
   }
@@ -650,7 +656,7 @@ export class BirdBoxTab {
     const h = this._handleAt(p);
     if (!h) return false;
     this.gesture = { type: h.move ? 'move' : 'resize', id: h.b.id, start: p, from: geomOf(h.g), edges: h.edges };
-    this.hoverId = null;
+    this._setHover(null);
     this.spec.showTooltip(null);
     return true;
   }
@@ -754,7 +760,7 @@ export class BirdBoxTab {
       const verify = b.manual
         ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
         : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
-      return `<tr data-i="${i}" class="${b.id === this.selectedId ? 'is-selected' : ''}${edit.include ? '' : ' is-excluded'}">
+      return `<tr data-i="${i}" class="${b.id === this.selectedId ? 'is-selected' : ''}${b.id === this.hoverId ? ' is-hover' : ''}${edit.include ? '' : ' is-excluded'}">
         <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"><i class="bi bi-play-fill"></i>${i + 1}</button></td>
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
@@ -780,6 +786,14 @@ export class BirdBoxTab {
     const top = view.top + wrap.querySelector('thead').offsetHeight;
     if (row.top < top) wrap.scrollBy({ top: row.top - top, behavior: 'smooth' });
     else if (row.bottom > view.bottom) wrap.scrollBy({ top: row.bottom - view.bottom, behavior: 'smooth' });
+  }
+
+  /** Highlight a box (or none) on the spectrogram and its row in the list. */
+  _setHover(id) {
+    if (id === this.hoverId) return;
+    this.hoverId = id;
+    document.querySelectorAll('#bb-table tr[data-i]').forEach(tr => tr.classList.toggle('is-hover', this.boxes[+tr.dataset.i]?.id === id));
+    this.spec.render();
   }
 
   /** Select a box (or none): highlight its row, bring it into view, optionally play it. */
