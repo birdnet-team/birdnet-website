@@ -785,7 +785,7 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-table-wrap { border: 1px solid var(--demo-border); border-radius: var(--demo-radius); background: #fff; overflow: hidden; }
 .demo-table { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .demo-table thead th { background: #f8fafc; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--demo-muted); white-space: nowrap; }
-.demo-table td, .demo-table th { padding: 0.3rem 0.5rem; border-color: #f1f5f9; }
+.demo-table thead th, .demo-table tbody td { padding: 0.3rem 0.5rem; border-color: #f1f5f9; }   /* as specific as .table in main.css */
 .demo-table tbody tr { cursor: pointer; transition: background-color 0.15s ease; }
 .demo-table tbody tr:hover { background: #f8fafc; }
 .demo-table tbody tr.is-selected { background: rgba(34, 211, 238, 0.1); box-shadow: inset 3px 0 0 #06b6d4; }
@@ -830,6 +830,14 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .bb-c-sound .bb-select { color: #475569; }
 .bb-c-sound .bb-select.is-unset { color: #94a3b8; font-style: italic; }
 .bb-table-check .bb-c-sound .bb-select.is-unset { border-color: #dc3545; }
+
+/* The detection list scrolls on its own, so the spectrogram stays in view while you go through it.
+   birdbox-tab.js sets --bb-list-offset to the list's distance from the viewer's top: with the viewer
+   at the top of the screen, the list ends at the bottom. */
+@media (min-width: 992px) {
+  .demo-table-wrap { max-height: max(16rem, calc(100vh - var(--demo-top) - var(--bb-list-offset, 0px) - 1rem)); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
+  .demo-table thead th { position: sticky; top: 0; z-index: 1; box-shadow: inset 0 -1px 0 var(--demo-border); }
+}
 
 @media (min-width: 576px) {
   .demo-table { table-layout: fixed; }

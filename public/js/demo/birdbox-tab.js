@@ -158,6 +158,10 @@ export class BirdBoxTab {
     this._showHelp(!helpSeen, false);
     $('bb-sound-default').innerHTML = `<option value="">${esc(t('demo.bb.choose', 'Choose…'))}</option>${SOUND_TYPES.map(s => `<option value="${s}">${esc(this._soundLabel(s))}</option>`).join('')}`;
     this._restoreAnnotator();
+    // Size the detection list to fit under the viewer (see .demo-table-wrap in demo.css)
+    const wrap = $('bb-table-wrap'), viewer = wrap.closest('.demo-pane').querySelector('.demo-viewer');
+    const fit = new ResizeObserver(() => wrap.style.setProperty('--bb-list-offset', `${wrap.getBoundingClientRect().top - viewer.getBoundingClientRect().top}px`));
+    [viewer, wrap.parentElement].forEach(el => fit.observe(el));
     this._bind();
     getManifest().then(m => { this.manifest = m; return isCached(m.birdbox.model); }).then(c => { this.modelCached = c; this._renderChip(); }).catch(() => {});
     this._renderChip();
@@ -214,7 +218,7 @@ export class BirdBoxTab {
     this.spec.addEventListener('pick', e => {
       const { time, freq } = e.detail;
       const hit = freq != null ? this._boxAt(time, freq) : null;
-      if (hit) { this._select(hit.id, { play: true }); return; }
+      if (hit) { this._select(hit.id, { play: true, scroll: 'list' }); return; }
       if (this.selectedId != null) this._select(null);
       player.play(time);
     });
@@ -688,6 +692,7 @@ export class BirdBoxTab {
         this.selectedId = box.id;
         this._setDrawMode(false);
         this._refresh();
+        this._scrollToRow(this.boxes.indexOf(box), 'list');
       } else this.spec.render();
       return;
     }
@@ -760,6 +765,23 @@ export class BirdBoxTab {
     }).join('');
   }
 
+  /**
+   * Bring a row into view. A list that scrolls on its own scrolls to it; otherwise the page does,
+   * unless only the list may move (scroll = 'list'), so the spectrogram stays where it is.
+   */
+  _scrollToRow(i, scroll) {
+    const wrap = $('bb-table-wrap'), tr = wrap.querySelector(`tr[data-i="${i}"]`);
+    if (!tr || !scroll) return;
+    if (wrap.scrollHeight <= wrap.clientHeight) {
+      if (scroll !== 'list') tr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    const view = wrap.getBoundingClientRect(), row = tr.getBoundingClientRect();
+    const top = view.top + wrap.querySelector('thead').offsetHeight;
+    if (row.top < top) wrap.scrollBy({ top: row.top - top, behavior: 'smooth' });
+    else if (row.bottom > view.bottom) wrap.scrollBy({ top: row.bottom - view.bottom, behavior: 'smooth' });
+  }
+
   /** Select a box (or none): highlight its row, bring it into view, optionally play it. */
   _select(id, { play = false, scroll = false } = {}) {
     this.selectedId = id;
@@ -767,7 +789,7 @@ export class BirdBoxTab {
     document.querySelectorAll('#bb-table tr[data-i]').forEach(tr => tr.classList.toggle('is-selected', +tr.dataset.i === i));
     this.spec.main.classList.toggle('is-editing', this.drawMode || !!b);
     if (b) {
-      if (scroll) document.querySelector(`#bb-table tr[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      this._scrollToRow(i, scroll);
       const g = this._geom(b), span = this.spec.view.t1 - this.spec.view.t0;
       if (g.t0 < this.spec.view.t0 || g.t1 > this.spec.view.t1) this.spec.setView(g.t0 - span * 0.3, g.t0 - span * 0.3 + span);
       if (play) player.play(Math.max(0, g.t0 - 0.15), g.t1 + 0.15);
