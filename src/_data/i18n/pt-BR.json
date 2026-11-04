@@ -937,7 +937,7 @@
   "demo.bb.hint.draw": "Arraste sobre um som para desenhar uma caixa · Esc cancela",
   "demo.bb.hint.idle": "Clique em uma caixa para ouvi-la e selecioná-la · pressione B para desenhar uma nova",
   "demo.bb.hint.selected": "Arraste a caixa para movê-la ou as bordas para redimensioná-la · V a verifica · Delete a remove · Esc desfaz a seleção",
-  "demo.bb.hint.wait": "As caixas aparecem aqui quando a detecção terminar.",
+  "demo.bb.hint.wait": "As caixas aparecem aqui minuto a minuto enquanto a detecção é executada.",
   "demo.bb.how1": "Abra um arquivo, grave ou digite um número do Xeno-canto. O áudio da aba V3.0 também está disponível aqui.",
   "demo.bb.how2": "Clique em uma caixa para ouvi-la, depois verifique ou ajuste, ou desenhe as que o detector não encontrou.",
   "demo.bb.how2Title": "Revise as caixas",

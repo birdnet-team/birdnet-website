@@ -937,7 +937,7 @@
   "demo.bb.hint.draw": "Trascina sopra un suono per disegnare un riquadro · Esc annulla",
   "demo.bb.hint.idle": "Clicca un riquadro per ascoltarlo e selezionarlo · premi B per disegnarne uno nuovo",
   "demo.bb.hint.selected": "Trascina il riquadro per spostarlo o i bordi per ridimensionarlo · V lo verifica · Canc lo rimuove · Esc deseleziona",
-  "demo.bb.hint.wait": "I riquadri appaiono qui al termine del rilevamento.",
+  "demo.bb.hint.wait": "I riquadri appaiono qui minuto per minuto durante il rilevamento.",
   "demo.bb.how1": "Apri un file, registra o inserisci un numero Xeno-canto. L'audio della scheda V3.0 è disponibile anche qui.",
   "demo.bb.how2": "Clicca un riquadro per ascoltarlo, poi verificalo o regolalo, oppure disegna quelli che il rilevatore non ha trovato.",
   "demo.bb.how2Title": "Controlla i riquadri",

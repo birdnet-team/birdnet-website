@@ -16,7 +16,8 @@
  *   geo/head.bin          fp16 weights + bias of the final species layer
  *   geo/labels.json       geomodel output index -> V3 label index
  *   birdbox/<model>.onnx  BirdBox graph with its per-window boxes (before
- *                         window fusion) exposed as an extra graph output
+ *                         window fusion) exposed as an extra graph output,
+ *                         and inputs that pick which 60 s segments to run
  *   manifest.json         sizes and SHA-256 of everything the demo loads
  *
  * Usage: node scripts/fetch-models.mjs [--force]
@@ -266,6 +267,56 @@ function addGraphOutput(model, name, elemType, dims) {
   ]);
 }
 
+/** Replace one length-delimited field of a message with a new payload. */
+const replaceField = (buf, f, payload) => Buffer.concat([buf.subarray(0, f.tagStart), lenField(f.field, payload), buf.subarray(f.end)]);
+
+/**
+ * Let the caller choose which of BirdBox's 60 s segments a run covers. The
+ * graph walks the file in an ONNX Loop whose body handles segment `iter`
+ * (with the whole audio as input). Two scalar int64 inputs replace that walk:
+ * the Loop runs segment_count times, and its body handles segment
+ * segment_first + iter. Each segment's rows equal the full run's rows for
+ * that segment, so the demo can show boxes while later segments still run.
+ */
+function exposeSegmentLoop(model) {
+  const graphField = [...fields(model)].find(f => f.field === 7);
+  if (!graphField) throw new Error('No graph in ModelProto');
+  let graph = model.subarray(graphField.valueStart, graphField.valueEnd);
+  const loopField = [...fields(graph)].find(f => f.field === 1 && parseNode(graph, f).op === 'Loop');
+  if (!loopField) throw new Error('BirdBox: no segment Loop');
+  let node = graph.subarray(loopField.valueStart, loopField.valueEnd);
+
+  // Loop input 0 (the trip count) comes from the new input
+  const trip = [...fields(node)].find(f => f.field === 1);
+  if (str(node, trip) !== 'trip_count') throw new Error(`BirdBox: unexpected Loop trip count ${str(node, trip)}`);
+  node = replaceField(node, trip, Buffer.from('segment_count'));
+
+  // Body: Identity(iter) -> segment_index becomes Add(iter, segment_first)
+  const attr = [...fields(node)].find(f => f.field === 5 && [...fields(node, f.valueStart, f.valueEnd)].some(g => g.field === 6));
+  let attrMsg = node.subarray(attr.valueStart, attr.valueEnd);
+  const bodyField = [...fields(attrMsg)].find(g => g.field === 6);
+  let body = attrMsg.subarray(bodyField.valueStart, bodyField.valueEnd);
+  const index = [...fields(body)].find(f => {
+    if (f.field !== 1) return false;
+    const n = parseNode(body, f);
+    return n.op === 'Identity' && n.inputs[0] === 'iter' && n.outputs[0] === 'segment_index';
+  });
+  if (!index) throw new Error('BirdBox: Loop body does not take its segment index from iter');
+  const add = Buffer.concat(['iter', 'segment_first'].map(n => lenField(1, Buffer.from(n))).concat([
+    lenField(2, Buffer.from('segment_index')), lenField(3, Buffer.from('segment_offset')), lenField(4, Buffer.from('Add')),
+  ]));
+  body = replaceField(body, index, add);
+  attrMsg = replaceField(attrMsg, bodyField, body);
+  node = replaceField(node, attr, attrMsg);
+  graph = replaceField(graph, loopField, node);
+
+  // Scalar int64 graph inputs: ValueInfoProto { name, type { tensor_type { elem_type, shape {} } } }
+  const INT64 = 7;
+  const scalar = name => lenField(11, Buffer.concat([lenField(1, Buffer.from(name)), lenField(2, lenField(1, Buffer.concat([varintField(1, INT64), lenField(2, Buffer.alloc(0))])))]));
+  graph = Buffer.concat([graph, scalar('segment_first'), scalar('segment_count')]);
+  return Buffer.concat([model.subarray(0, graphField.tagStart), lenField(7, graph), model.subarray(graphField.end)]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
@@ -341,9 +392,9 @@ async function main() {
   }));
 
   // The demo merges the per-window boxes itself (birdbox-fusion.js), so both
-  // sliders update without another graph run.
+  // sliders update without another graph run, and runs one segment at a time.
   const FLOAT = 1;
-  writeIfChanged(join(DIST, 'birdbox', BIRDBOX_MODEL), addGraphOutput(readFileSync(paths.birdboxModel), BIRDBOX_RAW, FLOAT, ['num_raw', 9]));
+  writeIfChanged(join(DIST, 'birdbox', BIRDBOX_MODEL), exposeSegmentLoop(addGraphOutput(readFileSync(paths.birdboxModel), BIRDBOX_RAW, FLOAT, ['num_raw', 9])));
 
   // --- Manifest -----------------------------------------------------------
   const manifest = {
@@ -387,6 +438,7 @@ async function main() {
       defaultPhraseGap: 0.05,
       clipSeconds: 3,
       clipHopSeconds: 1.5,
+      segmentSeconds: 60,
     },
   };
   writeIfChanged(join(DIST, 'manifest.json'), JSON.stringify(manifest, null, 2));

@@ -937,7 +937,7 @@
   "demo.bb.hint.draw": "在声音上拖动即可绘制框 · Esc 取消",
   "demo.bb.hint.idle": "点击框即可收听并选中 · 按 B 绘制新框",
   "demo.bb.hint.selected": "拖动框可移动，拖动边可调整大小 · V 确认 · Delete 移除 · Esc 取消选择",
-  "demo.bb.hint.wait": "检测完成后，框会显示在这里。",
+  "demo.bb.hint.wait": "检测进行时，框会逐分钟显示在这里。",
   "demo.bb.how1": "打开文件、录音，或输入 Xeno-canto 编号。V3.0 标签页中加载的音频在这里同样可用。",
   "demo.bb.how2": "点击检测框即可收听，然后确认或调整，也可以补画检测器漏掉的框。",
   "demo.bb.how2Title": "检查检测框",
