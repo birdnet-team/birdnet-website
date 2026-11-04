@@ -937,7 +937,7 @@
   "demo.bb.hint.draw": "Przeciągnij nad dźwiękiem, aby narysować ramkę · Esc anuluje",
   "demo.bb.hint.idle": "Kliknij ramkę, aby ją odsłuchać i zaznaczyć · naciśnij B, aby narysować nową",
   "demo.bb.hint.selected": "Przeciągnij ramkę, aby ją przesunąć, lub krawędzie, aby zmienić rozmiar · V zatwierdza · Delete usuwa · Esc odznacza",
-  "demo.bb.hint.wait": "Ramki pojawią się tu po zakończeniu wykrywania.",
+  "demo.bb.hint.wait": "Ramki pojawiają się tu minuta po minucie w trakcie wykrywania.",
   "demo.bb.how1": "Otwórz plik, nagraj lub wpisz numer Xeno-canto. Dźwięk z karty V3.0 jest dostępny także tutaj.",
   "demo.bb.how2": "Kliknij ramkę, aby ją odsłuchać, potem zatwierdź ją lub popraw albo narysuj ramki pominięte przez detektor.",
   "demo.bb.how2Title": "Sprawdź ramki",

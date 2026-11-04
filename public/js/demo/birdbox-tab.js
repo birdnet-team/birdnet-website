@@ -2,11 +2,12 @@
  * BirdBox tab: bird vocalization bounding boxes with the BirdBox Just-Bird
  * ONNX graph (PCEN, YOLO and NMS run inside the model).
  *
- * The graph runs once per recording at the lowest confidence and returns its
- * per-window boxes. birdbox-fusion.js merges them exactly like the graph's
- * window fusion for any (confidence, phrase gap) setting, so both sliders
- * update instantly. BirdNET V3.0 suggests a species for every box; the
- * boxes export as Xeno-canto Annota-JSON.
+ * The graph runs at the lowest confidence and returns its per-window boxes,
+ * one 60 s segment at a time, so boxes appear while later segments run.
+ * birdbox-fusion.js merges them exactly like the graph's window fusion for
+ * any (confidence, phrase gap) setting, so both sliders update instantly.
+ * BirdNET V3.0 suggests a species for every box; the boxes export as
+ * Xeno-canto Annota-JSON.
  *
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
@@ -16,7 +17,7 @@ import { fuseBoxes } from './birdbox-fusion.js';
 import { csvField, debounce, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
-import { OrtPool } from './ort-pool.js';
+import { CancelledError, OrtPool } from './ort-pool.js';
 import { player } from './player.js';
 import { isoTime, RAVEN_CLOCK, ravenClock } from './recording-time.js';
 import { SpecView } from './spec-view.js';
@@ -82,12 +83,22 @@ class BirdBoxService {
     return this.ready;
   }
 
-  /** One graph run over the whole recording; the graph walks it in 60 s segments. */
-  async detect(audio) {
+  /**
+   * Run the graph over the recording one 60 s segment at a time: the segments its own
+   * Loop walks, so the rows equal those of a single run. onSegment(result, k, n) gets
+   * each segment's per-window boxes as soon as they are ready.
+   */
+  async detect(audio, onSegment) {
     const pool = this.busy = this.pool;
+    const n = Math.max(1, Math.ceil(audio.length / (this.manifest.segmentSeconds * SR)));
     try {
-      // song_gap only feeds the graph's fusion step, which this run skips
-      return await pool.run('birdbox', { audio, conf: RAW_CONF, songGap: 0 }, [audio.buffer]);
+      for (let k = 0; k < n; k++) {
+        if (this.busy !== pool) throw new CancelledError();
+        // The worker keeps the audio after the first segment. song_gap only feeds the
+        // graph's fusion step, which these runs skip.
+        const payload = { conf: RAW_CONF, songGap: 0, segment: k };
+        onSegment(await pool.run('birdbox', k ? payload : { ...payload, audio }, k ? [] : [audio.buffer]), k, n);
+      }
     } finally {
       if (this.busy === pool) this.busy = null;
     }
@@ -107,6 +118,7 @@ export class BirdBoxTab {
     this.visible = false;
     this.pendingRun = false;
     this.raw = null;
+    this.analyzedTo = null;        // seconds analyzed while detection runs, else null
     this.songs = [];               // detector boxes at the current sliders
     this.userBoxes = [];           // boxes drawn by the user
     this.boxes = [];               // both, ordered by start time
@@ -308,7 +320,7 @@ export class BirdBoxTab {
     const el = $('bb-edit-hint');
     if (!el) return;
     let text;
-    if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here when detection is done.');
+    if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here minute by minute while detection runs.');
     else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
     else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · V verifies it · Delete removes it · Esc deselects');
     else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
@@ -354,6 +366,7 @@ export class BirdBoxTab {
     this.runToken++;
     birdbox.abort();
     this.raw = null;
+    this.analyzedTo = null;
     this.songs = [];
     this.userBoxes = [];
     this._resetSuggestions();
@@ -390,6 +403,7 @@ export class BirdBoxTab {
     this.pendingRun = false;
     const token = ++this.runToken;
     this.raw = null;
+    this.analyzedTo = 0;
     this._update();
     let ticker = null;
     try {
@@ -402,29 +416,45 @@ export class BirdBoxTab {
       this.modelCached = true;
       this._renderChip();
       if (token !== this.runToken) return;
-      const clips = Math.max(1, Math.ceil((this.duration - 3) / 1.5) + 1);
+      const m = birdbox.manifest;
+      const clips = Math.max(1, Math.ceil((this.duration - 3) / 1.5) + 1), perSegment = Math.round(m.segmentSeconds / m.clipHopSeconds);
       let msPerClip = 280;
       try { msPerClip = +localStorage.getItem(MS_PER_CLIP_KEY) || msPerClip; } catch { /* storage blocked */ }
-      const t0 = performance.now(), estimate = clips * msPerClip;
-      // ONNX Runtime reports no progress inside one run; pace a counter on the clip grid.
+      const t0 = performance.now();
+      let clipsDone = 0, segmentStart = t0, data = new Float32Array(0), rows = 0;
+      // ONNX Runtime reports no progress inside a segment; pace a counter on the clip grid
+      // until the segment ends, at this device's last speed and then at this run's.
       ticker = setInterval(() => {
-        const elapsed = performance.now() - t0;
-        if (elapsed > 0.95 * estimate) {
-          // Slower than this device's last run: keep the bar creeping and say so instead of freezing
-          const frac = 0.95 + 0.04 * (1 - 0.95 * estimate / elapsed);
-          this._setProgress(0.3 + 0.7 * frac, t('demo.bb.status.overtime', 'Detecting vocalizations · taking longer than estimated, {time} so far', { time: fmtTime(elapsed / 1000) }));
+        const now = performance.now(), segmentClips = Math.min(clips, clipsDone + perSegment) - clipsDone;
+        const inSegment = now - segmentStart;
+        // A last segment shorter than one clip holds no clips and passes quickly
+        if (segmentClips && inSegment > segmentClips * msPerClip) {
+          // Slower than estimated: say so instead of freezing
+          this._setProgress(0.3 + 0.7 * (clipsDone + 0.97 * segmentClips) / clips, t('demo.bb.status.overtime', 'Detecting vocalizations · taking longer than estimated, {time} so far', { time: fmtTime((now - t0) / 1000) }));
           return;
         }
-        const frac = elapsed / estimate, left = (estimate - elapsed) / 1000;
-        let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(frac * clips))), total: clips });
+        const n = clipsDone + Math.min(segmentClips, inSegment / msPerClip), left = (clips - n) * msPerClip / 1000;
+        let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(n))), total: clips });
         if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
-        this._setProgress(0.3 + 0.7 * frac, text);
+        this._setProgress(0.3 + 0.7 * n / clips, text);
       }, 100);
-      const res = await birdbox.detect(this.pcm.slice());
-      const ms = performance.now() - t0;
-      try { localStorage.setItem(MS_PER_CLIP_KEY, String(Math.round(ms / clips))); } catch { /* not persisted */ }
+      await birdbox.detect(this.pcm.slice(), (res, k, n) => {
+        if (token !== this.runToken) return;
+        const now = performance.now(), grown = new Float32Array(data.length + res.detections.length);
+        grown.set(data);
+        grown.set(res.detections, data.length);
+        data = grown;
+        rows += res.rows;
+        clipsDone = Math.min(clips, (k + 1) * perSegment);
+        msPerClip = (now - t0) / clipsDone;
+        segmentStart = now;
+        const done = k + 1 === n;
+        this.analyzedTo = done ? null : Math.min(this.duration, (k + 1) * m.segmentSeconds);
+        this.raw = { data, rows, ms: now - t0, done };
+        this._update();
+      });
+      try { localStorage.setItem(MS_PER_CLIP_KEY, String(Math.round(msPerClip))); } catch { /* not persisted */ }
       if (token !== this.runToken) return;
-      this.raw = { data: res.detections, rows: res.rows, ms };
       this._renderChip();
     } catch (err) {
       if (token !== this.runToken || err.cancelled) return;
@@ -434,6 +464,7 @@ export class BirdBoxTab {
     } finally {
       clearInterval(ticker);
       if (token === this.runToken) {
+        this.analyzedTo = null;
         this._setProgress(null);
         this._update();
       }
@@ -714,16 +745,16 @@ export class BirdBoxTab {
 
   _renderSummary() {
     const el = $('bb-summary');
-    const ok = !!this.raw;
-    ['bb-export-xc', 'bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !ok || !this.boxes.length; });
-    if (!ok) { el.innerHTML = ''; return; }
+    // Exports wait for the whole recording
+    ['bb-export-xc', 'bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !this.raw?.done || !this.boxes.length; });
+    if (!this.raw) { el.innerHTML = ''; return; }
     const included = this.boxes.filter(b => this._edit(b).include);
     const species = new Set(included.map(b => this._edit(b).species).filter(s => s !== AVES));
     const stats = [
       [this.boxes.length, t('demo.bb.sum.boxes', 'boxes')],
       [included.filter(b => this._edit(b).verified).length, t('demo.bb.sum.verified', 'verified by you')],
       [species.size, t('demo.bb.sum.species', 'suggested species')],
-      [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')],
+      this.raw.done ? [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')] : [fmtTime(this.analyzedTo ?? 0), t('demo.v3.sum.audio', 'audio')],
     ];
     el.innerHTML = statLine(stats);
   }
@@ -733,7 +764,8 @@ export class BirdBoxTab {
     $('bb-table-wrap').hidden = !this.raw;
     if (!this.raw) { tbody.innerHTML = ''; return; }
     if (!this.boxes.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${esc(t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.'))}</td></tr>`;
+      const note = this.raw.done ? t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.') : t('demo.bb.hint.wait', 'Boxes appear here minute by minute while detection runs.');
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${esc(note)}</td></tr>`;
       return;
     }
     const suggest = $('bb-suggest').checked;
@@ -813,6 +845,12 @@ export class BirdBoxTab {
   }
 
   _drawBoxes(ctx, h) {
+    // Dim what is not analyzed yet, as on the V3.0 tab
+    if (this.analyzedTo != null) {
+      const x0 = Math.max(0, h.timeToX(this.analyzedTo));
+      ctx.fillStyle = this.spec.light ? 'rgba(255,255,255,0.6)' : 'rgba(5,4,12,0.55)';
+      if (x0 < h.width) ctx.fillRect(x0, 0, h.width - x0, h.height);
+    }
     ctx.font = '600 11px Inter Variable, Inter, system-ui, sans-serif';
     ctx.textBaseline = 'alphabetic';
     this.boxes.forEach((b, i) => {

@@ -937,7 +937,7 @@
   "demo.bb.hint.draw": "Táhni přes zvuk a nakresli rámeček · Esc ruší",
   "demo.bb.hint.idle": "Klikni na rámeček, poslechni si ho a vyber · B nakreslí nový",
   "demo.bb.hint.selected": "Tažením rámeček přesuneš, tažením okrajů změníš velikost · V ho potvrdí · Delete ho odebere · Esc zruší výběr",
-  "demo.bb.hint.wait": "Rámečky se tu objeví po dokončení detekce.",
+  "demo.bb.hint.wait": "Rámečky se tu objevují minutu po minutě, zatímco detekce běží.",
   "demo.bb.how1": "Otevři soubor, nahrávej nebo zadej číslo z Xeno-canto. Zvuk z karty V3.0 je k dispozici i tady.",
   "demo.bb.how2": "Klikni na rámeček a poslechni si ho, pak ho potvrď nebo uprav, nebo nakresli rámečky, které detektor přehlédl.",
   "demo.bb.how2Title": "Zkontroluj rámečky",

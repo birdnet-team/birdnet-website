@@ -1124,7 +1124,7 @@
   "demo.bb.hint.draw": "Arrastra sobre un sonido para dibujar una caja · Esc cancela",
   "demo.bb.hint.idle": "Haz clic en una caja para escucharla y seleccionarla · pulsa B para dibujar una nueva",
   "demo.bb.hint.selected": "Arrastra la caja para moverla o sus bordes para redimensionarla · V la verifica · Supr la quita · Esc deselecciona",
-  "demo.bb.hint.wait": "Las cajas aparecen aquí cuando termina la detección.",
+  "demo.bb.hint.wait": "Las cajas aparecen aquí minuto a minuto mientras se ejecuta la detección.",
   "demo.geo.hint": "BirdNET+ Geomodel V3.0.4 predice cuáles de 9789 especies aparecen en un lugar en cada una de las 48 semanas; el modelo de 13 MB se ejecuta localmente.",
   "demo.geo.how1": "El mapa muestra cuántas especies se esperan en cada zona. Arrastra el control de semana o pulsa reproducir para seguir las estaciones.",
   "demo.geo.how1Title": "Mira dónde hay especies",
