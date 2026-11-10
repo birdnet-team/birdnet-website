@@ -687,6 +687,7 @@
   "meta.title.resources": "Recursos en línea",
   "meta.title.showroom": "Showroom de BirdNET",
   "meta.title.tools": "Herramientas de BirdNET",
+  "meta.title.notFound": "Página no encontrada",
   "nav.toggle": "Mostrar/ocultar navegación",
   "common.opensNewTab": "(se abre en una pestaña nueva)",
   "common.administrative": "ADMINISTRATIVO",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "Nuevo",
   "demo.spec.linear": "Lineal",
   "demo.spec.mel": "Mel",
-  "demo.spec.scale": "Escala de frecuencia"
+  "demo.spec.scale": "Escala de frecuencia",
+  "notFound.title": "Página no encontrada",
+  "notFound.text": "Esta página no existe o se ha movido.",
+  "notFound.home": "Volver a la página de inicio"
 }

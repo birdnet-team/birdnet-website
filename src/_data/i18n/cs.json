@@ -687,6 +687,7 @@
   "meta.title.resources": "Online zdroje",
   "meta.title.showroom": "Showroom BirdNET",
   "meta.title.tools": "Nástroje BirdNET",
+  "meta.title.notFound": "Stránka nenalezena",
   "nav.toggle": "Přepnout navigaci",
   "common.opensNewTab": "(otevře se na nové kartě)",
   "common.administrative": "ADMINISTRATIVNÍ ÚDAJE",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "Novinka",
   "demo.spec.linear": "Lineární",
   "demo.spec.mel": "Mel",
-  "demo.spec.scale": "Frekvenční stupnice"
+  "demo.spec.scale": "Frekvenční stupnice",
+  "notFound.title": "Stránka nenalezena",
+  "notFound.text": "Tato stránka neexistuje nebo byla přesunuta.",
+  "notFound.home": "Zpět na úvodní stránku"
 }

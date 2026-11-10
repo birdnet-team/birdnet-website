@@ -687,6 +687,7 @@
   "meta.title.resources": "在线资源",
   "meta.title.showroom": "BirdNET 展示厅",
   "meta.title.tools": "BirdNET 工具",
+  "meta.title.notFound": "未找到页面",
   "nav.toggle": "切换导航",
   "common.opensNewTab": "（在新标签页中打开）",
   "common.administrative": "管理信息",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "新",
   "demo.spec.linear": "线性",
   "demo.spec.mel": "梅尔",
-  "demo.spec.scale": "频率刻度"
+  "demo.spec.scale": "频率刻度",
+  "notFound.title": "未找到页面",
+  "notFound.text": "此页面不存在或已被移动。",
+  "notFound.home": "返回首页"
 }

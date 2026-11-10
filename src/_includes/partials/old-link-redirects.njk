@@ -1,0 +1,18 @@
+{# Sends old or mangled links on to the page and section they meant, before anything else of the 404 page loads #}
+<script>
+  (function () {
+    var path = location.pathname, hash, i = path.search(/%23/i);
+    if (i >= 0) {
+      // Some mail clients (e.g. Outlook) write the # of a link like /demo/#birdbox as %23,
+      // which asks the server for a page that doesn't exist
+      hash = '#' + path.slice(i + 3);
+      path = path.slice(0, i);
+      if (!/(\/|\.html)$/.test(path)) path += '/';
+    } else if (/^\/birdbox(\/|$)/i.test(path)) {
+      // The BirdBox demo used to have its own page at /birdbox/
+      path = '{{ "/demo/" | url }}';
+      hash = '#birdbox';
+    } else return;
+    location.replace(path + location.search + hash);
+  })();
+</script>

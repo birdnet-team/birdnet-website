@@ -13,6 +13,18 @@
   let currentLang = DEFAULT_LANG;
 
   /**
+   * Some mail clients (e.g. Outlook) write the # of a link like /demo/?lang=de#birdbox
+   * as %23, which makes the section part of the query. Move it back before the language
+   * and section are read. (With %23 in the path instead, 404.html sends the link on.)
+   */
+  (function fixEncodedHash() {
+    const i = location.search.search(/%23/i);
+    if (i < 0) return;
+    const url = location.pathname + location.search.slice(0, i) + (location.hash || '#' + location.search.slice(i + 3));
+    history.replaceState(history.state, '', url);
+  })();
+
+  /**
    * Read/write the stored language choice. Storage may be blocked by
    * browser privacy settings; the site then simply falls back to detection.
    */
