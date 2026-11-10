@@ -687,6 +687,7 @@
   "meta.title.resources": "Online Hal",
   "meta.title.showroom": "BirdNET Showroom",
   "meta.title.tools": "BirdNET lI'wI'mey",
+  "meta.title.notFound": "Daq tu'lu'be'",
   "nav.toggle": "He choH",
   "common.opensNewTab": "(chu' tab poSmoH)",
   "common.administrative": "DIVI' DE'",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "chu'",
   "demo.spec.linear": "tlhegh",
   "demo.spec.mel": "Mel",
-  "demo.spec.scale": "Hz chuq"
+  "demo.spec.scale": "Hz chuq",
+  "notFound.title": "Daq tu'lu'be'",
+  "notFound.text": "Daq DaSamtaHbogh tu'lu'be'.",
+  "notFound.home": "juHDaq yIchegh"
 }

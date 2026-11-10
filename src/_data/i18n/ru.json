@@ -687,6 +687,7 @@
   "meta.title.resources": "Онлайн-ресурсы",
   "meta.title.showroom": "BirdNET Showroom",
   "meta.title.tools": "Инструменты BirdNET",
+  "meta.title.notFound": "Страница не найдена",
   "nav.toggle": "Переключить навигацию",
   "common.opensNewTab": "(откроется в новой вкладке)",
   "common.administrative": "АДМИНИСТРАТИВНАЯ ИНФОРМАЦИЯ",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "Новинка",
   "demo.spec.linear": "Линейная",
   "demo.spec.mel": "Мел",
-  "demo.spec.scale": "Шкала частот"
+  "demo.spec.scale": "Шкала частот",
+  "notFound.title": "Страница не найдена",
+  "notFound.text": "Такой страницы нет или она была перемещена.",
+  "notFound.home": "На главную"
 }

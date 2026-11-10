@@ -687,6 +687,7 @@
   "meta.title.resources": "Online-Ressourcen",
   "meta.title.showroom": "BirdNET Showroom",
   "meta.title.tools": "BirdNET-Tools",
+  "meta.title.notFound": "Seite nicht gefunden",
   "nav.toggle": "Navigation umschalten",
   "common.opensNewTab": "(öffnet in einem neuen Tab)",
   "common.administrative": "VERWALTUNG",
@@ -1192,5 +1193,8 @@
   "demo.liveAppHint.new": "Neu",
   "demo.spec.linear": "Linear",
   "demo.spec.mel": "Mel",
-  "demo.spec.scale": "Frequenzskala"
+  "demo.spec.scale": "Frequenzskala",
+  "notFound.title": "Seite nicht gefunden",
+  "notFound.text": "Diese Seite gibt es nicht oder sie wurde verschoben.",
+  "notFound.home": "Zur Startseite"
 }
