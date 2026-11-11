@@ -15,9 +15,10 @@
  *                         as an extra graph output (weights untouched)
  *   geo/head.bin          fp16 weights + bias of the final species layer
  *   geo/labels.json       geomodel output index -> V3 label index
- *   birdbox/<model>.onnx  BirdBox graph with its per-window boxes (before
- *                         window fusion) exposed as an extra graph output,
- *                         and inputs that pick which 60 s segments to run
+ *   birdbox/<model>.spectrogram.onnx, birdbox/<model>.detect.onnx
+ *                         the two streaming graphs stored in the BirdBox model:
+ *                         audio to spectrogram frames, and frames to the boxes
+ *                         of each 3 s window (weights untouched)
  *   manifest.json         sizes and SHA-256 of everything the demo loads
  *
  * Usage: node scripts/fetch-models.mjs [--force]
@@ -36,7 +37,7 @@ const FORCE = process.argv.includes('--force');
 
 // Pinned upstream sources. Bump the commit (and the expected hashes) to update.
 const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '60469c385032e9402444d71b3ae246f9eb9855e4' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '7c5d5de8b957087b4b63279f928c448e62196a53' };
 
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 // Git LFS objects are served from media.githubusercontent.com
@@ -46,8 +47,7 @@ const V3_MODEL = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_FP16.onnx';
 const V3_LABELS = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_Labels.csv';
 const GEO_MODEL = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_FP16.onnx';
 const GEO_LABELS = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_Labels.txt';
-const BIRDBOX_MODEL = 'Just-Bird_fp16.onnx';
-const BIRDBOX_RAW = 'raw_all';   // per-window boxes, the input of the graph's window fusion
+const BIRDBOX_MODEL = 'Just-Bird_rolling60_fp16.onnx';
 
 const FILES = {
   v3Model: { url: lfs(LIVE_APP, `assets/models/${V3_MODEL}`), name: V3_MODEL, sha256: '306e74f3edc5b95acc6e87ea7f3f1c701fdc0b18ec868b7615208cd6fc2f9457' },
@@ -55,7 +55,7 @@ const FILES = {
   geoModel: { url: lfs(LIVE_APP, `assets/models/${GEO_MODEL}`), name: GEO_MODEL, sha256: '198adb7bcb3cf03341ffa51fbfa7b2d295e5cd900ba09183dcfdbf6d12b5c63b' },
   geoLabels: { url: raw(LIVE_APP, `assets/models/${GEO_LABELS}`), name: GEO_LABELS },
   taxonomy: { url: raw(LIVE_APP, 'assets/models/taxonomy.csv'), name: 'taxonomy.csv' },
-  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '11786b06b67a46620d09d1a468bec15df901506d00eede6a417e2db1371e70ab' },
+  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '34b5720cb4fb65d5201d9e9d7cecd3b670d4838552d2a84a6843964407f7e057' },
 };
 
 // Species name languages shipped with the demo (taxonomy.csv column suffix).
@@ -267,54 +267,120 @@ function addGraphOutput(model, name, elemType, dims) {
   ]);
 }
 
-/** Replace one length-delimited field of a message with a new payload. */
-const replaceField = (buf, f, payload) => Buffer.concat([buf.subarray(0, f.tagStart), lenField(f.field, payload), buf.subarray(f.end)]);
+/** Nodes (with their bytes) and initializers of a GraphProto. */
+function parseGraph(buf) {
+  const nodes = [], inits = new Map();
+  for (const f of fields(buf)) {
+    if (f.field === 1) nodes.push({ ...parseNode(buf, f), record: buf.subarray(f.tagStart, f.end) });
+    else if (f.field === 5) inits.set(parseTensor(buf, f).name, buf.subarray(f.tagStart, f.end));
+  }
+  return { nodes, inits, producers: new Map(nodes.flatMap(n => n.outputs.map(o => [o, n]))) };
+}
+
+/** The nodes `roots` depend on, and the tensors they read that no node produces. */
+function ancestors(graph, roots) {
+  const nodes = new Set(), leaves = new Set(), seen = new Set(), todo = [...roots];
+  while (todo.length) {
+    const name = todo.pop();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const node = graph.producers.get(name);
+    if (!node) { leaves.add(name); continue; }
+    nodes.add(node);
+    todo.push(...node.inputs);
+  }
+  return { nodes, leaves };
+}
+
+/** The model's metadata_props as an object. */
+function modelMetadata(model) {
+  const out = {};
+  for (const f of fields(model)) {
+    if (f.field !== 14) continue;
+    let key = null, value = '';
+    for (const g of fields(model, f.valueStart, f.valueEnd)) {
+      if (g.field === 1) key = str(model, g);
+      else if (g.field === 2) value = str(model, g);
+    }
+    if (key != null) out[key] = value;
+  }
+  return out;
+}
 
 /**
- * Let the caller choose which of BirdBox's 60 s segments a run covers. The
- * graph walks the file in an ONNX Loop whose body handles segment `iter`
- * (with the whole audio as input). Two scalar int64 inputs replace that walk:
- * the Loop runs segment_count times, and its body handles segment
- * segment_first + iter. Each segment's rows equal the full run's rows for
- * that segment, so the demo can show boxes while later segments still run.
+ * The streaming graphs of a BirdBox model with a rolling noise floor, as two
+ * models the demo runs in turn (birdbox-stream.js):
+ *
+ *   spectrogram(audio) -> db (n_mels, frames), sound (frames)
+ *   detect(db, sound, first_frame, times, conf) -> raw, the boxes of the windows
+ *       starting at `times`, before window fusion
+ *
+ * BirdBox's export stores them in the model as ONNX functions (domain
+ * birdbox.stream). Their other inputs are tensors of the model: weights of its
+ * segment Loop body, and the DFT kernel its graph builds. Those become
+ * initializers and leading nodes here. A window's rows equal those of the whole
+ * graph, so the demo can show boxes a few seconds of audio at a time, and while
+ * a recording is still in progress.
  */
-function exposeSegmentLoop(model) {
+function streamGraphs(model) {
+  const functions = new Map();
+  for (const f of fields(model)) {
+    if (f.field !== 25) continue;   // FunctionProto: name 1, input 4, output 5, node 7, domain 10
+    const fn = { name: '', domain: '', inputs: [], outputs: [], nodes: [] };
+    for (const g of fields(model, f.valueStart, f.valueEnd)) {
+      if (g.field === 1) fn.name = str(model, g);
+      else if (g.field === 10) fn.domain = str(model, g);
+      else if (g.field === 4) fn.inputs.push(str(model, g));
+      else if (g.field === 5) fn.outputs.push(str(model, g));
+      else if (g.field === 7) fn.nodes.push({ ...parseNode(model, g), record: lenField(1, model.subarray(g.valueStart, g.valueEnd)) });
+    }
+    if (fn.domain === 'birdbox.stream') functions.set(fn.name, fn);
+  }
+  const spectrogram = functions.get('stream_spectrogram'), detect = functions.get('stream_detect');
+  if (!spectrogram || !detect) throw new Error('BirdBox: the model has no streaming graphs');
+
   const graphField = [...fields(model)].find(f => f.field === 7);
   if (!graphField) throw new Error('No graph in ModelProto');
-  let graph = model.subarray(graphField.valueStart, graphField.valueEnd);
-  const loopField = [...fields(graph)].find(f => f.field === 1 && parseNode(graph, f).op === 'Loop');
+  const graphBytes = model.subarray(graphField.valueStart, graphField.valueEnd), top = parseGraph(graphBytes);
+  const loopField = [...fields(graphBytes)].find(f => f.field === 1 && parseNode(graphBytes, f).op === 'Loop');
   if (!loopField) throw new Error('BirdBox: no segment Loop');
-  let node = graph.subarray(loopField.valueStart, loopField.valueEnd);
+  let body = null;
+  for (const a of fields(graphBytes, loopField.valueStart, loopField.valueEnd)) {
+    if (a.field !== 5) continue;   // AttributeProto, field 6 = graph
+    const g = [...fields(graphBytes, a.valueStart, a.valueEnd)].find(x => x.field === 6);
+    if (g) body = parseGraph(graphBytes.subarray(g.valueStart, g.valueEnd));
+  }
+  if (!body) throw new Error('BirdBox: the segment Loop has no body');
 
-  // Loop input 0 (the trip count) comes from the new input
-  const trip = [...fields(node)].find(f => f.field === 1);
-  if (str(node, trip) !== 'trip_count') throw new Error(`BirdBox: unexpected Loop trip count ${str(node, trip)}`);
-  node = replaceField(node, trip, Buffer.from('segment_count'));
-
-  // Body: Identity(iter) -> segment_index becomes Add(iter, segment_first)
-  const attr = [...fields(node)].find(f => f.field === 5 && [...fields(node, f.valueStart, f.valueEnd)].some(g => g.field === 6));
-  let attrMsg = node.subarray(attr.valueStart, attr.valueEnd);
-  const bodyField = [...fields(attrMsg)].find(g => g.field === 6);
-  let body = attrMsg.subarray(bodyField.valueStart, bodyField.valueEnd);
-  const index = [...fields(body)].find(f => {
-    if (f.field !== 1) return false;
-    const n = parseNode(body, f);
-    return n.op === 'Identity' && n.inputs[0] === 'iter' && n.outputs[0] === 'segment_index';
-  });
-  if (!index) throw new Error('BirdBox: Loop body does not take its segment index from iter');
-  const add = Buffer.concat(['iter', 'segment_first'].map(n => lenField(1, Buffer.from(n))).concat([
-    lenField(2, Buffer.from('segment_index')), lenField(3, Buffer.from('segment_offset')), lenField(4, Buffer.from('Add')),
-  ]));
-  body = replaceField(body, index, add);
-  attrMsg = replaceField(attrMsg, bodyField, body);
-  node = replaceField(node, attr, attrMsg);
-  graph = replaceField(graph, loopField, node);
-
-  // Scalar int64 graph inputs: ValueInfoProto { name, type { tensor_type { elem_type, shape {} } } }
-  const INT64 = 7;
-  const scalar = name => lenField(11, Buffer.concat([lenField(1, Buffer.from(name)), lenField(2, lenField(1, Buffer.concat([varintField(1, INT64), lenField(2, Buffer.alloc(0))])))]));
-  graph = Buffer.concat([graph, scalar('segment_first'), scalar('segment_count')]);
-  return Buffer.concat([model.subarray(0, graphField.tagStart), lenField(7, graph), model.subarray(graphField.end)]);
+  // ValueInfoProto { name, type { tensor_type { elem_type, shape } } }; without dims the shape stays open
+  const ELEM = { float32: 1, int64: 7, bool: 9 };
+  const valueInfo = (name, type, dims) => {
+    if (!type) return lenField(1, Buffer.from(name));
+    const shape = dims ? [lenField(2, Buffer.concat(dims.map(d => lenField(1, varintField(1, d)))))] : [];
+    return Buffer.concat([lenField(1, Buffer.from(name)), lenField(2, lenField(1, Buffer.concat([varintField(1, ELEM[type]), ...shape])))]);
+  };
+  const build = (fn, types) => {
+    const weights = fn.inputs.filter(name => body.inits.has(name));
+    const outer = fn.inputs.filter(name => !body.inits.has(name) && (top.producers.has(name) || top.inits.has(name)));
+    const prelude = ancestors(top, outer);
+    const inputs = fn.inputs.filter(name => !weights.includes(name) && !outer.includes(name));
+    const unknown = inputs.filter(name => !types[name]);
+    if (unknown.length) throw new Error(`BirdBox: ${fn.name} reads ${unknown.join(', ')}, which the model does not have`);
+    const graph = Buffer.concat([
+      ...top.nodes.filter(n => prelude.nodes.has(n)).map(n => n.record),
+      ...fn.nodes.map(n => n.record),
+      lenField(2, Buffer.from(fn.name)),
+      ...weights.map(name => body.inits.get(name)),
+      ...[...prelude.leaves].filter(name => top.inits.has(name)).map(name => top.inits.get(name)),
+      ...inputs.map(name => lenField(11, valueInfo(name, ...types[name]))),
+      ...fn.outputs.map(name => lenField(12, valueInfo(name))),
+    ]);
+    return Buffer.concat([model.subarray(0, graphField.tagStart), lenField(7, graph), model.subarray(graphField.end)]);
+  };
+  return {
+    spectrogram: build(spectrogram, { audio: ['float32'] }),
+    detect: build(detect, { db: ['float32'], sound: ['bool'], first_frame: ['int64', []], times: ['float32'], conf: ['float32'] }),
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -391,10 +457,14 @@ async function main() {
     v3Index: geoToV3,
   }));
 
-  // The demo merges the per-window boxes itself (birdbox-fusion.js), so both
-  // sliders update without another graph run, and runs one segment at a time.
-  const FLOAT = 1;
-  writeIfChanged(join(DIST, 'birdbox', BIRDBOX_MODEL), exposeSegmentLoop(addGraphOutput(readFileSync(paths.birdboxModel), BIRDBOX_RAW, FLOAT, ['num_raw', 9])));
+  // The demo runs BirdBox as a stream and merges the boxes of the windows itself
+  // (birdbox-fusion.js), so both sliders update without another run.
+  const birdbox = readFileSync(paths.birdboxModel), birdboxMeta = modelMetadata(birdbox), stream = streamGraphs(birdbox);
+  const floorWindow = +birdboxMeta.floor_window_seconds, frameOrigin = +birdboxMeta.frame_origin;
+  if (!(floorWindow > 0) || !Number.isInteger(frameOrigin)) throw new Error('BirdBox: the model has no rolling noise floor');
+  const birdboxName = BIRDBOX_MODEL.replace(/\.onnx$/, '');
+  writeIfChanged(join(DIST, 'birdbox', `${birdboxName}.spectrogram.onnx`), stream.spectrogram);
+  writeIfChanged(join(DIST, 'birdbox', `${birdboxName}.detect.onnx`), stream.detect);
 
   // --- Manifest -----------------------------------------------------------
   const manifest = {
@@ -428,17 +498,18 @@ async function main() {
       defaultThreshold: 0.03,
     },
     birdbox: {
-      name: 'BirdBox Just-Bird (FP16)',
+      name: 'BirdBox Just-Bird rolling60 (FP16)',
       sampleRate: 32000,
-      model: entry(`birdbox/${BIRDBOX_MODEL}`),
+      model: entry(`birdbox/${birdboxName}.detect.onnx`),
+      spectrogram: entry(`birdbox/${birdboxName}.spectrogram.onnx`),
       classNames: { 0: 'bird' },
-      output: BIRDBOX_RAW,
       merge: 'fusion',
       defaultConf: 0.15,
       defaultPhraseGap: 0.05,
       clipSeconds: 3,
       clipHopSeconds: 1.5,
-      segmentSeconds: 60,
+      floorWindowSeconds: floorWindow,
+      frameOrigin,
     },
   };
   writeIfChanged(join(DIST, 'manifest.json'), JSON.stringify(manifest, null, 2));

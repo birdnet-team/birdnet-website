@@ -6,14 +6,12 @@
  *   { type: 'init', ortModule, wasmPaths, model: ArrayBuffer, config }
  *   { type: 'v3', id, audio: Float32Array, batch, samples }
  *   { type: 'geo', id, inputs: Float32Array (B x [lat, lon, week]), mode: 'probs' | 'grid' }
- *   { type: 'birdbox', id, audio?: Float32Array, conf, songGap, segment }   audio is kept for later segments
  * Messages out: { type: 'ready', ms } | { type: 'result', id, ... } | { type: 'error', id, error }
  */
 
 let ort = null;
 let session = null;
 let config = {};
-let birdboxAudio = null;   // the recording BirdBox walks segment by segment
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 
@@ -77,24 +75,7 @@ async function runGeo(msg) {
   return [{ features, counts }, [features.buffer, counts.buffer]];
 }
 
-/** One 60 s segment of the recording (the graph sees the whole audio, as in a full run). */
-async function runBirdbox(msg) {
-  if (msg.audio) birdboxAudio = new ort.Tensor('float32', msg.audio, [msg.audio.length]);
-  const feeds = {
-    audio: birdboxAudio,
-    conf: new ort.Tensor('float32', Float32Array.of(msg.conf), [1]),
-    song_gap: new ort.Tensor('float32', Float32Array.of(msg.songGap), [1]),
-    segment_first: new ort.Tensor('int64', BigInt64Array.of(BigInt(msg.segment)), []),
-    segment_count: new ort.Tensor('int64', BigInt64Array.of(1n), []),
-  };
-  // Only the per-window boxes: the graph's own fusion step is skipped
-  const out = await session.run(feeds, [config.output]);
-  const tensor = out[config.output];
-  const detections = own(tensor.data);
-  return [{ detections, rows: tensor.dims[0] || 0 }, [detections.buffer]];
-}
-
-const handlers = { v3: runV3, geo: runGeo, birdbox: runBirdbox };
+const handlers = { v3: runV3, geo: runGeo };
 
 self.onmessage = async ({ data: msg }) => {
   if (msg.type === 'init') {
