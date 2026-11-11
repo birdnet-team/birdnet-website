@@ -881,6 +881,7 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .bb-swatch.is-verified { border-color: #4ade80; }
 .bb-swatch.is-drawn { border-color: #fbbf24; }
 .bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
+.bb-swatch.is-pending { border-color: #22d3ee; border-style: dashed; }
 
 /* Xeno-canto export form */
 .bb-xc fieldset legend { margin-bottom: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--demo-muted); }
