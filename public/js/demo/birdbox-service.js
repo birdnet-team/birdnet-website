@@ -11,7 +11,7 @@ import { fetchAsset, getManifest } from './model-store.js';
 import { CancelledError } from './ort-pool.js';
 
 export const RAW_CONF = 0.05;   // lowest value of the confidence slider
-const STEP = 2;                 // windows per run in a file: new boxes every 3 s of audio
+const STEP = 1;                 // windows per run in a file: new boxes every 1.5 s of audio, as fast as two per run
 
 class BirdBoxService {
   constructor() { this.ready = null; this.worker = null; this.job = null; this.nextId = 1; this.models = null; }
