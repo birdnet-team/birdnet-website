@@ -34,26 +34,44 @@ function pcmRange(pcm, start, end) {
 /**
  * Compute a spectrogram in a worker owned by the viewer and stream it in.
  * The worker asks for the samples it needs block by block. Starting a new
- * job stops the viewer's previous one.
+ * job stops the viewer's previous one. With `swap`, the viewer keeps its
+ * picture and its view until the new spectrogram is complete.
  */
-export function streamSpectrogram(view, pcm, type, duration) {
+export function streamSpectrogram(view, pcm, type, duration, { swap = false } = {}) {
   view._specWorker?.terminate();
   const worker = view._specWorker = new Worker(new URL('./spec-worker.js', import.meta.url));
+  let held = null;   // swap: everything is gathered first
   worker.onmessage = ({ data }) => {
     if (data.type === 'want') {
       const parts = data.ranges.map(([a, b]) => pcmRange(pcm, a, b));
       worker.postMessage({ type: 'pcm', data: parts }, parts.map(p => p.buffer));
       return;
     }
-    if (data.type === 'meta') view.setSource({ frames: data.frames, rows: data.rows, fps: data.fps, duration, floor: data.floor || 0 });
-    else if (data.type === 'slice') view.addSlice(data.start, data.data);
-    else if (data.type === 'error') console.error('spectrogram:', data.error);
+    if (data.type === 'meta') {
+      const source = { frames: data.frames, rows: data.rows, fps: data.fps, duration, floor: data.floor || 0 };
+      if (swap) held = { source, levels: new Uint8Array(data.frames * data.rows) };
+      else view.setSource(source);
+    } else if (data.type === 'slice') {
+      if (held) held.levels.set(data.data, data.start * held.source.rows);
+      else view.addSlice(data.start, data.data);
+    } else if (data.type === 'done' && held) {
+      const current = { ...view.view };
+      view.setSource(held.source);
+      view.addSlice(0, held.levels);
+      view.setView(current.t0, current.t1, { silent: true });
+    } else if (data.type === 'error') console.error('spectrogram:', data.error);
     if (data.type === 'done' || data.type === 'error') {
       worker.terminate();
       if (view._specWorker === worker) view._specWorker = null;
     }
   };
   worker.postMessage({ type, id: 1, length: pcm.length, sampleRate: SR, fMax: view.axis?.fMax });
+}
+
+/** Stop the viewer's spectrogram job, if one is running. */
+export function stopSpectrogram(view) {
+  view._specWorker?.terminate();
+  view._specWorker = null;
 }
 
 /**

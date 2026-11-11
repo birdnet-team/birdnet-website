@@ -246,6 +246,13 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .spec-main.is-panning { cursor: grabbing; }
 .spec-main.is-editing { touch-action: none; }
 .spec-main:focus-visible { box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.8); }
+/* While recording: says the view follows the sound, or brings it back there */
+.spec-live { position: absolute; top: 0.5rem; right: 0.55rem; padding: 0.12rem 0.6rem 0.12rem 0.5rem; border: 0; border-radius: 1rem; background: rgba(5, 4, 12, 0.72); color: #fff; font-size: 0.7rem; font-weight: 600; line-height: 1.5; letter-spacing: 0.03em; cursor: pointer; }
+.spec-live:hover:not(:disabled) { background: rgba(5, 4, 12, 0.92); }
+.spec-live:disabled { cursor: default; }
+.spec-live[hidden] { display: none; }
+.spec-live[data-following="true"]::before { content: ""; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.35rem; border-radius: 50%; background: #ef4444; animation: demo-pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .spec-live[data-following="true"]::before { animation: none; } }
 .spec-canvas { display: block; width: 100%; }
 
 

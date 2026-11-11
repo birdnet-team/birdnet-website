@@ -13,6 +13,12 @@
  *
  * Results stream back in slices of frames (Uint8 levels, frame-major):
  *   { type: 'meta', id, frames, rows, fps, floor }  then  { type: 'slice', id, start, data }  then  { type: 'done', id }
+ *
+ * 'live-start', then 'live-audio' for each piece of a recording in progress:
+ *         the same spectrogram, one frame at a time. The whole recording is
+ *         not known yet, so each band's noise floor comes from the last seconds.
+ *   in:  { type: 'live-start', id, sampleRate, fMax }  then  { type: 'live-audio', pcm: Float32Array }
+ *   out: { type: 'meta', id, rows, fps, floor }  then  { type: 'live-frames', id, start, data }
  */
 
 let answer = null;
@@ -124,10 +130,121 @@ async function stft(id, length, sampleRate, fMax = 12000) {
   postMessage({ type: 'done', id });
 }
 
+const LIVE_FLOOR_SECONDS = 20;  // audio behind the noise floor of a recording in progress
+const LIVE_FLOOR_FRAMES = 300;  // frames kept from it
+const LIVE_FLOOR_REFRESH = 25;  // frames between updates of the floor
+const LIVE_FIRST_FRAMES = 12;   // about 0.1 s until the first frames can be levelled
+
+/**
+ * The spectrogram of audio that is still arriving. Frames line up with the
+ * finished spectrogram's. Bands are levelled by a running estimate of their
+ * noise floor, and frames already sent stay as they are.
+ */
+class LiveSpectrogram {
+  constructor(id, sampleRate, fMax = 12000) {
+    const N = 1024;
+    this.id = id;
+    this.n = N;
+    this.hop = Math.round(sampleRate / 100);
+    this.rows = Math.round(Math.min(fMax, sampleRate / 2) / (sampleRate / N));
+    // The finished spectrogram's range: -6 dB up to its loudest calls, usually about here
+    this.lo = -6;
+    this.hi = 28;
+    this.win = Float64Array.from({ length: N }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N));
+    this.re = new Float64Array(N);
+    this.im = new Float64Array(N);
+    this.buffer = new Float32Array(1 << 18);
+    this.length = 0;     // samples in the buffer
+    this.position = 0;   // where the next frame starts in it
+    this.frames = 0;
+    this.sent = 0;
+    this.held = [];      // the first frames, until there is a floor to level them with
+    // History for the floor: one frame in every `every` over the last LIVE_FLOOR_SECONDS
+    const fps = sampleRate / this.hop;
+    this.every = Math.max(1, Math.round(fps * LIVE_FLOOR_SECONDS / LIVE_FLOOR_FRAMES));
+    this.history = new Float32Array(LIVE_FLOOR_FRAMES * this.rows);
+    this.stored = 0;
+    this.floor = new Float32Array(this.rows);
+    this.current = new Float32Array(this.rows);
+    postMessage({ type: 'meta', id, rows: this.rows, fps, hzPerRow: sampleRate / N, floor: (7 - this.lo) / (this.hi - this.lo) });
+  }
+
+  _frame(offset) {
+    const { n, re, im, win, buffer, rows, current } = this;
+    for (let i = 0; i < n; i++) { re[i] = buffer[offset + i] * win[i]; im[i] = 0; }
+    fft(re, im);
+    for (let k = 0; k < rows; k++) current[k] = 10 * Math.log10(re[k] * re[k] + im[k] * im[k] + 1e-12);
+  }
+
+  /** Each band's median over the frames in `column(k, s)`, s = 0..count-1. */
+  _updateFloor(count, column) {
+    const sorted = new Float32Array(count);
+    for (let k = 0; k < this.rows; k++) {
+      for (let s = 0; s < count; s++) sorted[s] = column(k, s);
+      sorted.sort();
+      this.floor[k] = percentile(sorted, 0.5);
+    }
+  }
+
+  _levels(db) {
+    const levels = new Uint8Array(this.rows), { lo, hi, floor } = this;
+    for (let k = 0; k < this.rows; k++) {
+      const v = (db[k] - floor[k] - lo) / (hi - lo);
+      levels[k] = v <= 0 ? 0 : v >= 1 ? 255 : Math.round(255 * v);
+    }
+    return levels;
+  }
+
+  push(pcm) {
+    if (this.length + pcm.length > this.buffer.length) {
+      // Samples before the next frame are done with
+      this.buffer.copyWithin(0, this.position, this.length);
+      this.length -= this.position;
+      this.position = 0;
+      if (this.length + pcm.length > this.buffer.length) {
+        const grown = new Float32Array(2 * (this.length + pcm.length));
+        grown.set(this.buffer.subarray(0, this.length));
+        this.buffer = grown;
+      }
+    }
+    this.buffer.set(pcm, this.length);
+    this.length += pcm.length;
+    const out = [];
+    while (this.position + this.n <= this.length) {
+      this._frame(this.position);
+      this.position += this.hop;
+      if (this.frames % this.every === 0) {
+        this.history.set(this.current, (this.stored % LIVE_FLOOR_FRAMES) * this.rows);
+        this.stored++;
+      }
+      this.frames++;
+      // The floor needs a little history; it then follows the sounds
+      if (this.frames < LIVE_FIRST_FRAMES) {
+        this.held.push(this.current.slice());
+        continue;
+      }
+      if (this.held.length) this._updateFloor(this.held.length, (k, j) => this.held[j][k]);
+      else if (this.frames % LIVE_FLOOR_REFRESH === 0) this._updateFloor(Math.min(this.stored, LIVE_FLOOR_FRAMES), (k, j) => this.history[j * this.rows + k]);
+      for (const held of this.held) out.push(this._levels(held));
+      this.held.length = 0;
+      out.push(this._levels(this.current));
+    }
+    if (!out.length) return;
+    const data = new Uint8Array(out.length * this.rows);
+    out.forEach((levels, j) => data.set(levels, j * this.rows));
+    postMessage({ type: 'live-frames', id: this.id, start: this.sent, data }, [data.buffer]);
+    this.sent += out.length;
+  }
+}
+
+let live = null;
+
 self.onmessage = async ({ data: msg }) => {
   if (msg.type === 'pcm') { answer?.(msg.data); return; }
   try {
-    if (msg.type === 'stft') await stft(msg.id, msg.length, msg.sampleRate, msg.fMax);
+    if (msg.type === 'live-start') live = new LiveSpectrogram(msg.id, msg.sampleRate, msg.fMax);
+    else if (msg.type === 'live-audio') live?.push(msg.pcm);
+    else if (msg.type === 'stft') await stft(msg.id, msg.length, msg.sampleRate, msg.fMax);
   } catch (err) {
     postMessage({ type: 'error', id: msg.id, error: String(err?.message || err) });
   }
