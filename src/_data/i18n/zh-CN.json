@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "正在下载用于物种建议的 BirdNET V3.0：{pct}",
   "demo.bb.suggest.failed": "物种建议不可用：{message}",
   "demo.bb.suggest.loading": "正在加载用于物种建议的 BirdNET V3.0…",
-  "demo.bb.suggest.running": "正在用 BirdNET V3.0 识别 {n} 个框…",
   "demo.bb.sum.boxes": "个框",
   "demo.bb.sum.species": "个建议物种",
   "demo.bb.sum.time": "检测",

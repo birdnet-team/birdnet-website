@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "Pobieranie BirdNET V3.0 do propozycji gatunków: {pct}",
   "demo.bb.suggest.failed": "Propozycje gatunków są niedostępne: {message}",
   "demo.bb.suggest.loading": "Wczytywanie BirdNET V3.0 do propozycji gatunków…",
-  "demo.bb.suggest.running": "Rozpoznawanie {n} ramek za pomocą BirdNET V3.0…",
   "demo.bb.sum.boxes": "ramek",
   "demo.bb.sum.species": "proponowanych gatunków",
   "demo.bb.sum.time": "wykrywanie",

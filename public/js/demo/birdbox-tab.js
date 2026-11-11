@@ -6,8 +6,11 @@
  * of its 3 s windows a few seconds of audio at a time, so boxes appear while
  * detection runs. birdbox-fusion.js merges them exactly like the model's
  * window fusion for any (confidence, phrase gap) setting, so both sliders
- * update instantly. BirdNET V3.0 suggests a species for every box as soon as
- * the box is settled; the boxes export as Xeno-canto Annota-JSON.
+ * update instantly. The boxes export as Xeno-canto Annota-JSON.
+ *
+ * BirdNET V3.0 suggests a species for every box. It scores the same 3 s
+ * windows alongside the detection, so a box's species is usually there when
+ * the box appears, and a box that changes needs no new scoring.
  *
  * While this tab's card records, the spectrogram flies in from the right and
  * each window is detected once, as soon as it is complete. The model takes a
@@ -22,7 +25,7 @@ import { AudioSource, parseXcNumber } from './audio-source.js';
 import { fuseBoxes } from './birdbox-fusion.js';
 import { birdbox } from './birdbox-service.js';
 import { analyzedTo as analyzedAfter, fileEnd, readyWindows, windowCount } from './birdbox-stream.js';
-import { csvField, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
+import { csvField, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, throttle, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
 import { getManifest, isCached } from './model-store.js';
 import { player } from './player.js';
@@ -33,8 +36,10 @@ import { catalog } from './species.js';
 import { SR, v3 } from './v3-service.js';
 import { stopSpectrogram, streamSpectrogram, thumb } from './v3-tab.js';
 
-const CLIP = 3;               // seconds in one of the model's windows
-const SETTLE = 1.5;           // this far behind the analyzed audio (plus the phrase gap), no later window changes a box
+const CLIP = 3, HOP = 1.5;    // the model's windows: seconds long, seconds apart
+const MIN_SCORE = 0.05;       // BirdNET V3.0 scores below this are not kept
+const SCORES_MS = 120;        // show new species at most this often
+const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
 const UPDATE_MS = 100;        // redraw at most this often while detection runs,
 const UPDATE_SHARE = 0.25;    // and spend at most this share of the time on it: an hour holds many boxes
 const LIVE_MAX_WINDOWS = 8;   // windows per run when detection has fallen behind a recording
@@ -54,29 +59,11 @@ const MIN_BAND = 100;         // smallest box: Hz
 const $ = id => document.getElementById(id);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-/** 3 s V3.0 windows covering a box (centered for short boxes). */
-function suggestionWindows(t0, t1, duration) {
-  const W = 3, maxStart = Math.max(0, duration - W);
-  if (t1 - t0 <= W) {
-    const s = Math.min(maxStart, Math.max(0, (t0 + t1) / 2 - W / 2));
-    return [[s, s + W]];
-  }
-  const out = [];
-  for (let s = t0; ; s += 1.5) {
-    const start = Math.min(maxStart, s);
-    out.push([start, start + W]);
-    if (start + W >= t1 || start >= maxStart) break;
-  }
-  return out;
-}
-
 /** Xeno-canto contributor ID from the ID itself or a xeno-canto.org/contributor/… link. */
 const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/[/?#].*$/, '');
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
-/** Species suggestions depend only on the time span (the windows cover all frequencies). */
-const timeKey = g => `${g.t0.toFixed(3)}|${g.t1.toFixed(3)}`;
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 const concat = (a, b) => {
   const out = new Float32Array(a.length + b.length);
@@ -84,17 +71,6 @@ const concat = (a, b) => {
   out.set(b, a.length);
   return out;
 };
-
-/** A debounce that still fires every maxMs while calls keep coming. */
-function debounceMax(fn, ms, maxMs) {
-  let timer = null, first = 0;
-  return () => {
-    const now = performance.now();
-    if (timer == null) first = now;
-    clearTimeout(timer);
-    timer = setTimeout(() => { timer = null; fn(); }, Math.max(0, Math.min(ms, first + maxMs - now)));
-  };
-}
 
 export class BirdBoxTab {
   constructor() {
@@ -110,7 +86,14 @@ export class BirdBoxTab {
     this.songs = [];               // detector boxes at the current sliders
     this.userBoxes = [];           // boxes drawn by the user
     this.boxes = [];               // both, ordered by start time
-    this.suggestions = new Map();  // timeKey -> [{ s, p }]
+    this.scores = new Map();       // window -> [[species, score], ...]: the birds BirdNET V3.0 hears in it
+    this.scoring = new Set();      // windows on their way
+    this.wanted = new Set();       // windows the boxes lie in that are not scored yet
+    this.ahead = 0;                // next window to score ahead of the detection
+    this.candidates = new Map();   // 'first-last' window -> [{ s, p }]: the species of a box in these windows
+    this.mask = undefined;         // location filter for the candidates, null when off; undefined: not fetched yet
+    this.maskVersion = 0;
+    this.retryAt = 0;
     this.edits = new Map();        // box id -> { species?, soundType?, include?, geom? }
     this.selectedId = null;
     this.hoverId = null;
@@ -120,9 +103,13 @@ export class BirdBoxTab {
     this.draft = null;             // box being drawn
     this.userSeq = 0;
     this.runToken = 0;
-    this.suggestToken = 0;        // invalidates suggestion results after audio or filter changes
-    this.inflight = new Set();
-    this.suggestSoon = debounceMax(() => this._suggest(), 250, 1000);
+    this.scoreToken = 0;           // invalidates scores still on their way after the audio changes
+    this.scoresChanged = throttle(() => {
+      this._renderSummary();
+      this._renderTable();
+      this.spec.render();
+      if (!$('bb-xc-check').hidden) this._checkXc();
+    }, SCORES_MS);
   }
 
   init() {
@@ -204,7 +191,13 @@ export class BirdBoxTab {
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
     $('bb-suggest').addEventListener('change', () => this._update());
-    this.location.addEventListener('change', () => { this._resetSuggestions(); this._update(); });
+    // Another place or date: the scores stay, and the species are picked from them again
+    this.location.addEventListener('change', () => {
+      this.maskVersion++;
+      this.mask = undefined;
+      this.candidates.clear();
+      this._update();
+    });
     const form = $('bb-xc');
     form.addEventListener('submit', e => { e.preventDefault(); this._exportXc(); });
     // A pasted profile link becomes the ID it ends in
@@ -289,7 +282,7 @@ export class BirdBoxTab {
       if (e.target.dataset.field === 'species' && e.target.value === 'pick') {
         const target = await pickSpecies({
           title: t('demo.bb.pickTitle', 'Species for box {n}', { n: +tr.dataset.i + 1 }),
-          suggestions: this.suggestions.get(timeKey(this._geom(b))) || [],
+          suggestions: this._candidates(this._geom(b)) || [],
           filter: i => catalog.className(i) === 'Aves',
         });
         if (target != null) this._setSpecies(b, target);
@@ -384,18 +377,15 @@ export class BirdBoxTab {
     this.runToken++;
     birdbox.abort();
     stopSpectrogram(this.spec);
-    const prev = shared.audio ? { raw: this.raw, analyzedTo: this.analyzedTo, userBoxes: this.userBoxes, edits: this.edits, selectedId: this.selectedId, suggestions: this.suggestions } : null;
+    const prev = shared.audio ? { raw: this.raw, analyzedTo: this.analyzedTo, userBoxes: this.userBoxes, edits: this.edits, selectedId: this.selectedId, scores: this.scores } : null;
     const rec = this.rec = {
       maxSeconds, prev, pcm: new Float32Array((maxSeconds + 1) * SR), n: 0, arrivedAt: 0,
       data: new Float32Array(0), rows: 0, ms: 0, next: 0,   // its boxes so far, and the windows they come from
       ended: false, wake: null, specWorker: null, loop: null,
     };
-    // Suggestions still on their way belong to the audio that steps aside
-    this.suggestToken++;
-    this.inflight.clear();
-    v3.cancel('birdbox');
+    this._resetScores();   // scores still on their way belong to the audio that steps aside
     Object.assign(this, {
-      pcm: rec.pcm, duration: 0, raw: null, analyzedTo: 0, songs: [], userBoxes: [], edits: new Map(), suggestions: new Map(),
+      pcm: rec.pcm, duration: 0, raw: null, analyzedTo: 0, songs: [], userBoxes: [], edits: new Map(),
       selectedId: null, hoverId: null, liveEnded: null, pendingRun: false, specPending: false,
     });
     this.born.clear();
@@ -434,6 +424,7 @@ export class BirdBoxTab {
     this.duration = rec.n / SR;
     rec.specWorker.postMessage({ type: 'live-audio', pcm }, [pcm.buffer]);
     rec.wake?.();
+    this._pumpScores();   // a window may be complete now
   }
 
   /**
@@ -521,9 +512,7 @@ export class BirdBoxTab {
     if (!rec) return;
     if (this.rec) this._liveClose(rec);
     this.liveEnded = null;
-    this.suggestToken++;
-    this.inflight.clear();
-    v3.cancel('birdbox');
+    this._resetScores();
     this.born.clear();
     $('bb-error').hidden = true;
     $('bb-suggest-status').textContent = '';
@@ -531,7 +520,7 @@ export class BirdBoxTab {
     Object.assign(this, {
       pcm: audio?.pcm ?? null, duration: audio?.duration ?? 0, songs: [], hoverId: null,
       raw: prev?.raw ?? null, analyzedTo: prev?.analyzedTo ?? null, userBoxes: prev?.userBoxes ?? [], edits: prev?.edits ?? new Map(),
-      suggestions: prev?.suggestions ?? new Map(), selectedId: prev?.selectedId ?? null,
+      scores: prev?.scores ?? this.scores, selectedId: prev?.selectedId ?? null,
     });
     this.spec.clear();
     $('bb-howto').hidden = !!audio;
@@ -577,12 +566,13 @@ export class BirdBoxTab {
     this.runToken++;
     // A live detection still running ends by itself in a moment, and the worker stays warm
     if (!ended) birdbox.abort();
-    // The boxes of a recording hold for its file, and so do their species
+    // The boxes of a recording hold for its file, and so does what BirdNET V3.0 heard
     this.raw = ended && audio ? this._finalSoFar(ended, audio.pcm) : null;
     this.analyzedTo = this.raw ? analyzedAfter(this.raw.next) : null;
     this.songs = [];
     this.userBoxes = [];
-    if (!this.raw) this._resetSuggestions();
+    if (!this.raw) this._resetScores();
+    this.candidates.clear();   // the last windows of a file are not those of a recording in progress
     this.edits = new Map();
     this.selectedId = null;
     this.hoverId = null;
@@ -679,7 +669,7 @@ export class BirdBoxTab {
     }
   }
 
-  /* ---------------- boxes, edits + suggestions ---------------- */
+  /* ---------------- boxes + edits ---------------- */
 
   _update() {
     const conf = +$('bb-conf').value, gap = +$('bb-gap').value;
@@ -698,73 +688,136 @@ export class BirdBoxTab {
     this._renderHint();
     this.spec.render();
     if (!$('bb-xc-check').hidden) this._checkXc();
-    if (this.raw && $('bb-suggest').checked) this.suggestSoon();
+    this.wanted.clear();
+    if ($('bb-suggest').checked) {
+      for (const b of this.boxes) {
+        const [first, last] = this._windowsOf(this._geom(b));
+        for (let k = first; k <= last; k++) if (!this.scores.has(k)) this.wanted.add(k);
+      }
+    }
+    this._pumpScores();
   }
 
-  /** Drop suggestions and ignore results of windows still being scored. */
-  _resetSuggestions() {
-    this.suggestToken++;
-    this.suggestions.clear();
-    this.inflight.clear();
+  /* ---------------- species: BirdNET V3.0 on the same windows ---------------- */
+
+  /**
+   * The windows a box lies in, [first, last]. BirdNET V3.0 scores the 3 s windows
+   * BirdBox detects on, one every 1.5 s. A window owns its middle half, as in the
+   * window fusion, so a box up to 1.5 s long takes the window that owns its centre:
+   * the one BirdBox found it in. A longer box takes the windows from the one around
+   * its first 1.5 s to the one around its last, which cover it.
+   */
+  _windowsOf(g) {
+    const end = this.recording ? Infinity : windowCount(this.pcm.length) - 1;
+    const owner = time => clamp(Math.floor((time - CLIP / 4) / HOP), 0, end);
+    if (g.t1 - g.t0 <= HOP) {
+      const k = owner((g.t0 + g.t1) / 2);
+      return [k, k];
+    }
+    return [owner(g.t0 + HOP / 2), owner(g.t1 - HOP / 2)];
+  }
+
+  /**
+   * Up to five species for a box, best first: each species' highest score in the box's
+   * windows, within the location filter. null while a window is still to be scored.
+   */
+  _candidates(g) {
+    const [first, last] = this._windowsOf(g), key = `${first}-${last}`;
+    let cands = this.candidates.get(key);
+    if (cands || this.mask === undefined) return cands || null;
+    const best = new Map(), mask = this.mask;
+    for (let k = first; k <= last; k++) {
+      const birds = this.scores.get(k);
+      if (!birds) return null;
+      for (const [s, p] of birds) if (!(best.get(s) >= p)) best.set(s, p);
+    }
+    cands = [...best].filter(([s]) => !mask || mask.scores[s] >= mask.threshold).map(([s, p]) => ({ s, p })).sort((a, b) => b.p - a.p).slice(0, 5);
+    this.candidates.set(key, cands);
+    return cands;
+  }
+
+  /** Other audio: forget what BirdNET V3.0 heard, and ignore the windows still on their way. */
+  _resetScores() {
+    this.scoreToken++;
+    this.scores = new Map();
+    this.scoring.clear();
+    this.wanted.clear();
+    this.candidates.clear();
+    this.ahead = 0;
     v3.cancel('birdbox');
   }
 
   /**
-   * No later window changes this box any more, so its species can be looked up: the
-   * windows still to come lie behind it, further than calls are joined over.
+   * Keep BirdNET V3.0 busy alongside the detection. Called whenever there may be a
+   * window to score: boxes or audio arrived, or a window is done.
    */
-  _settled(b) {
-    if (b.manual || this.raw?.done || this.edits.get(b.id)?.geom) return true;
-    return this.analyzedTo != null && b.t1 + +$('bb-gap').value + SETTLE <= this.analyzedTo;
+  async _pumpScores() {
+    if (this.pumping || !this.pcm || !$('bb-suggest').checked || performance.now() < this.retryAt) return;
+    const status = $('bb-suggest-status');
+    this.pumping = true;
+    try {
+      if (!v3.workers) status.textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
+      await v3.ensure(p => {
+        if (!p.cached) status.textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
+      });
+      while (this.mask === undefined) {
+        const version = this.maskVersion, mask = await activeMask();
+        if (version !== this.maskVersion) continue;   // the filter changed meanwhile
+        this.mask = mask;
+        this.scoresChanged();
+      }
+      status.textContent = '';
+    } catch (err) {
+      console.error(err);
+      this.retryAt = performance.now() + RETRY_MS;
+      status.textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+      return;
+    } finally {
+      this.pumping = false;
+    }
+    v3.wake();
+    for (let k; this.scoring.size < 2 * v3.pool.size && (k = this._nextWindow()) != null;) this._scoreWindow(k);
   }
 
-  async _suggest() {
-    const token = this.suggestToken;
-    const keys = [...new Set(this.boxes.filter(b => this._settled(b)).map(b => timeKey(this._geom(b))))];
-    const missing = keys.filter(k => !this.suggestions.has(k) && !this.inflight.has(k));
-    if (!missing.length) return;
-    missing.forEach(k => this.inflight.add(k));
-    try {
-      if (!v3.ready || !v3.workers) {
-        $('bb-suggest-status').textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
-      }
-      await v3.ensure(p => {
-        if (!p.cached) $('bb-suggest-status').textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
-      });
-      const mask = await activeMask();
-      if (token !== this.suggestToken) return;
-      // While boxes still come in, the rows say which ones are being identified: a line that comes and goes would shake the list
-      $('bb-suggest-status').textContent = this.raw?.done ? t('demo.bb.suggest.running', 'Identifying {n} boxes with BirdNET V3.0…', { n: this.inflight.size }) : '';
-      const S = catalog.count, aves = catalog.classes.indexOf('Aves'), len = 3 * SR;
-      await Promise.all(missing.map(async key => {
-        const [t0, t1] = key.split('|').map(Number);
-        const windows = suggestionWindows(t0, t1, this.duration);
-        const outs = await Promise.all(windows.map(([s, e]) => v3.scoreWindow(this.pcm, Math.round(s * SR), Math.round(e * SR), len, { gen: 'birdbox', priority: 5 })));
-        if (token !== this.suggestToken) return;
-        const pooled = new Float32Array(S);
-        for (const o of outs) for (let i = 0; i < S; i++) if (o[i] > pooled[i]) pooled[i] = o[i];
-        const cands = [];
-        for (let i = 0; i < S; i++) {
-          if (catalog.cls[i] !== aves || pooled[i] < 0.05) continue;
-          if (mask && mask.scores[i] < mask.threshold) continue;
-          cands.push({ s: i, p: pooled[i] });
-        }
-        cands.sort((x, y) => y.p - x.p);
-        this.suggestions.set(key, cands.slice(0, 5));
-        this.inflight.delete(key);
-      }));
-      if (token !== this.suggestToken) return;
-      if (!this.inflight.size) $('bb-suggest-status').textContent = '';
-      this._renderTable();
-      this._renderSummary();
-      this.spec.render();
-      this.suggestSoon(); // boxes may have moved meanwhile
-    } catch (err) {
-      if (token !== this.suggestToken || err.cancelled) return;
-      missing.forEach(k => this.inflight.delete(k));
-      console.error(err);
-      $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+  /**
+   * The window to score next: first the earliest one a box is waiting for, then the
+   * next one ahead of the detection, whose boxes are about to appear. A window the
+   * detection has passed without a box is never scored.
+   */
+  _nextWindow() {
+    const rec = this.rec || this.liveEnded;
+    const complete = rec ? readyWindows(rec.n) : windowCount(this.pcm.length);
+    for (const k of this.wanted) {
+      if (this.scores.has(k)) this.wanted.delete(k);
+      else if (!this.scoring.has(k) && k < complete) return k;
     }
+    if (this.analyzedTo == null) return null;   // no detection is running
+    this.ahead = Math.max(this.ahead, this.raw?.next ?? 0);
+    while (this.scores.has(this.ahead) || this.scoring.has(this.ahead)) this.ahead++;
+    return this.ahead < complete ? this.ahead : null;
+  }
+
+  /** BirdNET V3.0 on window k (silence after the end of the recording, as for BirdBox). */
+  async _scoreWindow(k) {
+    const token = this.scoreToken, start = k * HOP * SR, length = CLIP * SR;
+    this.scoring.add(k);
+    try {
+      const out = await v3.scoreWindow(this.pcm, start, start + length, length, { gen: 'birdbox', priority: 5 });
+      if (token !== this.scoreToken) return;
+      const aves = catalog.classes.indexOf('Aves'), birds = [];
+      for (let s = 0; s < out.length; s++) if (out[s] >= MIN_SCORE && catalog.cls[s] === aves) birds.push([s, out[s]]);
+      this.scores.set(k, birds);
+      this.scoring.delete(k);
+      if (this.wanted.delete(k)) this.scoresChanged();
+    } catch (err) {
+      if (token !== this.scoreToken || err.cancelled) return;
+      this.scoring.delete(k);
+      console.error(err);
+      this.retryAt = performance.now() + RETRY_MS;
+      $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+      return;
+    }
+    this._pumpScores();
   }
 
   /** Box geometry with the user's changes (and the live one while dragging). */
@@ -776,7 +829,7 @@ export class BirdBoxTab {
   /** Species, sound type and inclusion: the user's choices over the defaults. */
   _edit(b) {
     const o = this.edits.get(b.id) || {};
-    const cands = $('bb-suggest').checked ? this.suggestions.get(timeKey(this._geom(b))) : null;
+    const cands = $('bb-suggest').checked ? this._candidates(this._geom(b)) : null;
     const top = cands?.[0];
     return {
       species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
@@ -807,7 +860,7 @@ export class BirdBoxTab {
   }
 
   _species(b) {
-    const edit = this._edit(b), cands = this.suggestions.get(timeKey(this._geom(b))) || [];
+    const edit = this._edit(b), cands = this._candidates(this._geom(b)) || [];
     return { s: edit.species, p: cands.find(c => c.s === edit.species)?.p ?? null };
   }
 
@@ -1012,7 +1065,7 @@ export class BirdBoxTab {
 
   _rowHtml(b, i) {
     const suggest = $('bb-suggest').checked, locked = this.recording ? ' disabled' : '';
-    const g = this._geom(b), edit = this._edit(b), cands = this.suggestions.get(timeKey(g));
+    const g = this._geom(b), edit = this._edit(b), cands = this._candidates(g);
     let speciesCell;
     if (suggest && !cands) speciesCell = `<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>${esc(t('demo.bb.identifying', 'Identifying…'))}</span>`;
     else {

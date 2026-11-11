@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "Загрузка BirdNET V3.0 для подсказок видов: {pct}",
   "demo.bb.suggest.failed": "Подсказки видов недоступны: {message}",
   "demo.bb.suggest.loading": "Загрузка BirdNET V3.0 для подсказок видов…",
-  "demo.bb.suggest.running": "Определение {n} рамок с помощью BirdNET V3.0…",
   "demo.bb.sum.boxes": "рамок",
   "demo.bb.sum.species": "предложенных видов",
   "demo.bb.sum.time": "обнаружение",

@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "Download di BirdNET V3.0 per i suggerimenti: {pct}",
   "demo.bb.suggest.failed": "I suggerimenti di specie non sono disponibili: {message}",
   "demo.bb.suggest.loading": "Caricamento di BirdNET V3.0 per i suggerimenti…",
-  "demo.bb.suggest.running": "Identificazione di {n} riquadri con BirdNET V3.0…",
   "demo.bb.sum.boxes": "riquadri",
   "demo.bb.sum.species": "specie suggerite",
   "demo.bb.sum.time": "rilevamento",

@@ -975,7 +975,6 @@
   "demo.bb.suggest.downloading": "BirdNET V3.0 für Artvorschläge wird heruntergeladen: {pct}",
   "demo.bb.suggest.failed": "Artvorschläge sind nicht verfügbar: {message}",
   "demo.bb.suggest.loading": "BirdNET V3.0 für Artvorschläge wird geladen…",
-  "demo.bb.suggest.running": "{n} Boxen werden mit BirdNET V3.0 bestimmt…",
   "demo.bb.sum.boxes": "Boxen",
   "demo.bb.sum.species": "vorgeschlagene Arten",
   "demo.bb.sum.time": "Erkennung",

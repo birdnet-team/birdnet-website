@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "Segh ngu'meyvaD BirdNET V3.0 SuqtaH: {pct}",
   "demo.bb.suggest.failed": "Segh ngu'mey tu'lu'be': {message}",
   "demo.bb.suggest.loading": "Segh ngu'meyvaD BirdNET V3.0 loadtaH…",
-  "demo.bb.suggest.running": "BirdNET V3.0 {n} box ngu'taH…",
   "demo.bb.sum.boxes": "box",
   "demo.bb.sum.species": "Segh ngu'lu'",
   "demo.bb.sum.time": "Sam",

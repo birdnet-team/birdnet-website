@@ -106,6 +106,11 @@ class V3Service extends EventTarget {
     return { chunks, scores, ms: performance.now() - t0, cancelled: gen !== this.gen };
   }
 
+  /** Bring the pool back to its full size before windows are scored one by one. */
+  wake() {
+    if (this.pool) this._busy();
+  }
+
   _busy() {
     clearTimeout(this.trimTimer);
     this.pool.grow(async () => fetchAsset((await this.manifestEntry()).model)).catch(() => {});

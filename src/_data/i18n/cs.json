@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "Stahování BirdNET V3.0 pro návrhy druhů: {pct}",
   "demo.bb.suggest.failed": "Návrhy druhů nejsou k dispozici: {message}",
   "demo.bb.suggest.loading": "Načítání BirdNET V3.0 pro návrhy druhů…",
-  "demo.bb.suggest.running": "Určování {n} rámečků pomocí BirdNET V3.0…",
   "demo.bb.sum.boxes": "rámečků",
   "demo.bb.sum.species": "navržených druhů",
   "demo.bb.sum.time": "detekce",

@@ -975,7 +975,6 @@
   "demo.bb.suggest.downloading": "Téléchargement de BirdNET V3.0 pour les suggestions d'espèces : {pct}",
   "demo.bb.suggest.failed": "Les suggestions d'espèces ne sont pas disponibles : {message}",
   "demo.bb.suggest.loading": "Chargement de BirdNET V3.0 pour les suggestions d'espèces…",
-  "demo.bb.suggest.running": "Identification de {n} boîtes avec BirdNET V3.0…",
   "demo.bb.sum.boxes": "boîtes",
   "demo.bb.sum.species": "espèces proposées",
   "demo.bb.sum.time": "détection",

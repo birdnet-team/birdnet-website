@@ -983,7 +983,6 @@
   "demo.bb.suggest.downloading": "A transferir o BirdNET V3.0 para sugestões de espécies: {pct}",
   "demo.bb.suggest.failed": "As sugestões de espécies não estão disponíveis: {message}",
   "demo.bb.suggest.loading": "A carregar o BirdNET V3.0 para sugestões de espécies…",
-  "demo.bb.suggest.running": "A identificar {n} caixas com o BirdNET V3.0…",
   "demo.bb.sum.boxes": "caixas",
   "demo.bb.sum.species": "espécies sugeridas",
   "demo.bb.sum.time": "deteção",
