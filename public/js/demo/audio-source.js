@@ -6,8 +6,9 @@
  * A live card (the BirdBox tab's) records with LiveRecorder: while it records
  * it emits 'livestart' { maxSeconds }, 'liveaudio' { pcm } (32 kHz samples as
  * they arrive), then 'liveend' before the finished recording arrives in the
- * shared store, or 'livecancel' if there will be none. Other cards record
- * with the browser's MediaRecorder (Recorder).
+ * shared store, or 'livecancel' if there will be none. The shared store gets
+ * the browser's compressed recording, as from any other card, which records
+ * with MediaRecorder (Recorder), and the WAV as audio.lossless for BirdBox.
  */
 import { decodeAudio, LiveRecorder, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
@@ -19,20 +20,30 @@ const XC_EXT = { mpeg: 'mp3', mp3: 'mp3', wav: 'wav', 'x-wav': 'wav', wave: 'wav
 
 let loadToken = 0;
 
-/** Decode a File and publish it as the current recording. */
-export async function loadFile(file, { isSample = false, xc = null, start = null, onStatus } = {}) {
+/**
+ * Decode a File and publish it as the current recording. `lossless` is the same
+ * recording as a 32 kHz WAV from the BirdBox tab's recorder, which starts at
+ * `losslessStart`: it is decoded too and kept as audio.lossless, with the fields of
+ * an audio of its own, which only that tab uses (losslessView).
+ */
+export async function loadFile(file, { isSample = false, xc = null, start = null, lossless = null, losslessStart = null, onStatus } = {}) {
   const token = ++loadToken;
   onStatus?.('decoding');
   const tags = readXcTags(await file.slice(0, 1 << 20).arrayBuffer());
   // The sample is cut from several recordings, so it has no one start time
-  const [decoded, fileStart] = await Promise.all([
+  const [decoded, fileStart, exact] = await Promise.all([
     decodeAudio(file, { onProgress: f => { if (token === loadToken) onStatus?.('decoding', f); } }),
     start || isSample ? null : readRecordingStart(file),
+    lossless ? decodeAudio(lossless) : null,
   ]);
   if (token !== loadToken) return null;
   const url = URL.createObjectURL(file);
   if (shared.audio?.url) URL.revokeObjectURL(shared.audio.url);
+  if (shared.audio?.lossless) URL.revokeObjectURL(shared.audio.lossless.url);
   const audio = { name: file.name, size: file.size, file, url, isSample, xc: xc || tags?.xc || null, tags, start: start || fileStart, ...decoded };
+  if (exact) {
+    audio.lossless = { ...exact, name: lossless.name, size: lossless.size, file: lossless, url: URL.createObjectURL(lossless), start: losslessStart };
+  }
   player.setSource(url);
   useRecordingLocation(tags);   // before the tabs see the audio, so their first suggestions use it
   shared.setAudio(audio);
@@ -115,6 +126,9 @@ function useRecordingLocation(tags) {
   }
 }
 
+/** The audio as the BirdBox tab sees it: its own recordings as their WAV (audio.lossless). */
+export const losslessView = audio => (audio?.lossless ? { ...audio, ...audio.lossless } : audio);
+
 /** Xeno-canto number from "XC1059662", "1059662" or a recording link; null if none. */
 export function parseXcNumber(value) {
   const s = String(value ?? '').trim();
@@ -179,7 +193,7 @@ export class AudioSource extends EventTarget {
     player.addEventListener('state', () => this._renderPlay());
     player.addEventListener('time', e => {
       const time = this.$('time');
-      if (time && shared.audio) time.textContent = `${fmtTime(e.detail)} / ${fmtTime(shared.audio.duration)}`;
+      if (time && shared.audio) time.textContent = `${fmtTime(e.detail)} / ${fmtTime(this._audio().duration)}`;
     });
     this.render();
   }
@@ -276,8 +290,13 @@ export class AudioSource extends EventTarget {
     this.$('truncated').hidden = show || !(a?.fullDuration > a?.duration + 0.5);
   }
 
+  /** The audio this card shows: a live card shows its recordings as their WAV. */
+  _audio() {
+    return this.live ? losslessView(shared.audio) : shared.audio;
+  }
+
   render() {
-    const a = shared.audio;
+    const a = this._audio();
     this._showDrop(!a);
     if (!a) return;
     this.$('truncated').textContent = t('demo.source.truncated', 'This recording is {total} long. The demo analyzes the first {max} minutes.', { total: fmtTime(a.fullDuration), max: MAX_SECONDS / 60 });
@@ -409,14 +428,20 @@ export class AudioSource extends EventTarget {
     const recorder = this.recorder;
     if (!recorder) return;
     this.recorder = null;
-    const start = recorder.startDate, file = recorder.stop();
+    const start = recorder.startDate, { wav, wavStart, compressed } = recorder.stop();
     this._setRecording(false);
-    if (!file) {
+    if (!wav) {
       this.dispatchEvent(new Event('livecancel'));
       return;
     }
     this.dispatchEvent(new Event('liveend'));
-    const loaded = await this._run(() => loadFile(file, { start: start && localStart(start), onStatus: (s, f) => this._status(s, null, f) }));
+    // The other tabs get the browser's recording, as from their own cards; BirdBox the WAV
+    const loaded = await this._run(async () => {
+      const file = await compressed, wavFrom = wavStart && localStart(wavStart);
+      return file
+        ? loadFile(file, { start: start && localStart(start), lossless: wav, losslessStart: wavFrom, onStatus: (s, f) => this._status(s, null, f) })
+        : loadFile(wav, { start: wavFrom, onStatus: (s, f) => this._status(s, null, f) });
+    });
     if (!loaded) this.dispatchEvent(new Event('livecancel'));
   }
 

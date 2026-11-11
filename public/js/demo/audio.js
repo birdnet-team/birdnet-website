@@ -272,8 +272,11 @@ function wavBytes(chunks, rate) {
  * samples with the browser's processing turned off, converted to 32 kHz as
  * they arrive and kept as a 16-bit WAV. onAudio gets the samples as they
  * arrive, exactly as the file will decode to them, so what is found while
- * recording is what the file gives. stop() returns the file at once. The other
- * tabs keep Recorder.
+ * recording is what the file gives. stop() returns the file at once.
+ *
+ * Alongside, the browser's MediaRecorder records the same microphone as
+ * Recorder does, so the other tabs can be given the very file they get from a
+ * recording of their own: stop() also returns a promise of that file.
  */
 export class LiveRecorder {
   constructor({ maxSeconds = 300, onTick, onAudio, onLimit } = {}) {
@@ -287,10 +290,32 @@ export class LiveRecorder {
     this.stream = null;
     this.timer = null;
     this.stopped = false;
+    this.media = null;        // the MediaRecorder alongside
+    this.mediaChunks = [];
   }
 
   /** Seconds recorded so far. */
   get elapsed() { return this.rate ? this.samples / this.rate : 0; }
+
+  /** The browser's compressed recording of the same microphone, as Recorder makes it. */
+  _startMedia() {
+    if (!window.MediaRecorder) return;
+    const mimeType = recorderMime();
+    try {
+      this.media = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
+    } catch {
+      return;   // no compressed recording; the other tabs then get the WAV
+    }
+    this.media.ondataavailable = e => { if (e.data.size) this.mediaChunks.push(e.data); };
+    this.mediaDone = new Promise(resolve => {
+      this.media.onstop = () => {
+        const type = this.media.mimeType || mimeType || 'audio/webm';
+        const ext = type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm';
+        resolve(this.mediaChunks.length ? new File(this.mediaChunks, `${this.stamp}.${ext}`, { type }) : null);
+      };
+    });
+    this.media.start(1000);
+  }
 
   async start() {
     // Created before the permission prompt, while the click still counts as a
@@ -315,6 +340,7 @@ export class LiveRecorder {
     this.tap.port.onmessage = ({ data }) => this._onChunk(data);
     this.stream.getAudioTracks()[0]?.addEventListener('ended', () => this.onLimit?.());
     this.audioContext.resume().catch(() => {});
+    this._startMedia();
     this.startDate = new Date();
     this.timer = setInterval(() => this.onTick?.(this.elapsed), 250);
   }
@@ -330,6 +356,8 @@ export class LiveRecorder {
       }
     }
     if (!chunk.length) return;
+    // The audio graph starts later than the browser's recorder: the WAV's own start time
+    if (!this.samples) this.firstSampleDate = new Date(Date.now() - chunk.length / this.rate * 1000);
     this.samples += chunk.length;
     this._keep(this.converter.process(chunk));
   }
@@ -350,24 +378,32 @@ export class LiveRecorder {
   _release() {
     this.stopped = true;
     clearInterval(this.timer);
+    if (this.media && this.media.state !== 'inactive') this.media.stop();
     this.source?.disconnect();
     this.tap?.disconnect();
     this.stream?.getTracks().forEach(track => track.stop());
     this.audioContext?.close().catch(() => {});
   }
 
-  /** Stop and return the recording as a WAV file (null if nothing arrived). */
+  /**
+   * Stop. Returns the recording as a WAV file (null if nothing arrived) with the time of its
+   * first sample (wavStart), and a promise of the browser's compressed recording of it (null
+   * if there is none), which starts at startDate.
+   */
   stop() {
-    if (this.stopped) return null;
+    if (this.stopped) return { wav: null, compressed: Promise.resolve(null) };
+    this.stamp = `recording_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
     this._release();
-    if (!this.samples) return null;
+    const compressed = this.mediaDone ?? Promise.resolve(null);
+    if (!this.samples) return { wav: null, compressed };
     this._keep(this.converter.flush());
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    return new File([wavBytes(this.chunks, SAMPLE_RATE)], `recording_${stamp}.wav`, { type: 'audio/wav' });
+    const wav = new File([wavBytes(this.chunks, SAMPLE_RATE)], `${this.stamp}.wav`, { type: 'audio/wav' });
+    return { wav, wavStart: this.firstSampleDate, compressed };
   }
 
   cancel() {
     this._release();
     this.chunks = [];
+    this.mediaChunks = [];
   }
 }

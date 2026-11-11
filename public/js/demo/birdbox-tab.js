@@ -21,7 +21,7 @@
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
  */
-import { AudioSource, parseXcNumber } from './audio-source.js';
+import { AudioSource, losslessView, parseXcNumber } from './audio-source.js';
 import { fuseBoxes } from './birdbox-fusion.js';
 import { birdbox } from './birdbox-service.js';
 import { analyzedTo as analyzedAfter, fileEnd, readyWindows, windowCount } from './birdbox-stream.js';
@@ -163,12 +163,27 @@ export class BirdBoxTab {
 
   show() {
     this.visible = true;
+    this._usePlayer();
     this.spec._resize();
     if (this.specPending) this._startSpec();
     if (this.pendingRun) this.run(true);
   }
 
-  hide() { this.visible = false; }
+  hide() {
+    this.visible = false;
+    // The other tabs play the browser's recording
+    const a = shared.audio;
+    if (a?.lossless && player.audio.src !== a.url) player.setSource(a.url);
+  }
+
+  /** The audio of this tab: its own recordings as their WAV, whose times the boxes have. */
+  _audio() { return losslessView(shared.audio); }
+
+  /** While this tab is shown, the player plays that audio. */
+  _usePlayer() {
+    const url = this._audio()?.url;
+    if (this.visible && url && player.audio.src !== url) player.setSource(url);
+  }
 
   _soundLabel(s) { return t(`demo.bb.sound.${s.replace(/ /g, '_')}`, s); }
 
@@ -517,9 +532,9 @@ export class BirdBoxTab {
     this.born.clear();
     $('bb-error').hidden = true;
     $('bb-suggest-status').textContent = '';
-    const { prev } = rec, audio = shared.audio;
+    const { prev } = rec, audio = shared.audio, exact = audio?.lossless ?? audio;
     Object.assign(this, {
-      pcm: audio?.pcm ?? null, duration: audio?.duration ?? 0, songs: [], hoverId: null,
+      pcm: exact?.pcm ?? null, duration: exact?.duration ?? 0, songs: [], hoverId: null,
       raw: prev?.raw ?? null, analyzedTo: prev?.analyzedTo ?? null, userBoxes: prev?.userBoxes ?? [], edits: prev?.edits ?? new Map(),
       scores: prev?.scores ?? this.scores, selectedId: prev?.selectedId ?? null,
     });
@@ -556,7 +571,8 @@ export class BirdBoxTab {
   }
 
   _onAudio() {
-    const audio = shared.audio;
+    // A recording of this tab comes with its WAV (lossless); the other tabs analyze the browser's recording
+    const audio = shared.audio, exact = audio?.lossless ?? audio;
     // Audio from another tab while this one records: the recording gives way
     if (this.rec) {
       this._liveClose(this.rec);
@@ -568,7 +584,7 @@ export class BirdBoxTab {
     // A live detection still running ends by itself in a moment, and the worker stays warm
     if (!ended) birdbox.abort();
     // The boxes of a recording hold for its file, and so does what BirdNET V3.0 heard
-    this.raw = ended && audio ? this._finalSoFar(ended, audio.pcm) : null;
+    this.raw = ended && audio ? this._finalSoFar(ended, exact.pcm) : null;
     this.analyzedTo = this.raw ? analyzedAfter(this.raw.next) : null;
     this.songs = [];
     this.userBoxes = [];
@@ -583,8 +599,9 @@ export class BirdBoxTab {
     $('bb-howto').hidden = !!audio;
     $('bb-workspace').hidden = !audio;
     if (!audio) return;
-    this.pcm = audio.pcm;
-    this.duration = audio.duration;
+    this.pcm = exact.pcm;
+    this.duration = exact.duration;
+    this._usePlayer();
     // A file named like XC1059662.wav is most likely that recording; the field stays editable
     const m = audio.name.match(/(?:^|[^A-Za-z0-9])XC[_-]?(\d+)/i);
     const nr = audio.xc || m?.[1];
@@ -595,10 +612,10 @@ export class BirdBoxTab {
     this._showTooShort();
     if (this.raw) {
       // The live picture stays until the finished spectrogram replaces it, and the view opens up to the whole recording
-      this.spec.duration = audio.duration;
+      this.spec.duration = this.duration;
       this.specPending = false;
       streamSpectrogram(this.spec, this.pcm, 'stft', this.duration, { swap: true });
-      this.spec.animateView(0, audio.duration);
+      this.spec.animateView(0, this.duration);
     } else {
       this.spec.clear();
       this.specPending = true;
@@ -1269,7 +1286,7 @@ export class BirdBoxTab {
     return this.boxes.map((b, i) => ({ b, g: this._geom(b), i, edit: this._edit(b), sp: this._species(b) })).filter(r => r.edit.include);
   }
 
-  _baseName() { return (shared.audio?.name || 'audio').replace(/\.[^.]+$/, ''); }
+  _baseName() { return (this._audio()?.name || 'audio').replace(/\.[^.]+$/, ''); }
 
   /**
    * Mark what the Annota-JSON export still needs from the person; true when
@@ -1323,7 +1340,7 @@ export class BirdBoxTab {
           : 'species chosen by the annotator';
       return {
         annotation_source_id: `birdbox-${String(r.i + 1).padStart(6, '0')}`,
-        sound_file: shared.audio?.name || '',
+        sound_file: this._audio()?.name || '',
         xc_nr: xcNr,
         annotator: human ? name : 'BirdBox',
         annotator_xc_id: human ? xcId : '',
@@ -1361,7 +1378,7 @@ export class BirdBoxTab {
 
   /** Clock times are added when the recording's start is known. */
   _exportCsv() {
-    const start = shared.audio?.start;
+    const start = this._audio()?.start;
     const header = ['box', 'time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
     if (start) header.push('datetime_start', 'datetime_end');
     const lines = [header.join(',')];
@@ -1375,7 +1392,7 @@ export class BirdBoxTab {
   }
 
   _exportRaven() {
-    const start = shared.audio?.start;
+    const start = this._audio()?.start;
     const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', ...(start ? RAVEN_CLOCK : []), 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
     this._included().forEach(r => {
       const clock = start ? ravenClock(start, r.g.t0, r.g.t1) : [];
