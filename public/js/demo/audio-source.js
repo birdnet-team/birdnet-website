@@ -2,6 +2,11 @@
  * Audio input card (file, drag & drop, sample, microphone, Xeno-canto) for a
  * demo tab. Decoded audio goes to the shared store, so every tab sees the
  * same file.
+ *
+ * While its microphone records, a card emits 'livestart' { maxSeconds },
+ * 'liveaudio' { pcm } (32 kHz samples as they arrive), then 'liveend' before
+ * the finished recording arrives in the shared store, or 'livecancel' if
+ * there will be none.
  */
 import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
@@ -157,9 +162,10 @@ export async function loadSample(onStatus) {
   return loadFile(new File([blob], CONFIG.sampleName, { type: 'audio/flac' }), { isSample: true, onStatus });
 }
 
-export class AudioSource {
+export class AudioSource extends EventTarget {
   /** @param {HTMLElement} root  element rendered by the demo-audio-source partial */
   constructor(root) {
+    super();
     this.root = root;
     this.$ = role => root.querySelector(`[data-role="${role}"]`);
     this.recorder = null;
@@ -180,7 +186,7 @@ export class AudioSource {
     this.$('sample').addEventListener('click', () => this._run(() => loadSample((s, f) => this._status(s, null, f))));
     this.$('record').addEventListener('click', () => this._startRecording());
     this.$('stop').addEventListener('click', () => this._stopRecording());
-    this.$('cancel').addEventListener('click', () => this._cancelRecording());
+    this.$('cancel').addEventListener('click', () => this.cancelRecording());
     this.$('replace').addEventListener('click', () => this._showDrop(true));
     this.$('play').addEventListener('click', () => player.toggle());
     this.$('xc-form').addEventListener('submit', e => {
@@ -213,7 +219,7 @@ export class AudioSource {
     }));
     this.root.addEventListener('drop', e => {
       const file = e.dataTransfer?.files?.[0];
-      if (file) this._load(file);
+      if (file && !this.recorder) this._load(file);
     });
   }
 
@@ -233,6 +239,7 @@ export class AudioSource {
     this.$('status').innerHTML = `<span class="text-${level}"><i class="bi ${icon} me-1"></i>${esc(text)}</span>${link}`;
   }
 
+  /** Resolves with whether fn succeeded; a failure is shown on the card. */
   async _run(fn) {
     try {
       await fn();
@@ -241,9 +248,10 @@ export class AudioSource {
       this.root.classList.remove('is-busy');
       if (err instanceof XcError) this._message('warning', err.message, err.nr);
       else this._message('danger', t('demo.source.error', 'Could not decode this audio file. Try WAV, FLAC or MP3.'));
-      return;
+      return false;
     }
     this._status(null);
+    return true;
   }
 
   _load(file) {
@@ -303,17 +311,23 @@ export class AudioSource {
   }
 
   async _startRecording() {
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    // Not while a recording is on, or while the last one is still being loaded
+    if (this.recorder || this.root.classList.contains('is-busy')) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.AudioWorkletNode) {
       this.$('status').textContent = t('demo.mic.generic', 'Could not access microphone');
       return;
     }
-    this.recorder = new Recorder({
+    const emit = (type, detail) => this.dispatchEvent(new CustomEvent(type, { detail }));
+    const recorder = this.recorder = new Recorder({
       maxSeconds: MAX_RECORD_SECONDS,
       onTick: s => { this.$('timer').textContent = fmtTime(s); },
+      onAudio: pcm => emit('liveaudio', { pcm }),
+      onLimit: () => this._stopRecording(),
     });
     try {
-      await this.recorder.start();
+      await recorder.start();
     } catch (err) {
+      console.error(err);
       const msg = err.name === 'NotAllowedError'
         ? t('demo.mic.denied', 'Microphone access denied. Please allow microphone access in your browser settings.')
         : err.name === 'NotFoundError'
@@ -324,24 +338,38 @@ export class AudioSource {
       return;
     }
     player.pause();
+    this._status(null);
     this.$('timer').textContent = '0:00';
-    this.$('idle').hidden = true;
-    this.$('recording').hidden = false;
+    this._setRecording(true);
+    emit('livestart', { maxSeconds: MAX_RECORD_SECONDS });
+  }
+
+  _setRecording(on) {
+    this.$('idle').hidden = on;
+    this.$('recording').hidden = !on;
   }
 
   async _stopRecording() {
-    const start = this.recorder?.startDate;
-    const file = await this.recorder?.stop();
+    const recorder = this.recorder;
+    if (!recorder) return;
     this.recorder = null;
-    this.$('idle').hidden = false;
-    this.$('recording').hidden = true;
-    if (file) this._run(() => loadFile(file, { start: start && localStart(start), onStatus: (s, f) => this._status(s, null, f) }));
+    const start = recorder.startDate, file = recorder.stop();
+    this._setRecording(false);
+    if (!file) {
+      this.dispatchEvent(new Event('livecancel'));
+      return;
+    }
+    this.dispatchEvent(new Event('liveend'));
+    const loaded = await this._run(() => loadFile(file, { start: start && localStart(start), onStatus: (s, f) => this._status(s, null, f) }));
+    if (!loaded) this.dispatchEvent(new Event('livecancel'));
   }
 
-  async _cancelRecording() {
-    await this.recorder?.cancel();
+  /** Stop recording without keeping it. */
+  cancelRecording() {
+    if (!this.recorder) return;
+    this.recorder.cancel();
     this.recorder = null;
-    this.$('idle').hidden = false;
-    this.$('recording').hidden = true;
+    this._setRecording(false);
+    this.dispatchEvent(new Event('livecancel'));
   }
 }
