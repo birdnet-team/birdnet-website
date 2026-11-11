@@ -47,6 +47,8 @@ const LIVE_MAX_WINDOWS = 8;   // windows per run when detection has fallen behin
 const LIVE_BEHIND = 6;        // seconds behind the sound at which the hint says so
 const LIVE_EDGE = 0.13;       // seconds the right edge stays behind the microphone, for the last frames
 const POP_MS = 420;           // a new box pops in over this time
+const PACE_IN_HAND = 3;       // windows of a file held back, to show them evenly spaced
+const PACE_FOLLOW = 0.1;      // how fast the pace follows the worker's time per window
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
@@ -65,6 +67,92 @@ const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
+
+/**
+ * Shows the windows of a file evenly spaced. The worker finishes them unevenly: now
+ * and then a few windows take up to twice as long, most often while BirdNET V3.0
+ * scores windows alongside. So a few finished windows are held in hand (PACE_IN_HAND),
+ * and the windows show the worker's mean time per window apart, a mean that follows
+ * it slowly: the windows in hand cover a slow stretch. The first window waits for a
+ * full hand. With more in hand the pace quickens, with fewer it slows, and with none
+ * the next window shows as soon as it is done. When a redraw costs more than its
+ * share of the time (a long recording with many boxes), each step shows the same
+ * number of windows.
+ */
+class Pacer {
+  constructor(show) {
+    this.show = show;          // show(item): draw the last item of a step
+    this.queue = [];
+    this.mean = 0;             // ms per window: the worker's recent mean
+    this.lastIn = 0;
+    this.minStep = UPDATE_MS;  // ms between redraws at least
+    this.timer = null;
+    this.idle = true;
+    this.started = false;
+    this.finished = null;
+  }
+
+  /** A window is done. */
+  push(item) {
+    const now = performance.now();
+    if (this.lastIn) {
+      const gap = now - this.lastIn;
+      this.mean = this.mean ? this.mean + PACE_FOLLOW * (gap - this.mean) : gap;
+    }
+    this.lastIn = now;
+    this.queue.push(item);
+    // The first window waits until the hand is full, which the gentle pace would take long to fill
+    if (this.idle && (this.started || this.queue.length > PACE_IN_HAND)) {
+      this.started = true;
+      this._step();
+    }
+  }
+
+  /** Resolves once the last window is shown. */
+  finish() {
+    if (this.idle && this.queue.length) {   // fewer windows than a full hand
+      this.started = true;
+      this._step();
+    }
+    if (this.idle) return Promise.resolve();
+    return new Promise(resolve => { this.finished = resolve; });
+  }
+
+  stop() {
+    clearTimeout(this.timer);
+    this.queue = [];
+    this.idle = true;
+    this.finished = null;
+  }
+
+  _step() {
+    this.timer = null;
+    if (!this.queue.length) {
+      this.idle = true;
+      this.finished?.();
+      this.finished = null;
+      return;
+    }
+    this.idle = false;
+    const t0 = performance.now(), per = this.mean || this.minStep;
+    // Far behind (a hidden page, whose timers are slowed): catch up in larger steps
+    const n = Math.min(this.queue.length, Math.max(Math.ceil(this.minStep / per), Math.ceil((this.queue.length - PACE_IN_HAND - 2) / 3)));
+    const items = this.queue.splice(0, n);
+    this.show(items[items.length - 1]);
+    const now = performance.now();
+    this.minStep = Math.max(UPDATE_MS, (now - t0) / UPDATE_SHARE);
+    if (this.finished && !this.queue.length) {
+      this.idle = true;
+      this.finished();
+      this.finished = null;
+      return;
+    }
+    // PACE_IN_HAND windows in hand: a little slower with fewer, faster with more, gently, as each change shows
+    const pace = clamp(1 + 0.05 * (PACE_IN_HAND - this.queue.length), 0.6, 1.2);
+    this.timer = setTimeout(() => this._step(), Math.max(0, t0 + n * per * pace - now));
+  }
+}
+
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 const concat = (a, b) => {
   const out = new Float32Array(a.length + b.length);
@@ -655,23 +743,27 @@ export class BirdBoxTab {
       if (token !== this.runToken) return;
       // Detection time of the whole recording: a continued run adds to the time so far
       const t0 = performance.now() - (from ? this.raw.ms : 0);
-      let data = from ? this.raw.data : new Float32Array(0), rows = from ? this.raw.rows : 0, nextUpdate = 0;
+      let data = from ? this.raw.data : new Float32Array(0), rows = from ? this.raw.rows : 0;
       progress(from);
+      this.pacer?.stop();
+      const pacer = this.pacer = new Pacer(item => {
+        if (token !== this.runToken) { pacer.stop(); return; }
+        this.analyzedTo = item.analyzedTo;
+        this.raw = { ...item, done: false };
+        progress(item.next);
+        // Not in the middle of a drag or a click on the list, which a redraw would disturb
+        if (!this.gesture && !this.tableHeld) this._update();
+      });
       await birdbox.detect(this.pcm.slice(), chunk => {
         if (token !== this.runToken) return;
-        const now = performance.now();
         data = concat(data, chunk.data);
         rows += chunk.rows;
-        this.analyzedTo = chunk.analyzedTo;
-        this.raw = { data, rows, ms: now - t0, next: chunk.next, done: false };
-        progress(chunk.next);
-        // Not in the middle of a drag or a click on the list, which a redraw would disturb
-        if (now < nextUpdate || this.gesture || this.tableHeld) return;
-        this._update();
-        nextUpdate = now + Math.max(UPDATE_MS, (performance.now() - now) / UPDATE_SHARE);
+        pacer.push({ data, rows, ms: performance.now() - t0, next: chunk.next, analyzedTo: chunk.analyzedTo });
       }, from);
+      const ms = performance.now() - t0;   // the detection's time, without the windows held back
+      await pacer.finish();
       if (token !== this.runToken) return;
-      this.raw = { data, rows, ms: performance.now() - t0, next: total, done: true };
+      this.raw = { data, rows, ms, next: total, done: true };
       this._renderChip();
     } catch (err) {
       if (token !== this.runToken || err.cancelled) return;

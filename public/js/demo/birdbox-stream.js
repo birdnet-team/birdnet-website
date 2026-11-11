@@ -30,7 +30,6 @@ const SEGMENT_CLIPS = 60 / HOP_SECONDS;    // column 0 counts the windows of eac
 const N_MELS = 256, HOP_LENGTH = 375, N_FFT = 2048, CLIP_FRAMES = 252;
 const WINDOW_FRAMES = HOP_SAMPLES / HOP_LENGTH;    // 128 frames from one window to the next
 const LEFT_PAD = 16000;                            // audio the graph mirrors in front of the file: 0.5 s
-const FILE_BLOCK_FRAMES = 512;                     // spectrogram frames per run in a file: 6 s of audio
 const f32 = Math.fround;
 
 /** File end of rows (column 8) while the recording is still growing. */
@@ -176,7 +175,8 @@ export class StreamGraph {
     const frames = new Frames();
     for (let w = from; w < total;) {
       const k = Math.min(step, total - w);
-      await this._frames(frames, audio, target, this._last(w + k - 1), FILE_BLOCK_FRAMES);
+      // Only the frames of these windows: a run that also computed the next ones would take longer than the others
+      await this._frames(frames, audio, target, this._last(w + k - 1), k * WINDOW_FRAMES);
       const { data, rows } = await this._detect(frames, w, k, conf);
       let kept = 0;
       for (let r = 0; r < rows; r++) {
