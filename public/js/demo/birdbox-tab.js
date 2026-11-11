@@ -38,7 +38,7 @@ import { stopSpectrogram, streamSpectrogram, thumb } from './v3-tab.js';
 
 const CLIP = 3, HOP = 1.5;    // the model's windows: seconds long, seconds apart
 const MIN_SCORE = 0.05;       // BirdNET V3.0 scores below this are not kept
-const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line does not change any more
+const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line no longer changes, unless linked to one that may
 const SCORES_MS = 120;        // show new species at most this often
 const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
 const UPDATE_MS = 100;        // redraw at most this often while detection runs,
@@ -676,6 +676,7 @@ export class BirdBoxTab {
     const conf = +$('bb-conf').value, gap = +$('bb-gap').value;
     this.songs = this.raw ? fuseBoxes(this.raw.data, this.raw.rows, conf, gap) : [];
     this.songs.forEach(b => { b.id = boxKey(b); });
+    this._markPending();
     this._refresh();
   }
 
@@ -1162,25 +1163,38 @@ export class BirdBoxTab {
   }
 
   /**
-   * While detection runs, boxes that may still change: the next windows can still fuse a box
-   * near the line with theirs, join it into a phrase or hide it as nested. On the sample
-   * soundscape and an 11-minute recording, every such change came to a box ending less than
-   * one window step (1.5 s) plus the phrase gap behind the line, except for rare chain
-   * reactions in long runs of overlapping boxes at the lowest confidence. Returns the time
-   * after which a box ending there is drawn dashed, or null when nothing may change.
+   * While detection runs, the boxes that may still change, drawn dashed. The next windows can
+   * fuse a box near the line with theirs, join it into a phrase or hide it as nested, so a box
+   * ending less than one window step (1.5 s) plus the phrase gap behind the line may change.
+   * A phrase that grows also widens its band, and can then take in a box beside it that ended
+   * long before: so a box linked to one that may change (within the phrase gap in time, with
+   * overlapping bands) may change too. In simulated recordings of the sample soundscape and an
+   * 11-minute file, at confidences 0.05 to 0.5 and phrase gaps 0 to 1 s, no box this leaves
+   * solid changed later.
    */
-  _pendingAfter() {
-    return this.analyzedTo == null ? null : this.analyzedTo - SETTLED - +$('bb-gap').value;
+  _markPending() {
+    this.pending = new Set();
+    if (this.analyzedTo == null) return;
+    const gap = +$('bb-gap').value, after = this.analyzedTo - SETTLED - gap, todo = [];
+    for (const b of this.songs) if (b.t1 > after) { this.pending.add(b); todo.push(b); }
+    while (todo.length) {
+      const p = todo.pop();
+      for (const b of this.songs) {
+        if (this.pending.has(b) || b.cls !== p.cls) continue;
+        if (Math.max(b.t0, p.t0) - Math.min(b.t1, p.t1) > gap || b.fhi <= p.flo || p.fhi <= b.flo) continue;
+        this.pending.add(b);
+        todo.push(b);
+      }
+    }
   }
 
-  /** A detected box that may still change: drawn dashed. Drawn and adjusted boxes are the person's own. */
-  _pending(b, after = this._pendingAfter()) {
-    return after != null && !b.manual && !this.edits.get(b.id)?.geom && b.t1 > after;
+  /** A detected box that may still change. Drawn and adjusted boxes are the person's own. */
+  _pending(b) {
+    return !!this.pending?.has(b) && !this.edits.get(b.id)?.geom;
   }
 
   _drawBoxes(ctx, h) {
     const now = performance.now(), calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const pendingAfter = this._pendingAfter();
     if (this.recording) {
       if (this.analyzedTo != null) this._drawFrontier(ctx, h);
     }
@@ -1214,7 +1228,7 @@ export class BirdBoxTab {
       }
       ctx.strokeStyle = color;
       ctx.lineWidth = active ? 2.5 : 1.5;
-      ctx.setLineDash(!edit.include ? [4, 3] : this._pending(b, pendingAfter) ? [6, 3] : []);
+      ctx.setLineDash(!edit.include ? [4, 3] : this._pending(b) ? [6, 3] : []);
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
       if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
