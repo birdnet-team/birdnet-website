@@ -192,6 +192,65 @@ export async function decodeAudio(file, { onProgress } = {}) {
   return { pcm, duration: pcm.length / SAMPLE_RATE, fullDuration, sourceRate, channels };
 }
 
+/** Best container the browser can record into. */
+function recorderMime() {
+  const options = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  return options.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+}
+
+/** Microphone recorder producing a File; raw processing disabled for clean bird audio. */
+export class Recorder {
+  constructor({ maxSeconds = 300, onTick } = {}) {
+    this.maxSeconds = maxSeconds;
+    this.onTick = onTick;
+    this.chunks = [];
+    this.recorder = null;
+    this.stream = null;
+    this.timer = null;
+    this.startedAt = 0;
+  }
+
+  get elapsed() { return this.startedAt ? (performance.now() - this.startedAt) / 1000 : 0; }
+
+  async start() {
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+    const mimeType = recorderMime();
+    this.recorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
+    this.chunks = [];
+    this.recorder.ondataavailable = e => { if (e.data.size) this.chunks.push(e.data); };
+    this.recorder.start(1000);
+    this.startedAt = performance.now();
+    this.startDate = new Date();
+    this.timer = setInterval(() => {
+      this.onTick?.(this.elapsed);
+      if (this.elapsed >= this.maxSeconds) this.stop();
+    }, 250);
+    this.done = new Promise(resolve => {
+      this.recorder.onstop = () => {
+        clearInterval(this.timer);
+        this.stream.getTracks().forEach(track => track.stop());
+        const type = this.recorder.mimeType || mimeType || 'audio/webm';
+        const ext = type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm';
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        resolve(!this.cancelled && this.chunks.length ? new File(this.chunks, `recording_${stamp}.${ext}`, { type }) : null);
+      };
+    });
+  }
+
+  /** Stop and resolve with the recorded File. */
+  stop() {
+    if (this.recorder && this.recorder.state !== 'inactive') this.recorder.stop();
+    return this.done;
+  }
+
+  cancel() {
+    this.cancelled = true;
+    return this.stop();
+  }
+}
+
 /** 16-bit PCM WAV of Int16Array chunks. */
 function wavBytes(chunks, rate) {
   const samples = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -209,14 +268,14 @@ function wavBytes(chunks, rate) {
 }
 
 /**
- * Microphone recorder: raw samples with the browser's processing turned off,
- * converted to 32 kHz as they arrive and kept as a 16-bit WAV, so a recording
- * reaches the models without the compression of a browser recording. onAudio
- * gets the samples as they arrive, exactly as the file will decode to them,
- * so what is found while recording is what the file gives. stop() returns
- * the file.
+ * Microphone recorder of the BirdBox tab, which detects while recording: raw
+ * samples with the browser's processing turned off, converted to 32 kHz as
+ * they arrive and kept as a 16-bit WAV. onAudio gets the samples as they
+ * arrive, exactly as the file will decode to them, so what is found while
+ * recording is what the file gives. stop() returns the file at once. The other
+ * tabs keep Recorder.
  */
-export class Recorder {
+export class LiveRecorder {
   constructor({ maxSeconds = 300, onTick, onAudio, onLimit } = {}) {
     this.maxSeconds = maxSeconds;
     this.onTick = onTick;

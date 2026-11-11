@@ -114,7 +114,7 @@ export class BirdBoxTab {
   }
 
   init() {
-    this.source = new AudioSource($('bb-source'));
+    this.source = new AudioSource($('bb-source'), { live: true });
     this.location = new LocationFilter($('bb-location'));
     this.spec = new SpecView($('bb-spec'), {
       height: 300, kind: 'stft', axis: { type: 'linear', fMin: 0, fMax: FREQ_MAX },

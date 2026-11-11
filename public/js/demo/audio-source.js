@@ -3,12 +3,13 @@
  * demo tab. Decoded audio goes to the shared store, so every tab sees the
  * same file.
  *
- * While its microphone records, a card emits 'livestart' { maxSeconds },
- * 'liveaudio' { pcm } (32 kHz samples as they arrive), then 'liveend' before
- * the finished recording arrives in the shared store, or 'livecancel' if
- * there will be none.
+ * A live card (the BirdBox tab's) records with LiveRecorder: while it records
+ * it emits 'livestart' { maxSeconds }, 'liveaudio' { pcm } (32 kHz samples as
+ * they arrive), then 'liveend' before the finished recording arrives in the
+ * shared store, or 'livecancel' if there will be none. Other cards record
+ * with the browser's MediaRecorder (Recorder).
  */
-import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
+import { decodeAudio, LiveRecorder, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
 import { player } from './player.js';
 import { localStart, readRecordingStart, utcLabel } from './recording-time.js';
@@ -163,10 +164,14 @@ export async function loadSample(onStatus) {
 }
 
 export class AudioSource extends EventTarget {
-  /** @param {HTMLElement} root  element rendered by the demo-audio-source partial */
-  constructor(root) {
+  /**
+   * @param {HTMLElement} root  element rendered by the demo-audio-source partial
+   * @param {{live?: boolean}} [options]  live: record with LiveRecorder and emit its audio
+   */
+  constructor(root, { live = false } = {}) {
     super();
     this.root = root;
+    this.live = live;
     this.$ = role => root.querySelector(`[data-role="${role}"]`);
     this.recorder = null;
     this._bind();
@@ -186,7 +191,7 @@ export class AudioSource extends EventTarget {
     this.$('sample').addEventListener('click', () => this._run(() => loadSample((s, f) => this._status(s, null, f))));
     this.$('record').addEventListener('click', () => this._startRecording());
     this.$('stop').addEventListener('click', () => this._stopRecording());
-    this.$('cancel').addEventListener('click', () => this.cancelRecording());
+    this.$('cancel').addEventListener('click', () => (this.live ? this.cancelRecording() : this._cancelRecording()));
     this.$('replace').addEventListener('click', () => this._showDrop(true));
     this.$('play').addEventListener('click', () => player.toggle());
     this.$('xc-form').addEventListener('submit', e => {
@@ -219,7 +224,7 @@ export class AudioSource extends EventTarget {
     }));
     this.root.addEventListener('drop', e => {
       const file = e.dataTransfer?.files?.[0];
-      if (file && !this.recorder) this._load(file);
+      if (file && !(this.live && this.recorder)) this._load(file);
     });
   }
 
@@ -310,7 +315,58 @@ export class AudioSource extends EventTarget {
     btn.setAttribute('aria-label', player.playing ? t('demo.player.pause', 'Pause') : t('demo.player.play', 'Play'));
   }
 
-  async _startRecording() {
+  _startRecording() {
+    return this.live ? this._startLive() : this._startCompressed();
+  }
+
+  _stopRecording() {
+    return this.live ? this._stopLive() : this._stopCompressed();
+  }
+
+  async _startCompressed() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      this.$('status').textContent = t('demo.mic.generic', 'Could not access microphone');
+      return;
+    }
+    this.recorder = new Recorder({
+      maxSeconds: MAX_RECORD_SECONDS,
+      onTick: s => { this.$('timer').textContent = fmtTime(s); },
+    });
+    try {
+      await this.recorder.start();
+    } catch (err) {
+      const msg = err.name === 'NotAllowedError'
+        ? t('demo.mic.denied', 'Microphone access denied. Please allow microphone access in your browser settings.')
+        : err.name === 'NotFoundError'
+          ? t('demo.mic.notFound', 'No microphone found. Please connect a microphone and try again.')
+          : t('demo.mic.generic', 'Could not access microphone');
+      this.$('status').innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>${esc(msg)}</span>`;
+      this.recorder = null;
+      return;
+    }
+    player.pause();
+    this.$('timer').textContent = '0:00';
+    this.$('idle').hidden = true;
+    this.$('recording').hidden = false;
+  }
+
+  async _stopCompressed() {
+    const start = this.recorder?.startDate;
+    const file = await this.recorder?.stop();
+    this.recorder = null;
+    this.$('idle').hidden = false;
+    this.$('recording').hidden = true;
+    if (file) this._run(() => loadFile(file, { start: start && localStart(start), onStatus: (s, f) => this._status(s, null, f) }));
+  }
+
+  async _cancelRecording() {
+    await this.recorder?.cancel();
+    this.recorder = null;
+    this.$('idle').hidden = false;
+    this.$('recording').hidden = true;
+  }
+
+  async _startLive() {
     // Not while a recording is on, or while the last one is still being loaded
     if (this.recorder || this.root.classList.contains('is-busy')) return;
     if (!navigator.mediaDevices?.getUserMedia || !window.AudioWorkletNode) {
@@ -318,11 +374,11 @@ export class AudioSource extends EventTarget {
       return;
     }
     const emit = (type, detail) => this.dispatchEvent(new CustomEvent(type, { detail }));
-    const recorder = this.recorder = new Recorder({
+    const recorder = this.recorder = new LiveRecorder({
       maxSeconds: MAX_RECORD_SECONDS,
       onTick: s => { this.$('timer').textContent = fmtTime(s); },
       onAudio: pcm => emit('liveaudio', { pcm }),
-      onLimit: () => this._stopRecording(),
+      onLimit: () => this._stopLive(),
     });
     try {
       await recorder.start();
@@ -349,7 +405,7 @@ export class AudioSource extends EventTarget {
     this.$('recording').hidden = !on;
   }
 
-  async _stopRecording() {
+  async _stopLive() {
     const recorder = this.recorder;
     if (!recorder) return;
     this.recorder = null;
@@ -364,7 +420,7 @@ export class AudioSource extends EventTarget {
     if (!loaded) this.dispatchEvent(new Event('livecancel'));
   }
 
-  /** Stop recording without keeping it. */
+  /** A live card: stop recording without keeping it. */
   cancelRecording() {
     if (!this.recorder) return;
     this.recorder.cancel();
