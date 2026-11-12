@@ -18,6 +18,10 @@
  *
  * Rows have the 9 columns of the graph's raw_all tensor: clip, t0, t1, f_lo,
  * f_hi, score, class, clip start, file end (see birdbox-fusion.js).
+ *
+ * run() reads a file's audio as the frames need it, from an array or from a source
+ * that hands it out a block at a time (BlockSource: birdbox-worker.js gets it from
+ * the page so), so the worker need not hold a copy of the whole file.
  */
 
 const SAMPLE_RATE = 32000;
@@ -49,6 +53,71 @@ export const fileEnd = n => f32(paddedLength(n) / SAMPLE_RATE);
 
 /** Seconds up to which every window that owns a box has been seen, after `windows` windows. */
 export const analyzedTo = windows => (windows - 1) * HOP_SECONDS + OWNED_UNTIL;
+
+/** A source of samples for run(): an array, or { length, read(from, to) } (read may return a promise). */
+const sourceOf = samples => (samples instanceof Float32Array
+  ? { length: samples.length, read: (from, to) => samples.subarray(from, to) }
+  : samples);
+
+/** Samples from..to-1 of a source, and silence after its end, as the graph pads the file. */
+async function readPadded(source, from, to) {
+  const have = Math.min(to, source.length);
+  if (have >= to) return source.read(from, to);
+  const out = new Float32Array(to - from);
+  if (have > from) out.set(await source.read(from, have));
+  return out;
+}
+
+/**
+ * A recording handed out a block at a time, as a source for run(): ask(from, to) asks for
+ * samples from..to-1, and receive({ from, data }) takes them when they come. The next block
+ * is asked for while half of the last one is still to be read, and the samples run() is
+ * done with are dropped, so only a few blocks are held at any time.
+ */
+export class BlockSource {
+  /**
+   * @param {number} length  samples of the recording
+   * @param {(from: number, to: number) => void} ask
+   * @param {number} [block]  samples per block: 10 s
+   */
+  constructor(length, ask, block = 10 * SAMPLE_RATE) {
+    Object.assign(this, { length, ask, block, base: 0, data: new Float32Array(0), keep: 0, asked: 0, waiting: null });
+  }
+
+  get end() { return this.base + this.data.length; }
+
+  async read(from, to) {
+    if (from < this.base) throw new Error(`samples from ${from} on were let go (${this.base})`);
+    while (this.end < to) {
+      this._ask();
+      await new Promise(resolve => { this.waiting = resolve; });
+    }
+    if (this.asked - to < this.block / 2) this._ask();
+    return this.data.subarray(from - this.base, to - this.base);
+  }
+
+  /** The samples before `before` are done with. */
+  release(before) { this.keep = Math.max(this.keep, before); }
+
+  _ask() {
+    if (this.asked >= this.length || this.asked > this.end) return;   // all asked for, or a block is on its way
+    const from = this.asked, to = Math.min(this.length, from + this.block);
+    this.asked = to;
+    this.ask(from, to);
+  }
+
+  /** A block; the samples let go of are dropped. */
+  receive({ from, data }) {
+    if (from !== this.end) throw new Error(`block at ${from}, expected ${this.end}`);
+    const keep = Math.min(Math.max(this.keep, this.base), this.end), joined = new Float32Array(this.end - keep + data.length);
+    joined.set(this.data.subarray(keep - this.base));
+    joined.set(data, this.end - keep);
+    this.base = keep;
+    this.data = joined;
+    this.waiting?.();
+    this.waiting = null;
+  }
+}
 
 /** Spectrogram frames from frame `base` on, band by band (n_mels, frames) as the graph wants them. */
 class Frames {
@@ -110,18 +179,22 @@ export class StreamGraph {
   /** Last frame window w needs. */
   _last(w) { return w * WINDOW_FRAMES + CLIP_FRAMES - 1; }
 
-  /** Compute frames up to `upTo` from n samples of audio, `block` frames at most per run when audio allows. */
-  async _frames(frames, audio, n, upTo, block) {
+  /**
+   * Compute frames up to `upTo` from the first n samples the graph sees (silence after the
+   * source's end), `block` frames at most per run when audio allows. Afterwards the source
+   * may let go of the samples before the next frame (release).
+   */
+  async _frames(frames, source, n, upTo, block) {
     const { ort, origin } = this, available = Math.floor((n - origin - N_FFT) / HOP_LENGTH);
     if (upTo > available) throw new Error(`frame ${upTo} needs more than ${n} samples`);
     while (frames.end <= upTo) {
       const m0 = frames.end, m1 = Math.min(available, Math.max(upTo, m0 + block - 1));
       const s0 = m0 * HOP_LENGTH + origin, s1 = m1 * HOP_LENGTH + origin + N_FFT;
       // Before the file start: the samples the graph's left pad puts there
-      let piece = audio.subarray(Math.max(0, s0), s1);
+      let piece = await readPadded(source, Math.max(0, s0), s1);
       if (s0 < 0) {
         const pre = new Float32Array(s1 - s0);
-        pre.set(audio.subarray(LEFT_PAD + s0, LEFT_PAD));
+        pre.set(await readPadded(source, LEFT_PAD + s0, LEFT_PAD));
         pre.set(piece, -s0);
         piece = pre;
       }
@@ -130,6 +203,7 @@ export class StreamGraph {
       if (count !== m1 - m0 + 1) throw new Error(`${count} frames from the spectrogram, ${m1 - m0 + 1} expected`);
       frames.append(out.db.data, out.sound.data, count);
     }
+    source.release?.(Math.max(0, frames.end * HOP_LENGTH + origin));
   }
 
   /** Rows of windows w0 .. w0+count-1 from the frames. */
@@ -156,18 +230,15 @@ export class StreamGraph {
    * windows. data holds the next rows; next counts the windows done, and a run
    * given it as `from` continues there.
    *
-   * @param {Float32Array} samples  mono audio at 32 kHz
+   * @param {Float32Array|{length: number, read: Function, release?: Function}} samples  mono audio
+   *   at 32 kHz, or a source of it: read(from, to) gives (or resolves to) samples from..to-1,
+   *   reads move forward, and release(before) says the samples before `before` are done with
    * @param {number} conf  confidence threshold
    * @param {number} step  windows per network run
    * @param {number} [from]  windows already done
    */
   async* run(samples, conf, step, from = 0) {
-    const n = samples.length, target = paddedLength(n);
-    let audio = samples;
-    if (target > n) {
-      audio = new Float32Array(target);
-      audio.set(samples);
-    }
+    const source = sourceOf(samples), n = source.length, target = paddedLength(n);
     const total = windowCount(n);
     // As the graph, in float32: after the file's last sample only silence was added
     const content = f32(f32(n) / SAMPLE_RATE), duration = f32(f32(target) / SAMPLE_RATE);
@@ -176,7 +247,7 @@ export class StreamGraph {
     for (let w = from; w < total;) {
       const k = Math.min(step, total - w);
       // Only the frames of these windows: a run that also computed the next ones would take longer than the others
-      await this._frames(frames, audio, target, this._last(w + k - 1), k * WINDOW_FRAMES);
+      await this._frames(frames, source, target, this._last(w + k - 1), k * WINDOW_FRAMES);
       const { data, rows } = await this._detect(frames, w, k, conf);
       let kept = 0;
       for (let r = 0; r < rows; r++) {
@@ -213,7 +284,7 @@ export class StreamGraph {
       },
       async windows(conf, from, count) {
         if (from + count > readyWindows(n)) throw new Error(`windows ${from} to ${from + count - 1} are not ready in ${n} samples`);
-        await graph._frames(frames, audio, n, graph._last(from + count - 1), WINDOW_FRAMES);
+        await graph._frames(frames, sourceOf(audio.subarray(0, n)), n, graph._last(from + count - 1), WINDOW_FRAMES);
         const { data, rows } = await graph._detect(frames, from, count, conf);
         for (let r = 0; r < rows; r++) data[r * 9 + 8] = NO_END;
         return { data, rows, next: from + count };

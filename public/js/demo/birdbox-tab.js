@@ -701,7 +701,8 @@ export class BirdBoxTab {
         // Not in the middle of a drag or a click on the list, which a redraw would disturb
         if (!this.gesture && !this.tableHeld) this._update();
       });
-      await birdbox.detect(this.pcm.slice(), chunk => {
+      // The worker asks for the audio a block at a time: no copy of the whole recording
+      await birdbox.detect(this.pcm, chunk => {
         if (token !== this.runToken) return;
         data = concat(data, chunk.data);
         rows += chunk.rows;

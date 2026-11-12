@@ -5,20 +5,24 @@
  *
  * Messages in:
  *   { type: 'init', ortModule, wasmPaths, spectrogram: ArrayBuffer, detect: ArrayBuffer, config }
- *   { type: 'detect', id, audio: Float32Array, conf, step, from? }   a whole recording, `step` windows at a time
+ *   { type: 'detect', id, length, conf, step, from? }   a whole recording of `length` samples, `step` windows
+ *                                                    at a time; the page sends its audio a block at a time when asked
+ *   { type: 'audio', id, from, data: Float32Array }   such a block
  *   { type: 'live-start' }                                           a recording starts
  *   { type: 'live-audio', pcm: Float32Array }                        its next samples
  *   { type: 'windows', id, from, count, conf }                       its next windows
  * Messages out:
  *   { type: 'ready', ms }
+ *   { type: 'audio-want', id, from, to }                 samples from..to-1 of the recording, please
  *   { type: 'chunk', id, data, rows, next, analyzedTo }   after every `step` windows of a recording
  *   { type: 'result', id, ms, data?, rows?, next? }       when the recording or the windows are done
  *   { type: 'error', id, error }
  */
-import { StreamGraph } from './birdbox-stream.js';
+import { BlockSource, StreamGraph } from './birdbox-stream.js';
 
 let graph = null;
 let live = null;   // the recording in progress, with its spectrogram frames
+let feed = null;   // the audio of the recording being detected, from the page (BlockSource)
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 
@@ -34,8 +38,14 @@ async function init(msg) {
 }
 
 async function detect(msg) {
-  for await (const chunk of graph.run(msg.audio, msg.conf, msg.step, msg.from)) {
-    post({ type: 'chunk', id: msg.id, ...chunk }, [chunk.data.buffer]);
+  feed = new BlockSource(msg.length, (from, to) => post({ type: 'audio-want', id: msg.id, from, to }));
+  feed.id = msg.id;
+  try {
+    for await (const chunk of graph.run(feed, msg.conf, msg.step, msg.from)) {
+      post({ type: 'chunk', id: msg.id, ...chunk }, [chunk.data.buffer]);
+    }
+  } finally {
+    feed = null;
   }
 }
 
@@ -45,6 +55,7 @@ const JOBS = {
 };
 
 self.onmessage = async ({ data: msg }) => {
+  if (msg.type === 'audio') { if (feed?.id === msg.id) feed.receive(msg); return; }
   // Between the awaits of a run: the run reads the samples there are when it starts
   if (msg.type === 'live-start') { live = graph.live(); return; }
   if (msg.type === 'live-audio') { live?.push(msg.pcm); return; }
