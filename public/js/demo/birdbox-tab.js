@@ -86,6 +86,7 @@ export class BirdBoxTab {
     this.born = new Map();         // box id -> when it appeared while recording
     this.tableHeld = false;        // a press on the list: redrawing it now would lose the click
     this.songs = [];               // detector boxes at the current sliders
+    this.fusion = {};              // fuseBoxes' cache: the boxes later windows cannot change
     this.userBoxes = [];           // boxes drawn by the user
     this.boxes = [];               // both, ordered by start time
     this.scores = new Map();       // window -> [[species, score], ...]: the birds BirdNET V3.0 hears in it
@@ -697,9 +698,10 @@ export class BirdBoxTab {
   /* ---------------- boxes + edits ---------------- */
 
   _update() {
-    const conf = +$('bb-conf').value, gap = +$('bb-gap').value;
-    this.songs = this.raw ? fuseBoxes(this.raw.data, this.raw.rows, conf, gap) : [];
-    this.songs.forEach(b => { b.id = boxKey(b); });
+    const conf = +$('bb-conf').value, gap = +$('bb-gap').value, raw = this.raw;
+    // Rows still to come start with the next window: the boxes before them are fused once
+    this.songs = raw ? fuseBoxes(raw.data, raw.rows, conf, gap, this.fusion, raw.done ? Infinity : raw.next * HOP) : [];
+    for (const b of this.songs) b.id ??= boxKey(b);
     this._markPending();
     this._refresh();
   }
