@@ -37,7 +37,7 @@ const FORCE = process.argv.includes('--force');
 
 // Pinned upstream sources. Bump the commit (and the expected hashes) to update.
 const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '7c5d5de8b957087b4b63279f928c448e62196a53' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '93ea6d02c3ffa6fc2c858a3daacfb9b1f47a2f21' };
 
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 // Git LFS objects are served from media.githubusercontent.com
@@ -47,7 +47,7 @@ const V3_MODEL = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_FP16.onnx';
 const V3_LABELS = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_Labels.csv';
 const GEO_MODEL = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_FP16.onnx';
 const GEO_LABELS = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_Labels.txt';
-const BIRDBOX_MODEL = 'Just-Bird_rolling60_fp16.onnx';
+const BIRDBOX_MODEL = 'Just-Bird_fp16.onnx';
 
 const FILES = {
   v3Model: { url: lfs(LIVE_APP, `assets/models/${V3_MODEL}`), name: V3_MODEL, sha256: '306e74f3edc5b95acc6e87ea7f3f1c701fdc0b18ec868b7615208cd6fc2f9457' },
@@ -498,7 +498,7 @@ async function main() {
       defaultThreshold: 0.03,
     },
     birdbox: {
-      name: 'BirdBox Just-Bird rolling60 (FP16)',
+      name: 'BirdBox Just-Bird (FP16)',
       sampleRate: 32000,
       model: entry(`birdbox/${birdboxName}.detect.onnx`),
       spectrogram: entry(`birdbox/${birdboxName}.spectrogram.onnx`),
