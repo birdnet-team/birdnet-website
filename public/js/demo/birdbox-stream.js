@@ -35,6 +35,7 @@ const N_MELS = 256, HOP_LENGTH = 375, N_FFT = 2048, CLIP_FRAMES = 252;
 const WINDOW_FRAMES = HOP_SAMPLES / HOP_LENGTH;    // 128 frames from one window to the next
 const LEFT_PAD = 16000;                            // audio the graph mirrors in front of the file: 0.5 s
 const f32 = Math.fround;
+const FLOOR_FRACTION = f32(20 / 100);             // FLOOR_PERCENTILE / 100 in BirdBox's onnx_export.py, in float32
 
 /** File end of rows (column 8) while the recording is still growing. */
 export const NO_END = 1e9;
@@ -158,6 +159,92 @@ class Frames {
   }
 }
 
+/**
+ * Each window's noise floor as StreamDetect takes it (log_floor in onnx_export.py): per mel
+ * band, the FLOOR_PERCENTILE of the frames of its floor window that hold sound (all of them
+ * if none does), interpolated in float32 between two sorted values. Here the frames of the
+ * floor window are kept sorted per band, and from one window to the next only the frames
+ * that leave and those that arrive (128 of about 5,100) are merged in, instead of the graph
+ * selecting anew from all of them. The values are those of the graph, bit for bit
+ * (tests/js/demo_chunk_parity.mjs).
+ */
+class RollingFloor {
+  constructor() { Object.assign(this, { lo: 0, hi: 0, count: 0, cap: 0, sorted: null, spare: null }); }
+
+  /**
+   * The floor of frames lo..hi-1 into out[b * windows + i], for every band b. Windows come in
+   * order; the frames from the last call's lo on must still be in `frames`.
+   */
+  at(frames, lo, hi, out, i, windows) {
+    if (!this.sorted || lo < this.lo || lo > this.hi || hi < this.hi) this._fill(frames, lo, hi);
+    else this._slide(frames, lo, hi);
+    let { count, cap, sorted } = this;
+    if (!count) {   // no frame with sound: all frames, as the graph does
+      count = cap = hi - lo;
+      sorted = new Float32Array(N_MELS * count);
+      for (let b = 0; b < N_MELS; b++) {
+        const row = sorted.subarray(b * count, (b + 1) * count);
+        for (let f = lo; f < hi; f++) row[f - lo] = frames.db[b * frames.cap + f - frames.base];
+        row.sort();
+      }
+    }
+    const position = f32(f32(count - 1) * FLOOR_FRACTION), below = Math.floor(position);
+    const fraction = f32(position - below), above = Math.min(below + 1, count - 1);
+    for (let b = 0; b < N_MELS; b++) {
+      const low = sorted[b * cap + below], high = sorted[b * cap + above];
+      out[b * windows + i] = f32(low + f32(f32(high - low) * fraction));
+    }
+  }
+
+  _room(count) {
+    if (count <= this.cap) return;
+    const cap = Math.max(count, Math.ceil(this.cap * 1.25)), grown = new Float32Array(N_MELS * cap);
+    for (let b = 0; this.sorted && b < N_MELS; b++) grown.set(this.sorted.subarray(b * this.cap, b * this.cap + this.count), b * cap);
+    Object.assign(this, { cap, sorted: grown, spare: new Float32Array(N_MELS * cap) });
+  }
+
+  /** Sort the frames with sound of lo..hi-1 anew. */
+  _fill(frames, lo, hi) {
+    const { db, sound, base } = frames;
+    let count = 0;
+    for (let f = lo; f < hi; f++) if (sound[f - base]) count++;
+    this.count = 0;
+    this._room(Math.max(1, count));
+    for (let b = 0; b < N_MELS; b++) {
+      const row = this.sorted.subarray(b * this.cap, b * this.cap + count), from = b * frames.cap - base;
+      let j = 0;
+      for (let f = lo; f < hi; f++) if (sound[f - base]) row[j++] = db[from + f];
+      row.sort();
+    }
+    Object.assign(this, { lo, hi, count });
+  }
+
+  /** Move to lo..hi-1: take out the frames before lo, merge in those from the last hi on. */
+  _slide(frames, lo, hi) {
+    const { db, sound, base } = frames, leave = [], arrive = [];
+    for (let f = this.lo; f < lo; f++) if (sound[f - base]) leave.push(f);
+    for (let f = this.hi; f < hi; f++) if (sound[f - base]) arrive.push(f);
+    const old = this.count, count = old - leave.length + arrive.length;
+    this._room(Math.max(old, count));
+    const { cap, sorted, spare } = this, gone = new Float32Array(leave.length), come = new Float32Array(arrive.length);
+    for (let b = 0; b < N_MELS; b++) {
+      const from = b * frames.cap - base, row = b * cap;
+      for (let j = 0; j < leave.length; j++) gone[j] = db[from + leave[j]];
+      for (let j = 0; j < arrive.length; j++) come[j] = db[from + arrive[j]];
+      gone.sort();
+      come.sort();
+      // One pass: the old values without those leaving (all among them), and the new ones in order
+      let s = 0, g = 0, c = 0, d = row;
+      while (s < old || c < come.length) {
+        if (s < old && g < gone.length && sorted[row + s] === gone[g]) { s++; g++; continue; }
+        if (c >= come.length || (s < old && sorted[row + s] <= come[c])) spare[d++] = sorted[row + s++];
+        else spare[d++] = come[c++];
+      }
+    }
+    Object.assign(this, { lo, hi, count, sorted: spare, spare: sorted });
+  }
+}
+
 export class StreamGraph {
   /**
    * @param ort  the ONNX Runtime Web module
@@ -168,7 +255,9 @@ export class StreamGraph {
   static async create(ort, models, options, config) {
     const spectrogram = await ort.InferenceSession.create(new Uint8Array(models.spectrogram), options);
     const detect = await ort.InferenceSession.create(new Uint8Array(models.detect), options);
-    return Object.assign(new StreamGraph(), { ort, spectrogram, detect, origin: config.frameOrigin, window: config.floorWindowSeconds * SAMPLE_RATE });
+    // fetch-models.mjs cuts detect at the floor (floorCut): the floor is computed here (RollingFloor)
+    const floorInput = detect.inputNames.includes('floor');
+    return Object.assign(new StreamGraph(), { ort, spectrogram, detect, floorInput, origin: config.frameOrigin, window: config.floorWindowSeconds * SAMPLE_RATE });
   }
 
   /** First frame of window w's floor window. */
@@ -206,20 +295,32 @@ export class StreamGraph {
     source.release?.(Math.max(0, frames.end * HOP_LENGTH + origin));
   }
 
-  /** Rows of windows w0 .. w0+count-1 from the frames. */
+  /**
+   * Rows of windows w0 .. w0+count-1 from the frames. With a floor input, the floors come
+   * from the frames' RollingFloor, and the network gets only the windows' own frames; else
+   * the graph gets the frames from the first floor window on.
+   */
   async _detect(frames, w0, count, conf) {
-    const { ort } = this, first = this._first(w0);
-    frames.drop(first);   // the next windows start their floor windows later
-    const { db, sound, n } = frames.slice(first, this._last(w0 + count - 1) + 1);
+    const { ort } = this, first = this._first(w0), end = this._last(w0 + count - 1) + 1;
     const times = new Float32Array(count);
     for (let i = 0; i < count; i++) times[i] = (w0 + i) * HOP_SECONDS;
-    const raw = (await this.detect.run({
-      db: new ort.Tensor('float32', db, [N_MELS, n]),
-      sound: new ort.Tensor('bool', sound, [n]),
-      first_frame: new ort.Tensor('int64', BigInt64Array.of(BigInt(first)), []),
+    const feeds = {
       times: new ort.Tensor('float32', times, [count]),
       conf: new ort.Tensor('float32', Float32Array.of(conf), [1]),
-    })).raw;
+    };
+    let from = first;
+    if (this.floorInput) {
+      const floor = new Float32Array(N_MELS * count), rolling = frames.rolling ??= new RollingFloor();
+      for (let i = 0; i < count; i++) rolling.at(frames, this._first(w0 + i), this._last(w0 + i) + 1, floor, i, count);
+      feeds.floor = new ort.Tensor('float32', floor, [N_MELS, count, 1]);
+      from = w0 * WINDOW_FRAMES;
+    }
+    frames.drop(first);   // the next windows start their floor windows later
+    const { db, sound, n } = frames.slice(from, end);
+    feeds.db = new ort.Tensor('float32', db, [N_MELS, n]);
+    feeds.first_frame = new ort.Tensor('int64', BigInt64Array.of(BigInt(from)), []);
+    if (!this.floorInput) feeds.sound = new ort.Tensor('bool', sound, [n]);
+    const raw = (await this.detect.run(feeds)).raw;
     const rows = raw.dims[0] || 0, data = raw.data.slice();
     for (let r = 0; r < rows; r++) data[r * 9] = Math.round(data[r * 9 + 7] / HOP_SECONDS) % SEGMENT_CLIPS;
     return { data, rows };
