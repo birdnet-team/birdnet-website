@@ -50,13 +50,24 @@ python scripts/dev/v3_parity.py public/audio/BirdNET_soundscape_32kHz.flac demo.
 
 For the sample soundscape the rows are identical and scores differ by at most
 0.0012 (WASM vs. native floating point). The sample is stored at 32 kHz, so no
-resampling is involved. BirdBox boxes match the ONNX graph run in Python exactly.
+resampling is involved.
+
+BirdBox runs as a stream, a few seconds of audio at a time, in a file and
+while the microphone records. `fetch-models.mjs` takes the model's two
+streaming graphs out of the BirdBox model for that. The boxes are those of one
+run of the whole graph in ONNX Runtime Web, bit for bit, and a recording loaded
+again as a file gives the boxes found while recording. Against the graph in
+Python (onnxruntime 1.27), the sample as 32 kHz WAV gives the same 56 boxes,
+with confidences within 0.0005, times within 5 ms and frequencies within 40 Hz
+(WASM vs. native floating point).
 
 Other sample rates are converted by `public/js/demo/resample.js`, not by the
 browser: a Kaiser-windowed sinc filter, flat to 14.6 kHz with about 100 dB
 stopband from 16 kHz. It differs from librosa's default (soxr_hq) by less than
 -80 dB below 12 kHz; only the 14-16 kHz transition band differs noticeably.
 PCM WAV files at 32 kHz load bit-identical to `librosa.load(sr=32000, mono=True)`.
+Microphone recordings go through the same filter as they arrive and are saved
+as 32 kHz 16-bit WAV.
 The demo analyzes at most the first 61 minutes of a recording.
 
 ## Project map data

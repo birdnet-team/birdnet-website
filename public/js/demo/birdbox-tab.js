@@ -1,34 +1,53 @@
 /**
  * BirdBox tab: bird vocalization bounding boxes with the BirdBox Just-Bird
- * ONNX graph (PCEN, YOLO and NMS run inside the model).
+ * model (its spectrogram, YOLO and NMS run inside the ONNX graphs).
  *
- * The graph runs at the lowest confidence and returns its per-window boxes,
- * one 60 s segment at a time, so boxes appear while later segments run.
- * birdbox-fusion.js merges them exactly like the graph's window fusion for
- * any (confidence, phrase gap) setting, so both sliders update instantly.
- * BirdNET V3.0 suggests a species for every box; the boxes export as
+ * The model runs as a stream at the lowest confidence and reports the boxes
+ * of its 3 s windows one window at a time, so boxes appear while detection
+ * runs; in a file they show evenly spaced (birdbox-pacer.js). birdbox-fusion.js
+ * merges them exactly like the model's window fusion for any (confidence,
+ * phrase gap) setting, so both sliders update instantly. The boxes export as
  * Xeno-canto Annota-JSON.
+ *
+ * BirdNET V3.0 suggests a species for every box. It scores the same 3 s
+ * windows alongside the detection, so a box's species is usually there when
+ * the box appears, and a box that changes needs no new scoring.
+ *
+ * While this tab's card records, the spectrogram flies in from the right and
+ * each window is detected once, as soon as it is complete. The model takes a
+ * window's noise floor from the audio before the window's end, so these
+ * boxes are final: when the recording ends, only the last windows are left,
+ * and the result is that of the saved file.
  *
  * On the spectrogram, the selected box can be moved and resized and new
  * boxes can be drawn; changed and new boxes get fresh species suggestions.
  */
-import { AudioSource, parseXcNumber } from './audio-source.js';
+import { AudioSource, losslessView, parseXcNumber } from './audio-source.js';
 import { fuseBoxes } from './birdbox-fusion.js';
-import { csvField, debounce, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, toast } from './core.js';
+import { Pacer } from './birdbox-pacer.js';
+import { birdbox } from './birdbox-service.js';
+import { analyzedTo as analyzedAfter, fileEnd, readyWindows, windowCount } from './birdbox-stream.js';
+import { csvField, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, throttle, toast } from './core.js';
 import { activeMask, LocationFilter } from './location-filter.js';
-import { fetchAsset, getManifest, isCached } from './model-store.js';
-import { CancelledError, OrtPool } from './ort-pool.js';
+import { getManifest, isCached } from './model-store.js';
 import { player } from './player.js';
 import { isoTime, RAVEN_CLOCK, ravenClock } from './recording-time.js';
 import { SpecView } from './spec-view.js';
 import { pickSpecies } from './picker.js';
 import { catalog } from './species.js';
 import { SR, v3 } from './v3-service.js';
-import { streamSpectrogram, thumb } from './v3-tab.js';
+import { stopSpectrogram, streamSpectrogram, thumb } from './v3-tab.js';
 
-const RAW_CONF = 0.05;        // lowest slider value
+const CLIP = 3, HOP = 1.5;    // the model's windows: seconds long, seconds apart
+const MIN_SCORE = 0.05;       // BirdNET V3.0 scores below this are not kept
+const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line no longer changes, unless linked to one that may
+const SCORES_MS = 120;        // show new species at most this often
+const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
+const LIVE_MAX_WINDOWS = 8;   // windows per run when detection has fallen behind a recording
+const LIVE_BEHIND = 6;        // seconds behind the sound at which the hint says so
+const LIVE_EDGE = 0.13;       // seconds the right edge stays behind the microphone, for the last frames
+const POP_MS = 420;           // a new box pops in over this time
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
-const MS_PER_CLIP_KEY = 'birdnet-demo-birdbox-ms';
 const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
 const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
@@ -41,88 +60,43 @@ const MIN_BAND = 100;         // smallest box: Hz
 const $ = id => document.getElementById(id);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-/** 3 s V3.0 windows covering a box (centered for short boxes). */
-function suggestionWindows(t0, t1, duration) {
-  const W = 3, maxStart = Math.max(0, duration - W);
-  if (t1 - t0 <= W) {
-    const s = Math.min(maxStart, Math.max(0, (t0 + t1) / 2 - W / 2));
-    return [[s, s + W]];
-  }
-  const out = [];
-  for (let s = t0; ; s += 1.5) {
-    const start = Math.min(maxStart, s);
-    out.push([start, start + W]);
-    if (start + W >= t1 || start >= maxStart) break;
-  }
-  return out;
-}
-
 /** Xeno-canto contributor ID from the ID itself or a xeno-canto.org/contributor/… link. */
 const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/[/?#].*$/, '');
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
-/** Species suggestions depend only on the time span (the windows cover all frequencies). */
-const timeKey = g => `${g.t0.toFixed(3)}|${g.t1.toFixed(3)}`;
+
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
-
-class BirdBoxService {
-  constructor() { this.ready = null; this.pool = null; this.busy = null; }
-  ensure(onProgress) {
-    if (!this.ready) {
-      this.ready = (async () => {
-        const m = (await getManifest()).birdbox;
-        this.manifest = m;
-        const model = await fetchAsset(m.model, onProgress);
-        this.pool = new OrtPool({ name: 'birdbox', size: 1 });
-        await this.pool.start(model, { output: m.output });
-        return this;
-      })();
-      this.ready.catch(() => { this.ready = null; });
-    }
-    return this.ready;
-  }
-
-  /**
-   * Run the graph over the recording one 60 s segment at a time: the segments its own
-   * Loop walks, so the rows equal those of a single run. onSegment(result, k, n) gets
-   * each segment's per-window boxes as soon as they are ready.
-   */
-  async detect(audio, onSegment) {
-    const pool = this.busy = this.pool;
-    const n = Math.max(1, Math.ceil(audio.length / (this.manifest.segmentSeconds * SR)));
-    try {
-      for (let k = 0; k < n; k++) {
-        if (this.busy !== pool) throw new CancelledError();
-        // The worker keeps the audio after the first segment. song_gap only feeds the
-        // graph's fusion step, which these runs skip.
-        const payload = { conf: RAW_CONF, songGap: 0, segment: k };
-        onSegment(await pool.run('birdbox', k ? payload : { ...payload, audio }, k ? [] : [audio.buffer]), k, n);
-      }
-    } finally {
-      if (this.busy === pool) this.busy = null;
-    }
-  }
-
-  /** Stop a run in progress (it cannot be interrupted); the next run starts a fresh worker. */
-  abort() {
-    if (!this.busy) return;
-    this.busy.terminate();
-    this.busy = this.pool = this.ready = null;
-  }
-}
-const birdbox = new BirdBoxService();
+const concat = (a, b) => {
+  const out = new Float32Array(a.length + b.length);
+  out.set(a);
+  out.set(b, a.length);
+  return out;
+};
 
 export class BirdBoxTab {
   constructor() {
     this.visible = false;
     this.pendingRun = false;
-    this.raw = null;
+    this.raw = null;               // { data, rows, ms, next, done }: the windows' boxes of the recording, so far
     this.analyzedTo = null;        // seconds analyzed while detection runs, else null
+    this.rec = null;               // the recording in progress
+    this.liveEnded = null;         // it ended, and its file is on the way
+    this.liveIdle = null;          // settles when no live detection is using the worker any more
+    this.born = new Map();         // box id -> when it appeared while recording
+    this.tableHeld = false;        // a press on the list: redrawing it now would lose the click
     this.songs = [];               // detector boxes at the current sliders
+    this.fusion = {};              // fuseBoxes' cache: the boxes later windows cannot change
     this.userBoxes = [];           // boxes drawn by the user
     this.boxes = [];               // both, ordered by start time
-    this.suggestions = new Map();  // timeKey -> [{ s, p }]
+    this.scores = new Map();       // window -> [[species, score], ...]: the birds BirdNET V3.0 hears in it
+    this.scoring = new Set();      // windows on their way
+    this.wanted = new Set();       // windows the boxes lie in that are not scored yet
+    this.ahead = 0;                // next window to score ahead of the detection
+    this.candidates = new Map();   // 'first-last' window -> [{ s, p }]: the species of a box in these windows
+    this.mask = undefined;         // location filter for the candidates, null when off; undefined: not fetched yet
+    this.maskVersion = 0;
+    this.retryAt = 0;
     this.edits = new Map();        // box id -> { species?, soundType?, include?, geom? }
     this.selectedId = null;
     this.hoverId = null;
@@ -132,13 +106,17 @@ export class BirdBoxTab {
     this.draft = null;             // box being drawn
     this.userSeq = 0;
     this.runToken = 0;
-    this.suggestToken = 0;        // invalidates suggestion results after audio or filter changes
-    this.inflight = new Set();
-    this.suggestSoon = debounce(() => this._suggest(), 250);
+    this.scoreToken = 0;           // invalidates scores still on their way after the audio changes
+    this.scoresChanged = throttle(() => {
+      this._renderSummary();
+      this._renderTable();
+      this.spec.render();
+      if (!$('bb-xc-check').hidden) this._checkXc();
+    }, SCORES_MS);
   }
 
   init() {
-    this.source = new AudioSource($('bb-source'));
+    this.source = new AudioSource($('bb-source'), { live: true });
     this.location = new LocationFilter($('bb-location'));
     this.spec = new SpecView($('bb-spec'), {
       height: 300, kind: 'stft', axis: { type: 'linear', fMin: 0, fMax: FREQ_MAX },
@@ -187,27 +165,59 @@ export class BirdBoxTab {
 
   show() {
     this.visible = true;
+    this._usePlayer();
     this.spec._resize();
     if (this.specPending) this._startSpec();
-    if (this.pendingRun) this.run();
+    if (this.pendingRun) this.run(true);
   }
 
-  hide() { this.visible = false; }
+  hide() {
+    this.visible = false;
+    // The other tabs play the browser's recording
+    const a = shared.audio;
+    if (a?.lossless && player.audio.src !== a.url) player.setSource(a.url);
+  }
+
+  /** The audio of this tab: its own recordings as their WAV, whose times the boxes have. */
+  _audio() { return losslessView(shared.audio); }
+
+  /** While this tab is shown, the player plays that audio. */
+  _usePlayer() {
+    const url = this._audio()?.url;
+    if (this.visible && url && player.audio.src !== url) player.setSource(url);
+  }
 
   _soundLabel(s) { return t(`demo.bb.sound.${s.replace(/ /g, '_')}`, s); }
 
+  /** Recording, or waiting for the recording's file: nothing to play or edit yet. */
+  get recording() { return !!(this.rec || this.liveEnded); }
+
   _bind() {
     shared.addEventListener('audio', () => this._onAudio());
+    this.source.addEventListener('livestart', e => this._liveStart(e.detail));
+    this.source.addEventListener('liveaudio', e => this._liveAudio(e.detail.pcm));
+    this.source.addEventListener('liveend', () => this._liveEnd());
+    this.source.addEventListener('livecancel', () => this._liveCancel());
+    // Leaving the page would lose a recording in progress
+    window.addEventListener('beforeunload', e => { if (this.rec) e.preventDefault(); });
     const conf = $('bb-conf'), gap = $('bb-gap');
     const sync = () => {
       $('bb-conf-val').textContent = fmtNumber(+conf.value, 2);
       $('bb-gap-val').textContent = +gap.value > 0 ? `${fmtNumber(+gap.value, 2)} s` : t('demo.bb.gapOff', 'off');
     };
     sync();
+    $('bb-stop').addEventListener('click', () => this._stop());
+    $('bb-continue').addEventListener('click', () => this.run(true));
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
     $('bb-suggest').addEventListener('change', () => this._update());
-    this.location.addEventListener('change', () => { this._resetSuggestions(); this._update(); });
+    // Another place or date: the scores stay, and the species are picked from them again
+    this.location.addEventListener('change', () => {
+      this.maskVersion++;
+      this.mask = undefined;
+      this.candidates.clear();
+      this._update();
+    });
     const form = $('bb-xc');
     form.addEventListener('submit', e => { e.preventDefault(); this._exportXc(); });
     // A pasted profile link becomes the ID it ends in
@@ -226,8 +236,9 @@ export class BirdBoxTab {
       this.spec.setCursor(e.detail);
       if (player.playing) this.spec.follow(e.detail);
     });
-    this.spec.addEventListener('toggleplay', () => player.toggle());
+    this.spec.addEventListener('toggleplay', () => { if (!this.recording) player.toggle(); });
     this.spec.addEventListener('pick', e => {
+      if (this.recording) return;
       const { time, freq } = e.detail;
       const hit = freq != null ? this._boxAt(time, freq) : null;
       if (hit) { this._select(hit.id, { play: true, scroll: 'list' }); return; }
@@ -247,7 +258,7 @@ export class BirdBoxTab {
     });
     // Editing keys work anywhere on the tab except while typing in a field or a dialog
     document.addEventListener('keydown', e => {
-      if (!this.visible || !this.raw || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!this.visible || !this.raw || this.recording || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest?.('input, select, textarea, [contenteditable], .modal')) return;
       if (e.key === 'Escape') {
         if (this.drawMode || this.gesture) this._setDrawMode(false);
@@ -267,10 +278,12 @@ export class BirdBoxTab {
       this._setHover(tr ? this.boxes[+tr.dataset.i]?.id ?? null : null);
     });
     table.addEventListener('mouseleave', () => this._setHover(null));
+    table.addEventListener('pointerdown', () => { this.tableHeld = true; });
+    for (const type of ['pointerup', 'pointercancel']) window.addEventListener(type, () => { this.tableHeld = false; });
     table.addEventListener('click', e => {
       const tr = e.target.closest('tr[data-i]');
       const b = tr ? this.boxes[+tr.dataset.i] : null;
-      if (!b) return;
+      if (!b || this.recording) return;
       if (e.target.closest('[data-play]')) { e.stopPropagation(); this._select(b.id, { play: true, scroll: true }); return; }
       if (e.target.closest('[data-act="toggle"]')) { e.stopPropagation(); this._removeBox(b); return; }
       if (e.target.closest('[data-act="verify"]')) { e.stopPropagation(); this._toggleVerified(b); return; }
@@ -289,7 +302,7 @@ export class BirdBoxTab {
       if (e.target.dataset.field === 'species' && e.target.value === 'pick') {
         const target = await pickSpecies({
           title: t('demo.bb.pickTitle', 'Species for box {n}', { n: +tr.dataset.i + 1 }),
-          suggestions: this.suggestions.get(timeKey(this._geom(b))) || [],
+          suggestions: this._candidates(this._geom(b)) || [],
           filter: i => catalog.className(i) === 'Aves',
         });
         if (target != null) this._setSpecies(b, target);
@@ -320,7 +333,13 @@ export class BirdBoxTab {
     const el = $('bb-edit-hint');
     if (!el) return;
     let text;
-    if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here minute by minute while detection runs.');
+    if (this.rec) {
+      const behind = Math.floor(this.rec.n / SR - (this.analyzedTo ?? 0) - CLIP);
+      text = this.raw && behind >= LIVE_BEHIND
+        ? t('demo.bb.hint.liveBehind', 'This device is {n} s behind the sound. Nothing is lost: the rest is detected when you stop.', { n: behind })
+        : t('demo.bb.hint.live', 'The line shows how far detection has come. Dashed boxes may still change; solid ones are final, the same as in the saved recording.');
+    } else if (this.liveEnded) text = t('demo.bb.hint.liveEnd', 'Finishing the recording…');
+    else if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here while detection runs.');
     else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
     else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · V verifies it · Delete removes it · Esc deselects');
     else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
@@ -345,7 +364,7 @@ export class BirdBoxTab {
   _renderChip() {
     const chip = $('bb-model-chip');
     if (!chip) return;
-    if (birdbox.pool?.readyCount) { chip.className = 'demo-status is-ok'; chip.innerHTML = `<i class="bi bi-cpu me-1"></i>${esc(t('demo.bb.chip.ready', 'Model ready'))}`; }
+    if (birdbox.loaded) { chip.className = 'demo-status is-ok'; chip.innerHTML = `<i class="bi bi-cpu me-1"></i>${esc(t('demo.bb.chip.ready', 'Model ready'))}`; }
     else if (this.modelCached) { chip.className = 'demo-status is-ok'; chip.innerHTML = `<i class="bi bi-hdd me-1"></i>${esc(t('demo.v3.chip.cached', 'Model cached'))}`; }
     else { chip.className = 'demo-status'; chip.innerHTML = ''; }
   }
@@ -354,6 +373,8 @@ export class BirdBoxTab {
     const wrap = $('bb-progress');
     if (fraction == null) { wrap.hidden = true; return; }
     wrap.hidden = false;
+    $('bb-stop').hidden = this.recording;   // a recording stops with its own button
+    $('bb-continue').hidden = true;
     const bar = wrap.querySelector('.progress-bar');
     bar.style.width = `${Math.round(Math.max(0.02, Math.min(1, fraction)) * 100)}%`;
     bar.classList.toggle('progress-bar-striped', indeterminate);
@@ -361,24 +382,258 @@ export class BirdBoxTab {
     $('bb-progress-text').textContent = text || '';
   }
 
-  _onAudio() {
-    const audio = shared.audio;
+  /** Progress of the model download, the first third of the bar. */
+  _modelProgress(p) {
+    this._setProgress(p.loaded / p.total * 0.3, p.cached
+      ? t('demo.bb.status.cached', 'Loading BirdBox from your browser cache…')
+      : t('demo.bb.status.downloading', 'Downloading BirdBox model: {done} of {total}', { done: fmtBytes(p.loaded), total: fmtBytes(p.total) }));
+  }
+
+  /** Stop a file's detection, as in the BirdBox docs demo. */
+  _stop() {
+    this.runToken++;
+    this.pacer?.stop();   // the windows held back are dropped: Continue starts after the last one shown
+    birdbox.abort();
+    this._showStopped();
+  }
+
+  /**
+   * The boxes found so far stay, with their species, and CSV and Raven exports cover
+   * them. Continue picks detection up after the last window, with the same result as
+   * a run without a stop.
+   */
+  _showStopped() {
+    if (this.raw) this.raw.stopped = true;
+    else this.analyzedTo = null;
+    const total = windowCount(this.pcm.length), n = this.raw?.next ?? 0;
+    this._setProgress(n ? 0.3 + 0.7 * n / total : 0.01, n
+      ? t('demo.bb.status.stopped', 'Stopped at clip {n} of {total}', { n, total })
+      : t('demo.bb.status.stoppedEarly', 'Detection stopped'));
+    $('bb-stop').hidden = true;
+    $('bb-continue').hidden = false;
+    this._update();
+  }
+
+  /* ---------------- recording in progress ---------------- */
+
+  /**
+   * The microphone of this tab's card is on. What was loaded steps aside: it
+   * comes back as it was if the recording is cancelled.
+   */
+  _liveStart({ maxSeconds }) {
     this.runToken++;
     birdbox.abort();
-    this.raw = null;
-    this.analyzedTo = null;
+    stopSpectrogram(this.spec);
+    const prev = shared.audio ? { raw: this.raw, analyzedTo: this.analyzedTo, userBoxes: this.userBoxes, edits: this.edits, selectedId: this.selectedId, scores: this.scores } : null;
+    const rec = this.rec = {
+      maxSeconds, prev, pcm: new Float32Array((maxSeconds + 1) * SR), n: 0, arrivedAt: 0,
+      data: new Float32Array(0), rows: 0, ms: 0, next: 0,   // its boxes so far, and the windows they come from
+      ended: false, wake: null, specWorker: null, loop: null,
+    };
+    this._resetScores();   // scores still on their way belong to the audio that steps aside
+    Object.assign(this, {
+      pcm: rec.pcm, duration: 0, raw: null, analyzedTo: 0, songs: [], userBoxes: [], edits: new Map(),
+      selectedId: null, hoverId: null, liveEnded: null, pendingRun: false, specPending: false,
+    });
+    this.born.clear();
+    this._setDrawMode(false);
+    this._setProgress(null);
+    $('bb-error').hidden = true;
+    $('bb-suggest-status').textContent = '';
+    $('bb-howto').hidden = true;
+    $('bb-workspace').hidden = false;
+    $('pane-birdbox').classList.add('is-recording');
+    this.spec.clear();
+    const worker = rec.specWorker = new Worker(new URL('./spec-worker.js', import.meta.url));
+    worker.onmessage = ({ data }) => {
+      if (this.rec !== rec) return;
+      if (data.type === 'meta') this.spec.startLive({ rows: data.rows, fps: data.fps, floor: data.floor || 0, capacity: maxSeconds + 1, clock: () => this._liveClock(rec) });
+      else if (data.type === 'live-frames') this.spec.addFrames(data.start, data.data);
+      else if (data.type === 'error') console.error('spectrogram:', data.error);
+    };
+    worker.postMessage({ type: 'live-start', id: 1, sampleRate: SR, fMax: FREQ_MAX });
+    this._update();
+    rec.loop = this._liveLoop(rec);
+  }
+
+  /** Seconds to show at the right edge: smooth between the pieces of audio, which arrive in bursts. */
+  _liveClock(rec) {
+    if (!rec.n) return 0;
+    return Math.max(0, rec.n / SR + Math.min(performance.now() - rec.arrivedAt, 120) / 1000 - LIVE_EDGE);
+  }
+
+  _liveAudio(pcm) {
+    const rec = this.rec;
+    if (!rec || rec.ended) return;
+    rec.pcm.set(pcm.subarray(0, rec.pcm.length - rec.n), rec.n);
+    rec.n = Math.min(rec.pcm.length, rec.n + pcm.length);
+    rec.arrivedAt = performance.now();
+    this.duration = rec.n / SR;
+    rec.specWorker.postMessage({ type: 'live-audio', pcm }, [pcm.buffer]);
+    rec.wake?.();
+    this._pumpScores();   // a window may be complete now
+  }
+
+  /**
+   * The worker keeps the recording's spectrogram and adds frames for new audio only.
+   * Each window is run once, as soon as the audio reaches its end, and its rows are
+   * final: the rows of the saved file. A run takes every window that has become ready
+   * meanwhile (up to LIVE_MAX_WINDOWS), so a slower device falls behind by a run, not
+   * more. When the recording ends, the file's run continues after the last window done.
+   */
+  async _liveLoop(rec) {
+    try {
+      await birdbox.ensure(p => { if (this.rec === rec) this._modelProgress(p); });
+      if (this.rec === rec) {
+        this._setProgress(null);
+        this.modelCached = true;
+        this._renderChip();
+      }
+      if (rec.ended) return;
+      birdbox.liveStart();
+      let sent = 0;   // samples the worker has
+      while (!rec.ended) {
+        if (rec.n > sent) {
+          birdbox.liveAudio(rec.pcm.subarray(sent, rec.n));
+          sent = rec.n;
+        }
+        const ready = readyWindows(sent);
+        if (ready <= rec.next) {
+          await new Promise(resolve => { rec.wake = resolve; });
+          continue;
+        }
+        const res = await birdbox.liveWindows(rec.next, Math.min(ready - rec.next, LIVE_MAX_WINDOWS));
+        if (rec.ended) return;
+        rec.data = concat(rec.data, res.data);
+        rec.rows += res.rows;
+        rec.ms += res.ms;
+        rec.next = res.next;
+        this.analyzedTo = analyzedAfter(rec.next);
+        this.raw = { data: rec.data, rows: rec.rows, ms: rec.ms, next: rec.next, done: false };
+        this._liveUpdate();
+      }
+    } catch (err) {
+      if (err.cancelled || rec.ended) return;
+      console.error(err);
+      $('bb-error').hidden = false;
+      $('bb-error').textContent = t('demo.bb.liveError', 'Boxes stopped appearing: {message}. The recording goes on, and its boxes are detected when you stop.', { message: err.message });
+    }
+  }
+
+  /** New boxes, marked so they pop in. A box that only grew does not. The list stays at its end. */
+  _liveUpdate() {
+    if (this.tableHeld) return;
+    const wrap = $('bb-table-wrap'), atEnd = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 8;
+    const before = this.songs, now = performance.now();
+    this._update();
+    for (const b of this.songs) {
+      if (before.some(o => o.t0 < b.t1 && b.t0 < o.t1 && o.flo < b.fhi && b.flo < o.fhi)) continue;
+      this.born.set(b.id, now);
+    }
+    if (atEnd) wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  /** Stop was pressed: the file is on its way. What is on screen stays until then. */
+  _liveEnd() {
+    const rec = this.rec;
+    if (!rec) return;
+    this._liveClose(rec);
+    this.liveEnded = rec;
+    this._renderHint();
+  }
+
+  _liveClose(rec) {
+    rec.ended = true;
+    rec.wake?.();
+    rec.specWorker.terminate();
+    this.liveIdle = rec.loop;
+    this.rec = null;
+    this.spec.stopLive();
+    $('pane-birdbox').classList.remove('is-recording');
+    this._setProgress(null);
+  }
+
+  /** Cancelled, or no file came of it: back to the audio that was there, as it was. */
+  _liveCancel() {
+    const rec = this.rec || this.liveEnded;
+    if (!rec) return;
+    if (this.rec) this._liveClose(rec);
+    this.liveEnded = null;
+    this._resetScores();
+    this.born.clear();
+    $('bb-error').hidden = true;
+    $('bb-suggest-status').textContent = '';
+    const { prev } = rec, audio = shared.audio, exact = audio?.lossless ?? audio;
+    Object.assign(this, {
+      pcm: exact?.pcm ?? null, duration: exact?.duration ?? 0, songs: [], hoverId: null,
+      raw: prev?.raw ?? null, analyzedTo: prev?.analyzedTo ?? null, userBoxes: prev?.userBoxes ?? [], edits: prev?.edits ?? new Map(),
+      scores: prev?.scores ?? this.scores, selectedId: prev?.selectedId ?? null,
+    });
+    this.spec.clear();
+    $('bb-howto').hidden = !!audio;
+    $('bb-workspace').hidden = !audio;
+    if (!audio) { this._update(); return; }
+    this._showTooShort();
+    this.specPending = true;
+    if (this.visible) this._startSpec();
+    this.spec.setCursor(0);
+    this._update();
+    // A detection the recording interrupted goes on where it was, unless it was stopped
+    if (this.raw?.done) return;
+    if (this.raw?.stopped) { this._showStopped(); return; }
+    if (this.visible) this.run(true); else this.pendingRun = true;
+  }
+
+  /**
+   * The boxes found while recording, as a run stopped after their windows, if the file
+   * holds the samples they were found on. It does by construction (Recorder): this makes sure.
+   */
+  _finalSoFar(rec, pcm) {
+    if (!rec.next || pcm.length !== rec.n) return null;
+    for (let i = 0; i < pcm.length; i++) if (pcm[i] !== rec.pcm[i]) return null;
+    const end = fileEnd(pcm.length);
+    for (let r = 0; r < rec.rows; r++) rec.data[r * 9 + 8] = end;
+    return { data: rec.data, rows: rec.rows, ms: rec.ms, next: rec.next, done: false };
+  }
+
+  _showTooShort() {
+    const short = this.pcm.length < CLIP * SR;
+    $('bb-error').hidden = !short;
+    if (short) $('bb-error').textContent = t('demo.bb.tooShort', 'BirdBox needs at least 3 seconds of audio.');
+  }
+
+  _onAudio() {
+    // A recording of this tab comes with its WAV (lossless); the other tabs analyze the browser's recording
+    const audio = shared.audio, exact = audio?.lossless ?? audio;
+    // Audio from another tab while this one records: the recording gives way
+    if (this.rec) {
+      this._liveClose(this.rec);
+      this.source.cancelRecording();
+    }
+    const ended = this.liveEnded;
+    this.liveEnded = null;
+    this.runToken++;
+    // A live detection still running ends by itself in a moment, and the worker stays warm
+    if (!ended) birdbox.abort();
+    // The boxes of a recording hold for its file, and so does what BirdNET V3.0 heard
+    this.raw = ended && audio ? this._finalSoFar(ended, exact.pcm) : null;
+    this.analyzedTo = this.raw ? analyzedAfter(this.raw.next) : null;
     this.songs = [];
     this.userBoxes = [];
-    this._resetSuggestions();
-    this.edits.clear();
+    if (!this.raw) this._resetScores();
+    this.candidates.clear();   // the last windows of a file are not those of a recording in progress
+    this.edits = new Map();
     this.selectedId = null;
     this.hoverId = null;
+    this.born.clear();
     this._setDrawMode(false);
+    this._setProgress(null);
     $('bb-howto').hidden = !!audio;
     $('bb-workspace').hidden = !audio;
     if (!audio) return;
-    this.pcm = audio.pcm;
-    this.duration = audio.duration;
+    this.pcm = exact.pcm;
+    this.duration = exact.duration;
+    this._usePlayer();
     // A file named like XC1059662.wav is most likely that recording; the field stays editable
     const m = audio.name.match(/(?:^|[^A-Za-z0-9])XC[_-]?(\d+)/i);
     const nr = audio.xc || m?.[1];
@@ -386,75 +641,76 @@ export class BirdBoxTab {
     $('bb-complete').value = '';
     $('bb-xc').querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
     $('bb-xc-check').hidden = true;
-    if (this.pcm.length < 3 * SR) {
-      $('bb-error').hidden = false;
-      $('bb-error').textContent = t('demo.bb.tooShort', 'BirdBox needs at least 3 seconds of audio.');
-    } else $('bb-error').hidden = true;
-    this.spec.clear();
-    this.specPending = true;
-    if (this.visible) this._startSpec();
+    this._showTooShort();
+    if (this.raw) {
+      // The live picture stays until the finished spectrogram replaces it, and the view opens up to the whole recording
+      this.spec.duration = this.duration;
+      this.specPending = false;
+      streamSpectrogram(this.spec, this.pcm, 'stft', this.duration, { swap: true });
+      this.spec.animateView(0, this.duration);
+    } else {
+      this.spec.clear();
+      this.specPending = true;
+      if (this.visible) this._startSpec();
+    }
     this.spec.setCursor(0);
     this._update();
-    if (this.visible) this.run(); else this.pendingRun = true;
+    if (this.visible) this.run(true); else this.pendingRun = true;
   }
 
-  async run() {
-    if (!this.pcm || this.pcm.length < 3 * SR) return;
+  /** Detect over the recording, or go on after the windows there are boxes for already (resume). */
+  async run(resume = false) {
+    if (!this.pcm || this.pcm.length < CLIP * SR || this.recording) return;
     this.pendingRun = false;
     const token = ++this.runToken;
-    this.raw = null;
-    this.analyzedTo = 0;
+    const total = windowCount(this.pcm.length);
+    const from = resume && this.raw && !this.raw.done ? this.raw.next : 0;
+    if (from) this.raw.stopped = false;
+    else {
+      this.raw = null;
+      this.analyzedTo = 0;
+    }
     this._update();
-    let ticker = null;
+    const progress = done => {
+      const ms = this.raw?.ms || 0, left = done ? (total - done) * ms / done / 1000 : 0;
+      let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, done), total });
+      // As in the V3.0 tab: seconds of audio detected per second of detection
+      if (done && ms > 0) text += ` · ${t('demo.bb.status.speed', '{speed}× real time', { speed: fmtNumber(Math.min(this.duration, (done - 1) * HOP + CLIP) / (ms / 1000), 1) })}`;
+      if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
+      this._setProgress(0.3 + 0.7 * done / total, text);
+    };
     try {
-      this._setProgress(0.01, t('demo.bb.status.preparing', 'Preparing BirdBox…'));
-      await birdbox.ensure(p => {
-        this._setProgress(p.loaded / p.total * 0.3, p.cached
-          ? t('demo.bb.status.cached', 'Loading BirdBox from your browser cache…')
-          : t('demo.bb.status.downloading', 'Downloading BirdBox model: {done} of {total}', { done: fmtBytes(p.loaded), total: fmtBytes(p.total) }));
-      });
+      if (from) progress(from);
+      else this._setProgress(0.01, t('demo.bb.status.preparing', 'Preparing BirdBox…'));
+      await this.liveIdle;   // a live detection that was still running needs the worker first
+      if (token !== this.runToken) return;
+      await birdbox.ensure(p => { if (token === this.runToken && !from) this._modelProgress(p); });
       this.modelCached = true;
       this._renderChip();
       if (token !== this.runToken) return;
-      const m = birdbox.manifest;
-      const clips = Math.max(1, Math.ceil((this.duration - 3) / 1.5) + 1), perSegment = Math.round(m.segmentSeconds / m.clipHopSeconds);
-      let msPerClip = 280;
-      try { msPerClip = +localStorage.getItem(MS_PER_CLIP_KEY) || msPerClip; } catch { /* storage blocked */ }
-      const t0 = performance.now();
-      let clipsDone = 0, segmentStart = t0, data = new Float32Array(0), rows = 0;
-      // ONNX Runtime reports no progress inside a segment; pace a counter on the clip grid
-      // until the segment ends, at this device's last speed and then at this run's.
-      ticker = setInterval(() => {
-        const now = performance.now(), segmentClips = Math.min(clips, clipsDone + perSegment) - clipsDone;
-        const inSegment = now - segmentStart;
-        // A last segment shorter than one clip holds no clips and passes quickly
-        if (segmentClips && inSegment > segmentClips * msPerClip) {
-          // Slower than estimated: say so instead of freezing
-          this._setProgress(0.3 + 0.7 * (clipsDone + 0.97 * segmentClips) / clips, t('demo.bb.status.overtime', 'Detecting vocalizations · taking longer than estimated, {time} so far', { time: fmtTime((now - t0) / 1000) }));
-          return;
-        }
-        const n = clipsDone + Math.min(segmentClips, inSegment / msPerClip), left = (clips - n) * msPerClip / 1000;
-        let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, Math.min(clips, Math.round(n))), total: clips });
-        if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
-        this._setProgress(0.3 + 0.7 * n / clips, text);
-      }, 100);
-      await birdbox.detect(this.pcm.slice(), (res, k, n) => {
-        if (token !== this.runToken) return;
-        const now = performance.now(), grown = new Float32Array(data.length + res.detections.length);
-        grown.set(data);
-        grown.set(res.detections, data.length);
-        data = grown;
-        rows += res.rows;
-        clipsDone = Math.min(clips, (k + 1) * perSegment);
-        msPerClip = (now - t0) / clipsDone;
-        segmentStart = now;
-        const done = k + 1 === n;
-        this.analyzedTo = done ? null : Math.min(this.duration, (k + 1) * m.segmentSeconds);
-        this.raw = { data, rows, ms: now - t0, done };
-        this._update();
+      // Detection time of the whole recording: a continued run adds to the time so far
+      const t0 = performance.now() - (from ? this.raw.ms : 0);
+      let data = from ? this.raw.data : new Float32Array(0), rows = from ? this.raw.rows : 0;
+      progress(from);
+      this.pacer?.stop();
+      const pacer = this.pacer = new Pacer(item => {
+        if (token !== this.runToken) { pacer.stop(); return; }
+        this.analyzedTo = item.analyzedTo;
+        this.raw = { ...item, done: false };
+        progress(item.next);
+        // Not in the middle of a drag or a click on the list, which a redraw would disturb
+        if (!this.gesture && !this.tableHeld) this._update();
       });
-      try { localStorage.setItem(MS_PER_CLIP_KEY, String(Math.round(msPerClip))); } catch { /* not persisted */ }
+      await birdbox.detect(this.pcm.slice(), chunk => {
+        if (token !== this.runToken) return;
+        data = concat(data, chunk.data);
+        rows += chunk.rows;
+        pacer.push({ data, rows, ms: performance.now() - t0, next: chunk.next, analyzedTo: chunk.analyzedTo });
+      }, from);
+      const ms = performance.now() - t0;   // the detection's time, without the windows held back
+      await pacer.finish();
       if (token !== this.runToken) return;
+      this.raw = { data, rows, ms, next: total, done: true };
       this._renderChip();
     } catch (err) {
       if (token !== this.runToken || err.cancelled) return;
@@ -462,7 +718,6 @@ export class BirdBoxTab {
       $('bb-error').hidden = false;
       $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
     } finally {
-      clearInterval(ticker);
       if (token === this.runToken) {
         this.analyzedTo = null;
         this._setProgress(null);
@@ -471,12 +726,14 @@ export class BirdBoxTab {
     }
   }
 
-  /* ---------------- boxes, edits + suggestions ---------------- */
+  /* ---------------- boxes + edits ---------------- */
 
   _update() {
-    const conf = +$('bb-conf').value, gap = +$('bb-gap').value;
-    this.songs = this.raw ? fuseBoxes(this.raw.data, this.raw.rows, conf, gap) : [];
-    this.songs.forEach(b => { b.id = boxKey(b); });
+    const conf = +$('bb-conf').value, gap = +$('bb-gap').value, raw = this.raw;
+    // Rows still to come start with the next window: the boxes before them are fused once
+    this.songs = raw ? fuseBoxes(raw.data, raw.rows, conf, gap, this.fusion, raw.done ? Infinity : raw.next * HOP) : [];
+    for (const b of this.songs) b.id ??= boxKey(b);
+    this._markPending();
     this._refresh();
   }
 
@@ -490,63 +747,136 @@ export class BirdBoxTab {
     this._renderHint();
     this.spec.render();
     if (!$('bb-xc-check').hidden) this._checkXc();
-    if (this.raw && $('bb-suggest').checked) this.suggestSoon();
+    this.wanted.clear();
+    if ($('bb-suggest').checked) {
+      for (const b of this.boxes) {
+        const [first, last] = this._windowsOf(this._geom(b));
+        for (let k = first; k <= last; k++) if (!this.scores.has(k)) this.wanted.add(k);
+      }
+    }
+    this._pumpScores();
   }
 
-  /** Drop suggestions and ignore results of windows still being scored. */
-  _resetSuggestions() {
-    this.suggestToken++;
-    this.suggestions.clear();
-    this.inflight.clear();
+  /* ---------------- species: BirdNET V3.0 on the same windows ---------------- */
+
+  /**
+   * The windows a box lies in, [first, last]. BirdNET V3.0 scores the 3 s windows
+   * BirdBox detects on, one every 1.5 s. A window owns its middle half, as in the
+   * window fusion, so a box up to 1.5 s long takes the window that owns its centre:
+   * the one BirdBox found it in. A longer box takes the windows from the one around
+   * its first 1.5 s to the one around its last, which cover it.
+   */
+  _windowsOf(g) {
+    const end = this.recording ? Infinity : windowCount(this.pcm.length) - 1;
+    const owner = time => clamp(Math.floor((time - CLIP / 4) / HOP), 0, end);
+    if (g.t1 - g.t0 <= HOP) {
+      const k = owner((g.t0 + g.t1) / 2);
+      return [k, k];
+    }
+    return [owner(g.t0 + HOP / 2), owner(g.t1 - HOP / 2)];
+  }
+
+  /**
+   * Up to five species for a box, best first: each species' highest score in the box's
+   * windows, within the location filter. null while a window is still to be scored.
+   */
+  _candidates(g) {
+    const [first, last] = this._windowsOf(g), key = `${first}-${last}`;
+    let cands = this.candidates.get(key);
+    if (cands || this.mask === undefined) return cands || null;
+    const best = new Map(), mask = this.mask;
+    for (let k = first; k <= last; k++) {
+      const birds = this.scores.get(k);
+      if (!birds) return null;
+      for (const [s, p] of birds) if (!(best.get(s) >= p)) best.set(s, p);
+    }
+    cands = [...best].filter(([s]) => !mask || mask.scores[s] >= mask.threshold).map(([s, p]) => ({ s, p })).sort((a, b) => b.p - a.p).slice(0, 5);
+    this.candidates.set(key, cands);
+    return cands;
+  }
+
+  /** Other audio: forget what BirdNET V3.0 heard, and ignore the windows still on their way. */
+  _resetScores() {
+    this.scoreToken++;
+    this.scores = new Map();
+    this.scoring.clear();
+    this.wanted.clear();
+    this.candidates.clear();
+    this.ahead = 0;
     v3.cancel('birdbox');
   }
 
-  async _suggest() {
-    const token = this.suggestToken;
-    const keys = [...new Set(this.boxes.map(b => timeKey(this._geom(b))))];
-    const missing = keys.filter(k => !this.suggestions.has(k) && !this.inflight.has(k));
-    if (!missing.length) return;
-    missing.forEach(k => this.inflight.add(k));
+  /**
+   * Keep BirdNET V3.0 busy alongside the detection. Called whenever there may be a
+   * window to score: boxes or audio arrived, or a window is done.
+   */
+  async _pumpScores() {
+    if (this.pumping || !this.pcm || !$('bb-suggest').checked || performance.now() < this.retryAt) return;
+    const status = $('bb-suggest-status');
+    this.pumping = true;
     try {
-      if (!v3.ready || !v3.workers) {
-        $('bb-suggest-status').textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
-      }
+      if (!v3.workers) status.textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
       await v3.ensure(p => {
-        if (!p.cached) $('bb-suggest-status').textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
+        if (!p.cached) status.textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
       });
-      const mask = await activeMask();
-      if (token !== this.suggestToken) return;
-      $('bb-suggest-status').textContent = t('demo.bb.suggest.running', 'Identifying {n} boxes with BirdNET V3.0…', { n: missing.length });
-      const S = catalog.count, aves = catalog.classes.indexOf('Aves'), len = 3 * SR;
-      await Promise.all(missing.map(async key => {
-        const [t0, t1] = key.split('|').map(Number);
-        const windows = suggestionWindows(t0, t1, this.duration);
-        const outs = await Promise.all(windows.map(([s, e]) => v3.scoreWindow(this.pcm, Math.round(s * SR), Math.round(e * SR), len, { gen: 'birdbox', priority: 5 })));
-        if (token !== this.suggestToken) return;
-        const pooled = new Float32Array(S);
-        for (const o of outs) for (let i = 0; i < S; i++) if (o[i] > pooled[i]) pooled[i] = o[i];
-        const cands = [];
-        for (let i = 0; i < S; i++) {
-          if (catalog.cls[i] !== aves || pooled[i] < 0.05) continue;
-          if (mask && mask.scores[i] < mask.threshold) continue;
-          cands.push({ s: i, p: pooled[i] });
-        }
-        cands.sort((x, y) => y.p - x.p);
-        this.suggestions.set(key, cands.slice(0, 5));
-        this.inflight.delete(key);
-      }));
-      if (token !== this.suggestToken) return;
-      $('bb-suggest-status').textContent = '';
-      this._renderTable();
-      this._renderSummary();
-      this.spec.render();
-      this.suggestSoon(); // boxes may have moved meanwhile
+      while (this.mask === undefined) {
+        const version = this.maskVersion, mask = await activeMask();
+        if (version !== this.maskVersion) continue;   // the filter changed meanwhile
+        this.mask = mask;
+        this.scoresChanged();
+      }
+      status.textContent = '';
     } catch (err) {
-      if (token !== this.suggestToken || err.cancelled) return;
-      missing.forEach(k => this.inflight.delete(k));
       console.error(err);
-      $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+      this.retryAt = performance.now() + RETRY_MS;
+      status.textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+      return;
+    } finally {
+      this.pumping = false;
     }
+    v3.wake();
+    for (let k; this.scoring.size < 2 * v3.pool.size && (k = this._nextWindow()) != null;) this._scoreWindow(k);
+  }
+
+  /**
+   * The window to score next: first the earliest one a box is waiting for, then the
+   * next one ahead of the detection, whose boxes are about to appear. A window the
+   * detection has passed without a box is never scored.
+   */
+  _nextWindow() {
+    const rec = this.rec || this.liveEnded;
+    const complete = rec ? readyWindows(rec.n) : windowCount(this.pcm.length);
+    for (const k of this.wanted) {
+      if (this.scores.has(k)) this.wanted.delete(k);
+      else if (!this.scoring.has(k) && k < complete) return k;
+    }
+    if (this.analyzedTo == null || this.raw?.stopped) return null;   // no detection is running
+    this.ahead = Math.max(this.ahead, this.raw?.next ?? 0);
+    while (this.scores.has(this.ahead) || this.scoring.has(this.ahead)) this.ahead++;
+    return this.ahead < complete ? this.ahead : null;
+  }
+
+  /** BirdNET V3.0 on window k (silence after the end of the recording, as for BirdBox). */
+  async _scoreWindow(k) {
+    const token = this.scoreToken, start = k * HOP * SR, length = CLIP * SR;
+    this.scoring.add(k);
+    try {
+      const out = await v3.scoreWindow(this.pcm, start, start + length, length, { gen: 'birdbox', priority: 5 });
+      if (token !== this.scoreToken) return;
+      const aves = catalog.classes.indexOf('Aves'), birds = [];
+      for (let s = 0; s < out.length; s++) if (out[s] >= MIN_SCORE && catalog.cls[s] === aves) birds.push([s, out[s]]);
+      this.scores.set(k, birds);
+      this.scoring.delete(k);
+      if (this.wanted.delete(k)) this.scoresChanged();
+    } catch (err) {
+      if (token !== this.scoreToken || err.cancelled) return;
+      this.scoring.delete(k);
+      console.error(err);
+      this.retryAt = performance.now() + RETRY_MS;
+      $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
+      return;
+    }
+    this._pumpScores();
   }
 
   /** Box geometry with the user's changes (and the live one while dragging). */
@@ -558,7 +888,7 @@ export class BirdBoxTab {
   /** Species, sound type and inclusion: the user's choices over the defaults. */
   _edit(b) {
     const o = this.edits.get(b.id) || {};
-    const cands = $('bb-suggest').checked ? this.suggestions.get(timeKey(this._geom(b))) : null;
+    const cands = $('bb-suggest').checked ? this._candidates(this._geom(b)) : null;
     const top = cands?.[0];
     return {
       species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
@@ -589,7 +919,7 @@ export class BirdBoxTab {
   }
 
   _species(b) {
-    const edit = this._edit(b), cands = this.suggestions.get(timeKey(this._geom(b))) || [];
+    const edit = this._edit(b), cands = this._candidates(this._geom(b)) || [];
     return { s: edit.species, p: cands.find(c => c.s === edit.species)?.p ?? null };
   }
 
@@ -665,6 +995,7 @@ export class BirdBoxTab {
   }
 
   _editCursor(p) {
+    if (this.recording) return '';
     if (this.drawMode) return 'crosshair';
     const h = this._handleAt(p);
     if (h) {
@@ -679,7 +1010,7 @@ export class BirdBoxTab {
   }
 
   _editDown(p) {
-    if (!this.raw) return false;
+    if (!this.raw || this.recording) return false;
     if (this.drawMode) {
       this.gesture = { type: 'draw', start: p };
       return true;
@@ -745,8 +1076,17 @@ export class BirdBoxTab {
 
   _renderSummary() {
     const el = $('bb-summary');
-    // Exports wait for the whole recording
-    ['bb-export-xc', 'bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !this.raw?.done || !this.boxes.length; });
+    // Exports wait for the whole recording. A stopped run exports its part as CSV and
+    // Raven; the Annota-JSON goes to Xeno-canto, where it would look complete
+    const stopped = !!this.raw?.stopped;
+    $('bb-export-xc').disabled = !this.raw?.done || !this.boxes.length;
+    ['bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !(this.raw?.done || stopped) || !this.boxes.length; });
+    const note = $('bb-export-note');
+    note.hidden = !stopped;
+    if (stopped) {
+      note.textContent = t('demo.bb.partial', 'Detection was stopped at {done} of {total}. CSV and Raven cover only this part; the Annota-JSON needs the whole recording.',
+        { done: fmtTime(this.analyzedTo ?? 0), total: fmtTime(this.duration) });
+    }
     if (!this.raw) { el.innerHTML = ''; return; }
     const included = this.boxes.filter(b => this._edit(b).include);
     const species = new Set(included.map(b => this._edit(b).species).filter(s => s !== AVES));
@@ -754,53 +1094,76 @@ export class BirdBoxTab {
       [this.boxes.length, t('demo.bb.sum.boxes', 'boxes')],
       [included.filter(b => this._edit(b).verified).length, t('demo.bb.sum.verified', 'verified by you')],
       [species.size, t('demo.bb.sum.species', 'suggested species')],
-      this.raw.done ? [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')] : [fmtTime(this.analyzedTo ?? 0), t('demo.v3.sum.audio', 'audio')],
+      this.raw.done ? [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection ({speed}× real time)', { speed: fmtNumber(this.duration / Math.max(this.raw.ms / 1000, 0.001), 1) })]
+        : [fmtTime(this.analyzedTo ?? 0), t('demo.v3.sum.audio', 'audio')],
     ];
     el.innerHTML = statLine(stats);
   }
 
+  /**
+   * The list of boxes. Only rows that changed are replaced: the others keep an open
+   * menu and the focus while boxes come in.
+   */
   _renderTable() {
     const tbody = $('bb-table').querySelector('tbody');
     $('bb-table-wrap').hidden = !this.raw;
-    if (!this.raw) { tbody.innerHTML = ''; return; }
-    if (!this.boxes.length) {
-      const note = this.raw.done ? t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.') : t('demo.bb.hint.wait', 'Boxes appear here minute by minute while detection runs.');
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${esc(note)}</td></tr>`;
+    if (!this.raw || !this.boxes.length) {
+      const note = !this.raw ? '' : this.rec ? t('demo.bb.listening', 'Listening. Boxes appear here as they are found.')
+        : this.raw.done || this.raw.stopped ? t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.')
+          : t('demo.bb.hint.wait', 'Boxes appear here while detection runs.');
+      tbody.innerHTML = note ? `<tr><td colspan="6" class="text-center text-muted py-3">${esc(note)}</td></tr>` : '';
       return;
     }
-    const suggest = $('bb-suggest').checked;
-    tbody.innerHTML = this.boxes.map((b, i) => {
-      const g = this._geom(b), edit = this._edit(b), cands = this.suggestions.get(timeKey(g));
-      let speciesCell;
-      if (suggest && !cands) speciesCell = `<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>${esc(t('demo.bb.identifying', 'Identifying…'))}</span>`;
-      else {
-        const opts = (cands || []).map(c => `<option value="${c.s}"${c.s === edit.species ? ' selected' : ''}>${esc(catalog.name(c.s))} (${fmtPct(c.p, 0)})</option>`);
-        if (edit.species !== AVES && !(cands || []).some(c => c.s === edit.species)) opts.unshift(`<option value="${edit.species}" selected>${esc(catalog.name(edit.species))}</option>`);
-        opts.push(`<option value="${AVES}"${edit.species === AVES ? ' selected' : ''}>${esc(t('demo.bb.aves', 'Bird (unidentified) · Aves'))}</option>`);
-        opts.push(`<option value="pick">${esc(t('demo.bb.otherSpecies', 'Other species…'))}</option>`);
-        speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb') : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}">${opts.join('')}</select>`;
+    const rows = [...tbody.children], template = document.createElement('template');
+    if (rows[0]?.dataset.i == null) rows.splice(0).forEach(tr => tr.remove());   // the note
+    this.boxes.forEach((b, i) => {
+      const html = this._rowHtml(b, i);
+      let tr = rows[i];
+      if (tr?.rowHtml !== html) {
+        template.innerHTML = html;
+        const fresh = template.content.firstElementChild;
+        fresh.rowHtml = html;
+        if (tr) tr.replaceWith(fresh); else tbody.appendChild(fresh);
+        tr = fresh;
       }
-      const sound = (edit.soundType ? '' : `<option value="" selected>${esc(t('demo.bb.choose', 'Choose…'))}</option>`)
-        + SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
-      const drawn = esc(t('demo.bb.drawn', 'Drawn by you')), reset = esc(t('demo.bb.resetBox', 'Restore the detected box'));
-      const mark = b.manual
-        ? `<i class="bi bi-pencil-fill bb-mark" title="${drawn}" aria-label="${drawn}"></i>`
-        : this.edits.get(b.id)?.geom ? `<button type="button" class="bb-mark bb-reset" data-act="reset-geom" title="${reset}" aria-label="${reset}"><i class="bi bi-arrow-counterclockwise"></i></button>` : '';
-      const removeLabel = esc(b.manual ? t('demo.bb.deleteBox', 'Delete box') : edit.include ? t('demo.bb.remove', 'Remove box') : t('demo.bb.restore', 'Restore box'));
-      const removeIcon = b.manual ? 'bi-trash3' : edit.include ? 'bi-x-lg' : 'bi-arrow-counterclockwise';
-      const verifyLabel = esc(edit.verified ? t('demo.bb.unverify', 'Verified by you · click to undo') : t('demo.bb.verify', 'Verify box (V)'));
-      const verify = b.manual
-        ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
-        : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
-      return `<tr data-i="${i}" class="${b.id === this.selectedId ? 'is-selected' : ''}${b.id === this.hoverId ? ' is-hover' : ''}${edit.include ? '' : ' is-excluded'}">
-        <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"><i class="bi bi-play-fill"></i>${i + 1}</button></td>
+      tr.classList.toggle('is-selected', b.id === this.selectedId);
+      tr.classList.toggle('is-hover', b.id === this.hoverId);
+    });
+    rows.slice(this.boxes.length).forEach(tr => tr.remove());
+  }
+
+  _rowHtml(b, i) {
+    const suggest = $('bb-suggest').checked, locked = this.recording ? ' disabled' : '';
+    const g = this._geom(b), edit = this._edit(b), cands = this._candidates(g);
+    let speciesCell;
+    if (suggest && !cands) speciesCell = `<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>${esc(t('demo.bb.identifying', 'Identifying…'))}</span>`;
+    else {
+      const opts = (cands || []).map(c => `<option value="${c.s}"${c.s === edit.species ? ' selected' : ''}>${esc(catalog.name(c.s))} (${fmtPct(c.p, 0)})</option>`);
+      if (edit.species !== AVES && !(cands || []).some(c => c.s === edit.species)) opts.unshift(`<option value="${edit.species}" selected>${esc(catalog.name(edit.species))}</option>`);
+      opts.push(`<option value="${AVES}"${edit.species === AVES ? ' selected' : ''}>${esc(t('demo.bb.aves', 'Bird (unidentified) · Aves'))}</option>`);
+      opts.push(`<option value="pick">${esc(t('demo.bb.otherSpecies', 'Other species…'))}</option>`);
+      speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb') : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}"${locked}>${opts.join('')}</select>`;
+    }
+    const sound = (edit.soundType ? '' : `<option value="" selected>${esc(t('demo.bb.choose', 'Choose…'))}</option>`)
+      + SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
+    const drawn = esc(t('demo.bb.drawn', 'Drawn by you')), reset = esc(t('demo.bb.resetBox', 'Restore the detected box'));
+    const mark = b.manual
+      ? `<i class="bi bi-pencil-fill bb-mark" title="${drawn}" aria-label="${drawn}"></i>`
+      : this.edits.get(b.id)?.geom ? `<button type="button" class="bb-mark bb-reset" data-act="reset-geom" title="${reset}" aria-label="${reset}"><i class="bi bi-arrow-counterclockwise"></i></button>` : '';
+    const removeLabel = esc(b.manual ? t('demo.bb.deleteBox', 'Delete box') : edit.include ? t('demo.bb.remove', 'Remove box') : t('demo.bb.restore', 'Restore box'));
+    const removeIcon = b.manual ? 'bi-trash3' : edit.include ? 'bi-x-lg' : 'bi-arrow-counterclockwise';
+    const verifyLabel = esc(edit.verified ? t('demo.bb.unverify', 'Verified by you · click to undo') : t('demo.bb.verify', 'Verify box (V)'));
+    const verify = b.manual
+      ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
+      : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"${locked}><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
+    return `<tr data-i="${i}" class="${edit.include ? '' : 'is-excluded'}">
+        <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"${locked}><i class="bi bi-play-fill"></i>${i + 1}</button></td>
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
         <td class="bb-c-species"><div class="bb-species-wrap">${speciesCell}</div></td>
-        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select${edit.soundType ? '' : ' is-unset'}" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}">${sound}</select></td>
-        <td class="bb-c-toggle">${verify}<button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"><i class="bi ${removeIcon}"></i></button></td>
+        <td class="bb-c-sound"><select class="form-select form-select-sm bb-select${edit.soundType ? '' : ' is-unset'}" data-field="sound" aria-label="${esc(t('demo.bb.col.sound', 'Sound type'))}"${locked}>${sound}</select></td>
+        <td class="bb-c-toggle">${verify}<button type="button" class="bb-toggle" data-act="toggle" title="${removeLabel}" aria-label="${removeLabel}"${locked}><i class="bi ${removeIcon}"></i></button></td>
       </tr>`;
-    }).join('');
   }
 
   /**
@@ -844,9 +1207,66 @@ export class BirdBoxTab {
     this.spec.render();
   }
 
+  /** While recording, a soft edge marks how far detection has come; the newest sound stays bright. */
+  _drawFrontier(ctx, h) {
+    const x = h.timeToX(this.analyzedTo);
+    if (x < 0 || x > h.width) return;
+    const tint = this.spec.light ? '15,23,42' : '34,211,238', band = Math.min(h.width - x, 90);
+    if (band > 0) {
+      const fade = ctx.createLinearGradient(x, 0, x + band, 0);
+      fade.addColorStop(0, `rgba(${tint},0.14)`);
+      fade.addColorStop(1, `rgba(${tint},0)`);
+      ctx.fillStyle = fade;
+      ctx.fillRect(x, 0, band, h.height);
+    }
+    ctx.fillStyle = `rgba(${tint},0.55)`;
+    ctx.fillRect(Math.round(x), 0, 1, h.height);
+  }
+
+  /** How far along a box's pop-in is while recording: 1 when done. */
+  _popOf(b, now) {
+    const born = this.rec ? this.born.get(b.id) : null;
+    return born == null ? 1 : Math.min(1, (now - born) / POP_MS);
+  }
+
+  /**
+   * While detection runs, the boxes that may still change, drawn dashed. The next windows can
+   * fuse a box near the line with theirs, join it into a phrase or hide it as nested, so a box
+   * ending less than one window step (1.5 s) plus the phrase gap behind the line may change.
+   * A phrase that grows also widens its band, and can then take in a box beside it that ended
+   * long before: so a box linked to one that may change (within the phrase gap in time, with
+   * overlapping bands) may change too. In simulated recordings of the sample soundscape and an
+   * 11-minute file, at confidences 0.05 to 0.5 and phrase gaps 0 to 1 s, no box this leaves
+   * solid changed later.
+   */
+  _markPending() {
+    this.pending = new Set();
+    if (this.analyzedTo == null) return;
+    const gap = +$('bb-gap').value, after = this.analyzedTo - SETTLED - gap, todo = [];
+    for (const b of this.songs) if (b.t1 > after) { this.pending.add(b); todo.push(b); }
+    while (todo.length) {
+      const p = todo.pop();
+      for (const b of this.songs) {
+        if (this.pending.has(b) || b.cls !== p.cls) continue;
+        if (Math.max(b.t0, p.t0) - Math.min(b.t1, p.t1) > gap || b.fhi <= p.flo || p.fhi <= b.flo) continue;
+        this.pending.add(b);
+        todo.push(b);
+      }
+    }
+  }
+
+  /** A detected box that may still change. Drawn and adjusted boxes are the person's own. */
+  _pending(b) {
+    return !!this.pending?.has(b) && !this.edits.get(b.id)?.geom;
+  }
+
   _drawBoxes(ctx, h) {
+    const now = performance.now(), calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (this.recording) {
+      if (this.analyzedTo != null) this._drawFrontier(ctx, h);
+    }
     // Dim what is not analyzed yet, as on the V3.0 tab
-    if (this.analyzedTo != null) {
+    else if (this.analyzedTo != null) {
       const x0 = Math.max(0, h.timeToX(this.analyzedTo));
       ctx.fillStyle = this.spec.light ? 'rgba(255,255,255,0.6)' : 'rgba(5,4,12,0.55)';
       if (x0 < h.width) ctx.fillRect(x0, 0, h.width - x0, h.height);
@@ -860,9 +1280,22 @@ export class BirdBoxTab {
       const selected = b.id === this.selectedId, active = selected || b.id === this.hoverId;
       const base = b.manual ? '#fbbf24' : edit.verified ? '#4ade80' : '#22d3ee';
       const color = !edit.include ? 'rgba(148,163,184,0.7)' : active ? '#ffffff' : base;
+      const pop = calm ? 1 : this._popOf(b, now);
+      if (pop < 1) {
+        // A ring that settles on the box as it appears
+        const grow = (1 - pop) * 10, eased = pop * pop;
+        ctx.strokeStyle = base;
+        ctx.globalAlpha = (1 - eased) * 0.8;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x0 - grow, y0 - grow, Math.max(2, x1 - x0) + 2 * grow, Math.max(2, y1 - y0) + 2 * grow);
+        ctx.fillStyle = base;
+        ctx.globalAlpha = (1 - eased) * 0.22;
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        ctx.globalAlpha = 1;
+      }
       ctx.strokeStyle = color;
       ctx.lineWidth = active ? 2.5 : 1.5;
-      ctx.setLineDash(edit.include ? [] : [4, 3]);
+      ctx.setLineDash(!edit.include ? [4, 3] : this._pending(b) ? [6, 3] : []);
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
       if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
@@ -903,7 +1336,8 @@ export class BirdBoxTab {
     return this.boxes.map((b, i) => ({ b, g: this._geom(b), i, edit: this._edit(b), sp: this._species(b) })).filter(r => r.edit.include);
   }
 
-  _baseName() { return (shared.audio?.name || 'audio').replace(/\.[^.]+$/, ''); }
+  /** File name of CSV and Raven exports; a stopped run's say they cover a part. */
+  _baseName() { return `${(this._audio()?.name || 'audio').replace(/\.[^.]+$/, '')}${this.raw?.stopped ? '_partial' : ''}`; }
 
   /**
    * Mark what the Annota-JSON export still needs from the person; true when
@@ -957,7 +1391,7 @@ export class BirdBoxTab {
           : 'species chosen by the annotator';
       return {
         annotation_source_id: `birdbox-${String(r.i + 1).padStart(6, '0')}`,
-        sound_file: shared.audio?.name || '',
+        sound_file: this._audio()?.name || '',
         xc_nr: xcNr,
         annotator: human ? name : 'BirdBox',
         annotator_xc_id: human ? xcId : '',
@@ -995,7 +1429,7 @@ export class BirdBoxTab {
 
   /** Clock times are added when the recording's start is known. */
   _exportCsv() {
-    const start = shared.audio?.start;
+    const start = this._audio()?.start;
     const header = ['box', 'time_start', 'time_end', 'freq_low_hz', 'freq_high_hz', 'avg_confidence', 'max_confidence', 'detections_merged', 'class_id', 'species', 'scientific_name', 'common_name', 'suggestion_score', 'sound_type'];
     if (start) header.push('datetime_start', 'datetime_end');
     const lines = [header.join(',')];
@@ -1009,7 +1443,7 @@ export class BirdBoxTab {
   }
 
   _exportRaven() {
-    const start = shared.audio?.start;
+    const start = this._audio()?.start;
     const lines = [['Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)', ...(start ? RAVEN_CLOCK : []), 'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation', 'Confidence'].join('\t')];
     this._included().forEach(r => {
       const clock = start ? ravenClock(start, r.g.t0, r.g.t1) : [];

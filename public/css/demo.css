@@ -246,6 +246,13 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .spec-main.is-panning { cursor: grabbing; }
 .spec-main.is-editing { touch-action: none; }
 .spec-main:focus-visible { box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.8); }
+/* While recording: says the view follows the sound, or brings it back there */
+.spec-live { position: absolute; top: 0.5rem; right: 0.55rem; padding: 0.12rem 0.6rem 0.12rem 0.5rem; border: 0; border-radius: 1rem; background: rgba(5, 4, 12, 0.72); color: #fff; font-size: 0.7rem; font-weight: 600; line-height: 1.5; letter-spacing: 0.03em; cursor: pointer; }
+.spec-live:hover:not(:disabled) { background: rgba(5, 4, 12, 0.92); }
+.spec-live:disabled { cursor: default; }
+.spec-live[hidden] { display: none; }
+.spec-live[data-following="true"]::before { content: ""; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.35rem; border-radius: 50%; background: #ef4444; animation: demo-pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .spec-live[data-following="true"]::before { animation: none; } }
 .spec-canvas { display: block; width: 100%; }
 
 
@@ -362,6 +369,12 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-progress .progress { height: 6px; margin-bottom: 0.35rem; background: rgba(255, 255, 255, 0.08); }
 .demo-progress .progress-bar { background: linear-gradient(90deg, #60a5fa, #22d3ee); transition: width 0.25s ease; }
 .demo-progress .small { color: rgba(226, 232, 240, 0.8); font-variant-numeric: tabular-nums; }
+/* BirdBox: Stop and Continue beside the progress text */
+.demo-progress-line { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.demo-progress-action { flex: none; padding: 0.1rem 0.55rem; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 1rem; background: transparent; color: #e2e8f0; font-size: 0.75rem; font-weight: 600; line-height: 1.4; }
+.demo-progress-action:hover { background: rgba(255, 255, 255, 0.08); }
+.demo-progress-action:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.demo-progress-action[hidden] { display: none; }
 
 /* ---------- Panels ---------- */
 
@@ -874,6 +887,7 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .bb-swatch.is-verified { border-color: #4ade80; }
 .bb-swatch.is-drawn { border-color: #fbbf24; }
 .bb-swatch.is-removed { border-color: rgba(148, 163, 184, 0.7); border-style: dashed; }
+.bb-swatch.is-pending { border-color: #22d3ee; border-style: dashed; }
 
 /* Xeno-canto export form */
 .bb-xc fieldset legend { margin-bottom: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--demo-muted); }
@@ -887,6 +901,11 @@ button.bb-verify:hover { background: #f0fdf4; color: #16a34a; }
 .bb-verify.is-on { color: #16a34a; }
 .bb-verify.is-drawn { color: #d97706; }
 .demo-table tbody tr.is-excluded .bb-verify { opacity: 0.4; }
+
+/* While recording there is nothing to play or edit yet */
+#pane-birdbox.is-recording [data-role="draw"] { display: none; }
+#pane-birdbox.is-recording .demo-table tbody tr { cursor: default; }
+#pane-birdbox.is-recording .bb-play .bi, #pane-birdbox.is-recording .bb-c-toggle > * { visibility: hidden; }
 
 /* Phones: each box becomes a two-line row */
 @media (max-width: 575.98px) {

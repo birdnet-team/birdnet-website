@@ -15,7 +15,8 @@
  * one long filter at the input rate.
  *
  * Output ranges are computed independently and exactly as in a whole-file
- * run, so workers can convert a recording in parallel chunks.
+ * run, so workers can convert a recording in parallel chunks, and a stream
+ * can be converted as it arrives (StreamConverter).
  */
 
 const ATTEN_DB = 100;
@@ -157,4 +158,59 @@ export function makeConverter(inRate, outRate, nIn) {
       return cur;
     },
   };
+}
+
+/**
+ * Converts a stream as it arrives, such as a recording in progress: output
+ * sample n is what a whole-file run of the stream gives.
+ */
+export class StreamConverter {
+  constructor(inRate, outRate) {
+    this.inRate = inRate;
+    this.outRate = outRate;
+    this.conv = makeConverter(inRate, outRate, Infinity);   // null when the rates match
+    this.buffer = new Float32Array(1 << 15);
+    this.first = 0;     // input sample at buffer[0]
+    this.length = 0;    // samples in the buffer
+    this.done = 0;      // output samples produced
+  }
+
+  /** Outputs done..to-1; the input they read is there, or silence after the end of the stream. */
+  _run(to, conv = this.conv) {
+    const [i0, i1] = conv.span(this.done, to), x = new Float32Array(i1 - i0);
+    const from = Math.max(i0, this.first), end = Math.min(i1, this.first + this.length);
+    if (end > from) x.set(this.buffer.subarray(from - this.first, end - this.first), from - i0);
+    const out = conv.process(x, i0, this.done, to);
+    this.done = to;
+    // Keep what the next output samples still read
+    const keep = Math.min(this.length, Math.max(0, this.conv.span(to, to + 1)[0] - this.first));
+    this.buffer.copyWithin(0, keep, this.length);
+    this.first += keep;
+    this.length -= keep;
+    return out;
+  }
+
+  /** @param {Float32Array} input  @returns {Float32Array} the output samples this input completes */
+  process(input) {
+    if (!this.conv) return input.slice();
+    if (this.length + input.length > this.buffer.length) {
+      const grown = new Float32Array(Math.max(2 * this.buffer.length, this.length + input.length));
+      grown.set(this.buffer.subarray(0, this.length));
+      this.buffer = grown;
+    }
+    this.buffer.set(input, this.length);
+    this.length += input.length;
+    const have = this.first + this.length;
+    let to = Math.max(this.done, Math.floor(have * this.outRate / this.inRate));
+    while (to > this.done && this.conv.span(this.done, to)[1] > have) to--;
+    return to > this.done ? this._run(to) : new Float32Array(0);
+  }
+
+  /** The last samples, once the stream has ended. */
+  flush() {
+    if (!this.conv) return new Float32Array(0);
+    // Now that the length is known, the converter of a file that long
+    const conv = makeConverter(this.inRate, this.outRate, this.first + this.length);
+    return conv.length > this.done ? this._run(conv.length, conv) : new Float32Array(0);
+  }
 }

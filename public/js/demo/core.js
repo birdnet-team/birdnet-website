@@ -60,8 +60,14 @@ export function statLine(stats) {
   return `<div class="demo-sumline">${stats.map(([v, l]) => `<span><b>${esc(typeof v === 'number' ? fmtNumber(v) : v)}</b> ${esc(l)}</span>`).join('')}</div>`;
 }
 
+// toLocaleString with options builds a formatter each call; long lists format thousands of numbers
+const numberFormats = new Map();
+
 export function fmtNumber(value, digits = 0) {
-  return Number(value).toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const lang = locale(), key = `${lang}|${digits}`;
+  let format = numberFormats.get(key);
+  if (!format) numberFormats.set(key, format = new Intl.NumberFormat(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+  return format.format(Number(value));
 }
 
 export function fmtPct(p, digits = 1) {

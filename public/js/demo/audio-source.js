@@ -2,8 +2,15 @@
  * Audio input card (file, drag & drop, sample, microphone, Xeno-canto) for a
  * demo tab. Decoded audio goes to the shared store, so every tab sees the
  * same file.
+ *
+ * A live card (the BirdBox tab's) records with LiveRecorder: while it records
+ * it emits 'livestart' { maxSeconds }, 'liveaudio' { pcm } (32 kHz samples as
+ * they arrive), then 'liveend' before the finished recording arrives in the
+ * shared store, or 'livecancel' if there will be none. The shared store gets
+ * the browser's compressed recording, as from any other card, which records
+ * with MediaRecorder (Recorder), and the WAV as audio.lossless for BirdBox.
  */
-import { decodeAudio, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
+import { decodeAudio, LiveRecorder, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
 import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
 import { player } from './player.js';
 import { localStart, readRecordingStart, utcLabel } from './recording-time.js';
@@ -13,20 +20,30 @@ const XC_EXT = { mpeg: 'mp3', mp3: 'mp3', wav: 'wav', 'x-wav': 'wav', wave: 'wav
 
 let loadToken = 0;
 
-/** Decode a File and publish it as the current recording. */
-export async function loadFile(file, { isSample = false, xc = null, start = null, onStatus } = {}) {
+/**
+ * Decode a File and publish it as the current recording. `lossless` is the same
+ * recording as a 32 kHz WAV from the BirdBox tab's recorder, which starts at
+ * `losslessStart`: it is decoded too and kept as audio.lossless, with the fields of
+ * an audio of its own, which only that tab uses (losslessView).
+ */
+export async function loadFile(file, { isSample = false, xc = null, start = null, lossless = null, losslessStart = null, onStatus } = {}) {
   const token = ++loadToken;
   onStatus?.('decoding');
   const tags = readXcTags(await file.slice(0, 1 << 20).arrayBuffer());
   // The sample is cut from several recordings, so it has no one start time
-  const [decoded, fileStart] = await Promise.all([
+  const [decoded, fileStart, exact] = await Promise.all([
     decodeAudio(file, { onProgress: f => { if (token === loadToken) onStatus?.('decoding', f); } }),
     start || isSample ? null : readRecordingStart(file),
+    lossless ? decodeAudio(lossless) : null,
   ]);
   if (token !== loadToken) return null;
   const url = URL.createObjectURL(file);
   if (shared.audio?.url) URL.revokeObjectURL(shared.audio.url);
+  if (shared.audio?.lossless) URL.revokeObjectURL(shared.audio.lossless.url);
   const audio = { name: file.name, size: file.size, file, url, isSample, xc: xc || tags?.xc || null, tags, start: start || fileStart, ...decoded };
+  if (exact) {
+    audio.lossless = { ...exact, name: lossless.name, size: lossless.size, file: lossless, url: URL.createObjectURL(lossless), start: losslessStart };
+  }
   player.setSource(url);
   useRecordingLocation(tags);   // before the tabs see the audio, so their first suggestions use it
   shared.setAudio(audio);
@@ -109,6 +126,9 @@ function useRecordingLocation(tags) {
   }
 }
 
+/** The audio as the BirdBox tab sees it: its own recordings as their WAV (audio.lossless). */
+export const losslessView = audio => (audio?.lossless ? { ...audio, ...audio.lossless } : audio);
+
 /** Xeno-canto number from "XC1059662", "1059662" or a recording link; null if none. */
 export function parseXcNumber(value) {
   const s = String(value ?? '').trim();
@@ -157,10 +177,15 @@ export async function loadSample(onStatus) {
   return loadFile(new File([blob], CONFIG.sampleName, { type: 'audio/flac' }), { isSample: true, onStatus });
 }
 
-export class AudioSource {
-  /** @param {HTMLElement} root  element rendered by the demo-audio-source partial */
-  constructor(root) {
+export class AudioSource extends EventTarget {
+  /**
+   * @param {HTMLElement} root  element rendered by the demo-audio-source partial
+   * @param {{live?: boolean}} [options]  live: record with LiveRecorder and emit its audio
+   */
+  constructor(root, { live = false } = {}) {
+    super();
     this.root = root;
+    this.live = live;
     this.$ = role => root.querySelector(`[data-role="${role}"]`);
     this.recorder = null;
     this._bind();
@@ -168,7 +193,7 @@ export class AudioSource {
     player.addEventListener('state', () => this._renderPlay());
     player.addEventListener('time', e => {
       const time = this.$('time');
-      if (time && shared.audio) time.textContent = `${fmtTime(e.detail)} / ${fmtTime(shared.audio.duration)}`;
+      if (time && shared.audio) time.textContent = `${fmtTime(e.detail)} / ${fmtTime(this._audio().duration)}`;
     });
     this.render();
   }
@@ -180,7 +205,7 @@ export class AudioSource {
     this.$('sample').addEventListener('click', () => this._run(() => loadSample((s, f) => this._status(s, null, f))));
     this.$('record').addEventListener('click', () => this._startRecording());
     this.$('stop').addEventListener('click', () => this._stopRecording());
-    this.$('cancel').addEventListener('click', () => this._cancelRecording());
+    this.$('cancel').addEventListener('click', () => (this.live ? this.cancelRecording() : this._cancelRecording()));
     this.$('replace').addEventListener('click', () => this._showDrop(true));
     this.$('play').addEventListener('click', () => player.toggle());
     this.$('xc-form').addEventListener('submit', e => {
@@ -213,7 +238,7 @@ export class AudioSource {
     }));
     this.root.addEventListener('drop', e => {
       const file = e.dataTransfer?.files?.[0];
-      if (file) this._load(file);
+      if (file && !(this.live && this.recorder)) this._load(file);
     });
   }
 
@@ -233,6 +258,7 @@ export class AudioSource {
     this.$('status').innerHTML = `<span class="text-${level}"><i class="bi ${icon} me-1"></i>${esc(text)}</span>${link}`;
   }
 
+  /** Resolves with whether fn succeeded; a failure is shown on the card. */
   async _run(fn) {
     try {
       await fn();
@@ -241,9 +267,10 @@ export class AudioSource {
       this.root.classList.remove('is-busy');
       if (err instanceof XcError) this._message('warning', err.message, err.nr);
       else this._message('danger', t('demo.source.error', 'Could not decode this audio file. Try WAV, FLAC or MP3.'));
-      return;
+      return false;
     }
     this._status(null);
+    return true;
   }
 
   _load(file) {
@@ -263,8 +290,13 @@ export class AudioSource {
     this.$('truncated').hidden = show || !(a?.fullDuration > a?.duration + 0.5);
   }
 
+  /** The audio this card shows: a live card shows its recordings as their WAV. */
+  _audio() {
+    return this.live ? losslessView(shared.audio) : shared.audio;
+  }
+
   render() {
-    const a = shared.audio;
+    const a = this._audio();
     this._showDrop(!a);
     if (!a) return;
     this.$('truncated').textContent = t('demo.source.truncated', 'This recording is {total} long. The demo analyzes the first {max} minutes.', { total: fmtTime(a.fullDuration), max: MAX_SECONDS / 60 });
@@ -302,7 +334,15 @@ export class AudioSource {
     btn.setAttribute('aria-label', player.playing ? t('demo.player.pause', 'Pause') : t('demo.player.play', 'Play'));
   }
 
-  async _startRecording() {
+  _startRecording() {
+    return this.live ? this._startLive() : this._startCompressed();
+  }
+
+  _stopRecording() {
+    return this.live ? this._stopLive() : this._stopCompressed();
+  }
+
+  async _startCompressed() {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       this.$('status').textContent = t('demo.mic.generic', 'Could not access microphone');
       return;
@@ -329,7 +369,7 @@ export class AudioSource {
     this.$('recording').hidden = false;
   }
 
-  async _stopRecording() {
+  async _stopCompressed() {
     const start = this.recorder?.startDate;
     const file = await this.recorder?.stop();
     this.recorder = null;
@@ -343,5 +383,74 @@ export class AudioSource {
     this.recorder = null;
     this.$('idle').hidden = false;
     this.$('recording').hidden = true;
+  }
+
+  async _startLive() {
+    // Not while a recording is on, or while the last one is still being loaded
+    if (this.recorder || this.root.classList.contains('is-busy')) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.AudioWorkletNode) {
+      this.$('status').textContent = t('demo.mic.generic', 'Could not access microphone');
+      return;
+    }
+    const emit = (type, detail) => this.dispatchEvent(new CustomEvent(type, { detail }));
+    const recorder = this.recorder = new LiveRecorder({
+      maxSeconds: MAX_RECORD_SECONDS,
+      onTick: s => { this.$('timer').textContent = fmtTime(s); },
+      onAudio: pcm => emit('liveaudio', { pcm }),
+      onLimit: () => this._stopLive(),
+    });
+    try {
+      await recorder.start();
+    } catch (err) {
+      console.error(err);
+      const msg = err.name === 'NotAllowedError'
+        ? t('demo.mic.denied', 'Microphone access denied. Please allow microphone access in your browser settings.')
+        : err.name === 'NotFoundError'
+          ? t('demo.mic.notFound', 'No microphone found. Please connect a microphone and try again.')
+          : t('demo.mic.generic', 'Could not access microphone');
+      this.$('status').innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>${esc(msg)}</span>`;
+      this.recorder = null;
+      return;
+    }
+    player.pause();
+    this._status(null);
+    this.$('timer').textContent = '0:00';
+    this._setRecording(true);
+    emit('livestart', { maxSeconds: MAX_RECORD_SECONDS });
+  }
+
+  _setRecording(on) {
+    this.$('idle').hidden = on;
+    this.$('recording').hidden = !on;
+  }
+
+  async _stopLive() {
+    const recorder = this.recorder;
+    if (!recorder) return;
+    this.recorder = null;
+    const start = recorder.startDate, { wav, wavStart, compressed } = recorder.stop();
+    this._setRecording(false);
+    if (!wav) {
+      this.dispatchEvent(new Event('livecancel'));
+      return;
+    }
+    this.dispatchEvent(new Event('liveend'));
+    // The other tabs get the browser's recording, as from their own cards; BirdBox the WAV
+    const loaded = await this._run(async () => {
+      const file = await compressed, wavFrom = wavStart && localStart(wavStart);
+      return file
+        ? loadFile(file, { start: start && localStart(start), lossless: wav, losslessStart: wavFrom, onStatus: (s, f) => this._status(s, null, f) })
+        : loadFile(wav, { start: wavFrom, onStatus: (s, f) => this._status(s, null, f) });
+    });
+    if (!loaded) this.dispatchEvent(new Event('livecancel'));
+  }
+
+  /** A live card: stop recording without keeping it. */
+  cancelRecording() {
+    if (!this.recorder) return;
+    this.recorder.cancel();
+    this.recorder = null;
+    this._setRecording(false);
+    this.dispatchEvent(new Event('livecancel'));
   }
 }
