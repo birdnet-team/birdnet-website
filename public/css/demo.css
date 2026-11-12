@@ -369,6 +369,12 @@ section.demo-pane { padding: 0; animation: demo-fade 0.25s ease; }
 .demo-progress .progress { height: 6px; margin-bottom: 0.35rem; background: rgba(255, 255, 255, 0.08); }
 .demo-progress .progress-bar { background: linear-gradient(90deg, #60a5fa, #22d3ee); transition: width 0.25s ease; }
 .demo-progress .small { color: rgba(226, 232, 240, 0.8); font-variant-numeric: tabular-nums; }
+/* BirdBox: Stop and Continue beside the progress text */
+.demo-progress-line { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.demo-progress-action { flex: none; padding: 0.1rem 0.55rem; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 1rem; background: transparent; color: #e2e8f0; font-size: 0.75rem; font-weight: 600; line-height: 1.4; }
+.demo-progress-action:hover { background: rgba(255, 255, 255, 0.08); }
+.demo-progress-action:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.demo-progress-action[hidden] { display: none; }
 
 /* ---------- Panels ---------- */
 

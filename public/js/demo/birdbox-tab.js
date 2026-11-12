@@ -206,6 +206,8 @@ export class BirdBoxTab {
       $('bb-gap-val').textContent = +gap.value > 0 ? `${fmtNumber(+gap.value, 2)} s` : t('demo.bb.gapOff', 'off');
     };
     sync();
+    $('bb-stop').addEventListener('click', () => this._stop());
+    $('bb-continue').addEventListener('click', () => this.run(true));
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
     $('bb-suggest').addEventListener('change', () => this._update());
@@ -371,6 +373,8 @@ export class BirdBoxTab {
     const wrap = $('bb-progress');
     if (fraction == null) { wrap.hidden = true; return; }
     wrap.hidden = false;
+    $('bb-stop').hidden = this.recording;   // a recording stops with its own button
+    $('bb-continue').hidden = true;
     const bar = wrap.querySelector('.progress-bar');
     bar.style.width = `${Math.round(Math.max(0.02, Math.min(1, fraction)) * 100)}%`;
     bar.classList.toggle('progress-bar-striped', indeterminate);
@@ -383,6 +387,31 @@ export class BirdBoxTab {
     this._setProgress(p.loaded / p.total * 0.3, p.cached
       ? t('demo.bb.status.cached', 'Loading BirdBox from your browser cache…')
       : t('demo.bb.status.downloading', 'Downloading BirdBox model: {done} of {total}', { done: fmtBytes(p.loaded), total: fmtBytes(p.total) }));
+  }
+
+  /** Stop a file's detection, as in the BirdBox docs demo. */
+  _stop() {
+    this.runToken++;
+    this.pacer?.stop();   // the windows held back are dropped: Continue starts after the last one shown
+    birdbox.abort();
+    this._showStopped();
+  }
+
+  /**
+   * The boxes found so far stay, with their species, and CSV and Raven exports cover
+   * them. Continue picks detection up after the last window, with the same result as
+   * a run without a stop.
+   */
+  _showStopped() {
+    if (this.raw) this.raw.stopped = true;
+    else this.analyzedTo = null;
+    const total = windowCount(this.pcm.length), n = this.raw?.next ?? 0;
+    this._setProgress(n ? 0.3 + 0.7 * n / total : 0.01, n
+      ? t('demo.bb.status.stopped', 'Stopped at clip {n} of {total}', { n, total })
+      : t('demo.bb.status.stoppedEarly', 'Detection stopped'));
+    $('bb-stop').hidden = true;
+    $('bb-continue').hidden = false;
+    this._update();
   }
 
   /* ---------------- recording in progress ---------------- */
@@ -549,8 +578,9 @@ export class BirdBoxTab {
     if (this.visible) this._startSpec();
     this.spec.setCursor(0);
     this._update();
-    // A detection the recording interrupted goes on where it was
+    // A detection the recording interrupted goes on where it was, unless it was stopped
     if (this.raw?.done) return;
+    if (this.raw?.stopped) { this._showStopped(); return; }
     if (this.visible) this.run(true); else this.pendingRun = true;
   }
 
@@ -635,7 +665,8 @@ export class BirdBoxTab {
     const token = ++this.runToken;
     const total = windowCount(this.pcm.length);
     const from = resume && this.raw && !this.raw.done ? this.raw.next : 0;
-    if (!from) {
+    if (from) this.raw.stopped = false;
+    else {
       this.raw = null;
       this.analyzedTo = 0;
     }
@@ -819,7 +850,7 @@ export class BirdBoxTab {
       if (this.scores.has(k)) this.wanted.delete(k);
       else if (!this.scoring.has(k) && k < complete) return k;
     }
-    if (this.analyzedTo == null) return null;   // no detection is running
+    if (this.analyzedTo == null || this.raw?.stopped) return null;   // no detection is running
     this.ahead = Math.max(this.ahead, this.raw?.next ?? 0);
     while (this.scores.has(this.ahead) || this.scoring.has(this.ahead)) this.ahead++;
     return this.ahead < complete ? this.ahead : null;
@@ -1045,8 +1076,17 @@ export class BirdBoxTab {
 
   _renderSummary() {
     const el = $('bb-summary');
-    // Exports wait for the whole recording
-    ['bb-export-xc', 'bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !this.raw?.done || !this.boxes.length; });
+    // Exports wait for the whole recording. A stopped run exports its part as CSV and
+    // Raven; the Annota-JSON goes to Xeno-canto, where it would look complete
+    const stopped = !!this.raw?.stopped;
+    $('bb-export-xc').disabled = !this.raw?.done || !this.boxes.length;
+    ['bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !(this.raw?.done || stopped) || !this.boxes.length; });
+    const note = $('bb-export-note');
+    note.hidden = !stopped;
+    if (stopped) {
+      note.textContent = t('demo.bb.partial', 'Detection was stopped at {done} of {total}. CSV and Raven cover only this part; the Annota-JSON needs the whole recording.',
+        { done: fmtTime(this.analyzedTo ?? 0), total: fmtTime(this.duration) });
+    }
     if (!this.raw) { el.innerHTML = ''; return; }
     const included = this.boxes.filter(b => this._edit(b).include);
     const species = new Set(included.map(b => this._edit(b).species).filter(s => s !== AVES));
@@ -1069,7 +1109,7 @@ export class BirdBoxTab {
     $('bb-table-wrap').hidden = !this.raw;
     if (!this.raw || !this.boxes.length) {
       const note = !this.raw ? '' : this.rec ? t('demo.bb.listening', 'Listening. Boxes appear here as they are found.')
-        : this.raw.done ? t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.')
+        : this.raw.done || this.raw.stopped ? t('demo.bb.none', 'No bird vocalizations above this confidence. Try a lower threshold.')
           : t('demo.bb.hint.wait', 'Boxes appear here while detection runs.');
       tbody.innerHTML = note ? `<tr><td colspan="6" class="text-center text-muted py-3">${esc(note)}</td></tr>` : '';
       return;
@@ -1296,7 +1336,8 @@ export class BirdBoxTab {
     return this.boxes.map((b, i) => ({ b, g: this._geom(b), i, edit: this._edit(b), sp: this._species(b) })).filter(r => r.edit.include);
   }
 
-  _baseName() { return (this._audio()?.name || 'audio').replace(/\.[^.]+$/, ''); }
+  /** File name of CSV and Raven exports; a stopped run's say they cover a part. */
+  _baseName() { return `${(this._audio()?.name || 'audio').replace(/\.[^.]+$/, '')}${this.raw?.stopped ? '_partial' : ''}`; }
 
   /**
    * Mark what the Annota-JSON export still needs from the person; true when

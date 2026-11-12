@@ -340,7 +340,11 @@ permalink: "/demo/"
       </div>
       <div id="bb-progress" class="demo-progress" hidden>
         <div class="progress" role="progressbar" aria-label="Detection progress" data-i18n-aria="demo.bb.progressAria"><div class="progress-bar" style="width:0%"></div></div>
-        <div id="bb-progress-text" class="small" aria-live="polite"></div>
+        <div class="demo-progress-line">
+          <div id="bb-progress-text" class="small" aria-live="polite"></div>
+          <button type="button" id="bb-stop" class="demo-progress-action" hidden><i class="bi bi-stop-fill me-1"></i><span data-i18n="demo.bb.stop">Stop</span></button>
+          <button type="button" id="bb-continue" class="demo-progress-action" hidden><i class="bi bi-play-fill me-1"></i><span data-i18n="demo.bb.continue">Continue detecting</span></button>
+        </div>
       </div>
     </div>
 
@@ -458,6 +462,7 @@ permalink: "/demo/"
             <button type="button" id="bb-export-csv" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-filetype-csv me-1"></i>CSV</button>
             <button type="button" id="bb-export-raven" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-table me-1"></i><span data-i18n="demo.v3.exportRaven">Raven selection table</span></button>
           </div>
+          <p id="bb-export-note" class="small text-warning mt-2 mb-0" hidden></p>
           <div class="form-text"><span data-i18n="demo.bb.xcHelp">Boxes you verified, adjusted or drew carry your name; the others are marked as unverified BirdBox detections. Names follow the Xeno-canto taxonomy, and boxes without a species are exported as Aves. Your details are remembered in this browser.</span></div>
         </form>
       </div>
