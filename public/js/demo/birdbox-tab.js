@@ -3,10 +3,11 @@
  * model (its spectrogram, YOLO and NMS run inside the ONNX graphs).
  *
  * The model runs as a stream at the lowest confidence and reports the boxes
- * of its 3 s windows a few seconds of audio at a time, so boxes appear while
- * detection runs. birdbox-fusion.js merges them exactly like the model's
- * window fusion for any (confidence, phrase gap) setting, so both sliders
- * update instantly. The boxes export as Xeno-canto Annota-JSON.
+ * of its 3 s windows one window at a time, so boxes appear while detection
+ * runs; in a file they show evenly spaced (birdbox-pacer.js). birdbox-fusion.js
+ * merges them exactly like the model's window fusion for any (confidence,
+ * phrase gap) setting, so both sliders update instantly. The boxes export as
+ * Xeno-canto Annota-JSON.
  *
  * BirdNET V3.0 suggests a species for every box. It scores the same 3 s
  * windows alongside the detection, so a box's species is usually there when
@@ -23,6 +24,7 @@
  */
 import { AudioSource, losslessView, parseXcNumber } from './audio-source.js';
 import { fuseBoxes } from './birdbox-fusion.js';
+import { Pacer } from './birdbox-pacer.js';
 import { birdbox } from './birdbox-service.js';
 import { analyzedTo as analyzedAfter, fileEnd, readyWindows, windowCount } from './birdbox-stream.js';
 import { csvField, downloadFile, esc, fmtBytes, fmtNumber, fmtPct, fmtTime, shared, statLine, t, throttle, toast } from './core.js';
@@ -41,14 +43,10 @@ const MIN_SCORE = 0.05;       // BirdNET V3.0 scores below this are not kept
 const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line no longer changes, unless linked to one that may
 const SCORES_MS = 120;        // show new species at most this often
 const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
-const UPDATE_MS = 100;        // redraw at most this often while detection runs,
-const UPDATE_SHARE = 0.25;    // and spend at most this share of the time on it: an hour holds many boxes
 const LIVE_MAX_WINDOWS = 8;   // windows per run when detection has fallen behind a recording
 const LIVE_BEHIND = 6;        // seconds behind the sound at which the hint says so
 const LIVE_EDGE = 0.13;       // seconds the right edge stays behind the microphone, for the last frames
 const POP_MS = 420;           // a new box pops in over this time
-const PACE_IN_HAND = 3;       // windows of a file held back, to show them evenly spaced
-const PACE_FOLLOW = 0.1;      // how fast the pace follows the worker's time per window
 const SOUND_TYPES = ['song', 'call', 'alarm call', 'flight call', 'begging call', 'dawn song', 'subsong', 'drumming', 'duet'];
 const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
@@ -67,91 +65,6 @@ const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
-
-/**
- * Shows the windows of a file evenly spaced. The worker finishes them unevenly: now
- * and then a few windows take up to twice as long, most often while BirdNET V3.0
- * scores windows alongside. So a few finished windows are held in hand (PACE_IN_HAND),
- * and the windows show the worker's mean time per window apart, a mean that follows
- * it slowly: the windows in hand cover a slow stretch. The first window waits for a
- * full hand. With more in hand the pace quickens, with fewer it slows, and with none
- * the next window shows as soon as it is done. When a redraw costs more than its
- * share of the time (a long recording with many boxes), each step shows the same
- * number of windows.
- */
-class Pacer {
-  constructor(show) {
-    this.show = show;          // show(item): draw the last item of a step
-    this.queue = [];
-    this.mean = 0;             // ms per window: the worker's recent mean
-    this.lastIn = 0;
-    this.minStep = UPDATE_MS;  // ms between redraws at least
-    this.timer = null;
-    this.idle = true;
-    this.started = false;
-    this.finished = null;
-  }
-
-  /** A window is done. */
-  push(item) {
-    const now = performance.now();
-    if (this.lastIn) {
-      const gap = now - this.lastIn;
-      this.mean = this.mean ? this.mean + PACE_FOLLOW * (gap - this.mean) : gap;
-    }
-    this.lastIn = now;
-    this.queue.push(item);
-    // The first window waits until the hand is full, which the gentle pace would take long to fill
-    if (this.idle && (this.started || this.queue.length > PACE_IN_HAND)) {
-      this.started = true;
-      this._step();
-    }
-  }
-
-  /** Resolves once the last window is shown. */
-  finish() {
-    if (this.idle && this.queue.length) {   // fewer windows than a full hand
-      this.started = true;
-      this._step();
-    }
-    if (this.idle) return Promise.resolve();
-    return new Promise(resolve => { this.finished = resolve; });
-  }
-
-  stop() {
-    clearTimeout(this.timer);
-    this.queue = [];
-    this.idle = true;
-    this.finished = null;
-  }
-
-  _step() {
-    this.timer = null;
-    if (!this.queue.length) {
-      this.idle = true;
-      this.finished?.();
-      this.finished = null;
-      return;
-    }
-    this.idle = false;
-    const t0 = performance.now(), per = this.mean || this.minStep;
-    // Far behind (a hidden page, whose timers are slowed): catch up in larger steps
-    const n = Math.min(this.queue.length, Math.max(Math.ceil(this.minStep / per), Math.ceil((this.queue.length - PACE_IN_HAND - 2) / 3)));
-    const items = this.queue.splice(0, n);
-    this.show(items[items.length - 1]);
-    const now = performance.now();
-    this.minStep = Math.max(UPDATE_MS, (now - t0) / UPDATE_SHARE);
-    if (this.finished && !this.queue.length) {
-      this.idle = true;
-      this.finished();
-      this.finished = null;
-      return;
-    }
-    // PACE_IN_HAND windows in hand: a little slower with fewer, faster with more, gently, as each change shows
-    const pace = clamp(1 + 0.05 * (PACE_IN_HAND - this.queue.length), 0.6, 1.2);
-    this.timer = setTimeout(() => this._step(), Math.max(0, t0 + n * per * pace - now));
-  }
-}
 
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 const concat = (a, b) => {
