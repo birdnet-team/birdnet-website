@@ -642,6 +642,8 @@ export class BirdBoxTab {
     const progress = done => {
       const ms = this.raw?.ms || 0, left = done ? (total - done) * ms / done / 1000 : 0;
       let text = t('demo.bb.status.detecting', 'Detecting vocalizations · clip {n} of {total}', { n: Math.max(1, done), total });
+      // As in the V3.0 tab: seconds of audio detected per second of detection
+      if (done && ms > 0) text += ` · ${t('demo.bb.status.speed', '{speed}× real time', { speed: fmtNumber(Math.min(this.duration, (done - 1) * HOP + CLIP) / (ms / 1000), 1) })}`;
       if (left > 20) text += ` · ${t('demo.bb.status.left', 'about {time} left', { time: fmtTime(Math.ceil(left / 10) * 10) })}`;
       this._setProgress(0.3 + 0.7 * done / total, text);
     };
@@ -1050,7 +1052,8 @@ export class BirdBoxTab {
       [this.boxes.length, t('demo.bb.sum.boxes', 'boxes')],
       [included.filter(b => this._edit(b).verified).length, t('demo.bb.sum.verified', 'verified by you')],
       [species.size, t('demo.bb.sum.species', 'suggested species')],
-      this.raw.done ? [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection')] : [fmtTime(this.analyzedTo ?? 0), t('demo.v3.sum.audio', 'audio')],
+      this.raw.done ? [`${fmtNumber(this.raw.ms / 1000, 1)} s`, t('demo.bb.sum.time', 'detection ({speed}× real time)', { speed: fmtNumber(this.duration / Math.max(this.raw.ms / 1000, 0.001), 1) })]
+        : [fmtTime(this.analyzedTo ?? 0), t('demo.v3.sum.audio', 'audio')],
     ];
     el.innerHTML = statLine(stats);
   }
