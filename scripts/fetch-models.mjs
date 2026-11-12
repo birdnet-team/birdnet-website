@@ -37,7 +37,7 @@ const FORCE = process.argv.includes('--force');
 
 // Pinned upstream sources. Bump the commit (and the expected hashes) to update.
 const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '2e7236e52c15d238e31ed7345d7ae8152d432222' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '4233fa738e07a050b3ec70f7efa51eb6958dd2cd' };
 
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 // Git LFS objects are served from media.githubusercontent.com

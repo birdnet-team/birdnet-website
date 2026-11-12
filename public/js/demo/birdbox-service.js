@@ -61,12 +61,12 @@ class BirdBoxService {
     return this.ready;
   }
 
-  _job(message, transfer, onChunk) {
+  _job(message, onChunk, audio) {
     if (this.job) return Promise.reject(new Error('A detection is already running'));
     return new Promise((resolve, reject) => {
       const id = this.nextId++;
-      this.job = { id, resolve, reject, onChunk };
-      this.worker.postMessage({ ...message, id, conf: RAW_CONF }, transfer);
+      this.job = { id, resolve, reject, onChunk, audio };
+      this.worker.postMessage({ ...message, id, conf: RAW_CONF });
     });
   }
 
@@ -74,11 +74,12 @@ class BirdBoxService {
    * Detect over a whole recording. onChunk({ data, rows, next, analyzedTo }) gets
    * the next rows as soon as they are ready; next counts the windows done. A run
    * continues an earlier one, or a recording's live windows, when `from` is
-   * their `next`.
+   * their `next`. The worker asks for the audio a block at a time, so `audio` is
+   * not copied and must not change during the run.
    * @returns {Promise<{ms: number}>}
    */
   detect(audio, onChunk, from = 0) {
-    return this._job({ type: 'detect', audio, step: STEP, from }, [audio.buffer], onChunk);
+    return this._job({ type: 'detect', length: audio.length, step: STEP, from }, onChunk, audio);
   }
 
   /** A recording starts: its audio follows with liveAudio. */
@@ -105,6 +106,11 @@ class BirdBoxService {
     const job = this.job;
     if (!job || msg.id !== job.id) return;
     if (msg.type === 'chunk') { job.onChunk(msg); return; }
+    if (msg.type === 'audio-want') {
+      const data = job.audio.slice(msg.from, msg.to);
+      this.worker.postMessage({ type: 'audio', id: job.id, from: msg.from, data }, [data.buffer]);
+      return;
+    }
     this.job = null;
     if (msg.type === 'error') job.reject(new Error(msg.error));
     else job.resolve(msg);
