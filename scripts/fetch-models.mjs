@@ -18,7 +18,8 @@
  *   birdbox/<model>.spectrogram.onnx, birdbox/<model>.detect.onnx
  *                         the two streaming graphs stored in the BirdBox model:
  *                         audio to spectrogram frames, and frames to the boxes
- *                         of each 3 s window (weights untouched)
+ *                         of each 3 s window, which takes each window's noise
+ *                         floor as an input (weights untouched)
  *   manifest.json         sizes and SHA-256 of everything the demo loads
  *
  * Usage: node scripts/fetch-models.mjs [--force]
@@ -277,14 +278,14 @@ function parseGraph(buf) {
   return { nodes, inits, producers: new Map(nodes.flatMap(n => n.outputs.map(o => [o, n]))) };
 }
 
-/** The nodes `roots` depend on, and the tensors they read that no node produces. */
-function ancestors(graph, roots) {
+/** The nodes `roots` depend on, and the tensors they read that no node produces (or that are in `stop`). */
+function ancestors(graph, roots, stop = new Set()) {
   const nodes = new Set(), leaves = new Set(), seen = new Set(), todo = [...roots];
   while (todo.length) {
     const name = todo.pop();
     if (!name || seen.has(name)) continue;
     seen.add(name);
-    const node = graph.producers.get(name);
+    const node = stop.has(name) ? null : graph.producers.get(name);
     if (!node) { leaves.add(name); continue; }
     nodes.add(node);
     todo.push(...node.inputs);
@@ -308,12 +309,54 @@ function modelMetadata(model) {
 }
 
 /**
+ * stream_detect with each window's noise floor as an input, so the page computes it
+ * (RollingFloor in birdbox-stream.js) and the network needs only the windows' own
+ * frames. The same as floorCut in BirdBox's docs/javascripts/demo/onnx-graph.js: the
+ * floor, (n_mels, windows, 1), is the interpolated percentile the graph takes from the
+ * sorted frames of the floor window (TopK), and enters the image as the input of the
+ * first Transpose after the TopK. The nodes only the floor needs go, and with them the
+ * inputs only they read (sound). An Identity node gives the input its name, `floor`.
+ *
+ * @returns the function, cut; null if it has no single TopK leading to a Transpose
+ */
+function floorCut(fn) {
+  const consumers = new Map();
+  for (const n of fn.nodes) for (const t of n.inputs) (consumers.get(t) || consumers.set(t, []).get(t)).push(n);
+  const topk = fn.nodes.filter(n => n.op === 'TopK');
+  if (topk.length !== 1) return null;
+  let cut = null;
+  const seen = new Set(), queue = [topk[0]];
+  while (queue.length && !cut) {
+    for (const t of queue.shift().outputs) {
+      for (const n of consumers.get(t) || []) {
+        if (seen.has(n)) continue;
+        seen.add(n);
+        if (n.op === 'Transpose') { cut = n.inputs[0]; break; }
+        queue.push(n);
+      }
+      if (cut) break;
+    }
+  }
+  if (!cut) return null;
+  const graph = { producers: new Map(fn.nodes.flatMap(n => n.outputs.map(o => [o, n]))) };
+  const { nodes, leaves } = ancestors(graph, fn.outputs, new Set([cut]));
+  if ([...nodes].some(n => n.op === 'TopK')) return null;   // the floor is still computed somewhere else
+  const identity = Buffer.concat([lenField(1, Buffer.from('floor')), lenField(2, Buffer.from(cut)), lenField(4, Buffer.from('Identity'))]);
+  return {
+    ...fn,
+    nodes: [{ op: 'Identity', inputs: ['floor'], outputs: [cut], record: lenField(1, identity) }, ...fn.nodes.filter(n => nodes.has(n))],
+    inputs: [...fn.inputs.filter(t => leaves.has(t)), 'floor'],
+  };
+}
+
+/**
  * The streaming graphs of a BirdBox model with a rolling noise floor, as two
  * models the demo runs in turn (birdbox-stream.js):
  *
  *   spectrogram(audio) -> db (n_mels, frames), sound (frames)
- *   detect(db, sound, first_frame, times, conf) -> raw, the boxes of the windows
- *       starting at `times`, before window fusion
+ *   detect(db, first_frame, times, conf, floor) -> raw, the boxes of the windows
+ *       starting at `times`, before window fusion, with their floors from the page
+ *       (floorCut)
  *
  * BirdBox's export stores them in the model as ONNX functions (domain
  * birdbox.stream). Their other inputs are tensors of the model: weights of its
@@ -377,9 +420,11 @@ function streamGraphs(model) {
     ]);
     return Buffer.concat([model.subarray(0, graphField.tagStart), lenField(7, graph), model.subarray(graphField.end)]);
   };
+  const floored = floorCut(detect);
+  if (!floored) throw new Error('BirdBox: stream_detect could not be cut at the noise floor (floorCut)');
   return {
     spectrogram: build(spectrogram, { audio: ['float32'] }),
-    detect: build(detect, { db: ['float32'], sound: ['bool'], first_frame: ['int64', []], times: ['float32'], conf: ['float32'] }),
+    detect: build(floored, { db: ['float32'], first_frame: ['int64', []], times: ['float32'], conf: ['float32'], floor: ['float32'] }),
   };
 }
 
