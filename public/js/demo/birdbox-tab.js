@@ -66,6 +66,24 @@ const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
 
+/**
+ * Width of a box label in LABEL_FONT. The spectrogram measures every label on every
+ * redraw, so widths are kept per label; not while fonts are loading, and they are
+ * measured again once a font has loaded (the web font replaces the fallback).
+ */
+const LABEL_FONT = '600 11px Inter Variable, Inter, system-ui, sans-serif';
+const labelWidths = new Map();
+document.fonts?.addEventListener?.('loadingdone', () => labelWidths.clear());
+function labelWidth(ctx, label) {
+  if (document.fonts && document.fonts.status !== 'loaded') return ctx.measureText(label).width;
+  let w = labelWidths.get(label);
+  if (w === undefined) {
+    if (labelWidths.size > 5000) labelWidths.clear();
+    labelWidths.set(label, w = ctx.measureText(label).width);
+  }
+  return w;
+}
+
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
 const concat = (a, b) => {
   const out = new Float32Array(a.length + b.length);
@@ -229,7 +247,7 @@ export class BirdBoxTab {
     });
     $('bb-export-csv').addEventListener('click', () => this._exportCsv());
     $('bb-export-raven').addEventListener('click', () => this._exportRaven());
-    catalog.addEventListener('names', () => this._renderTable());
+    catalog.addEventListener('names', () => this._renderTable({ all: true }));
 
     player.addEventListener('time', e => {
       if (!this.visible) return;
@@ -306,7 +324,7 @@ export class BirdBoxTab {
           filter: i => catalog.className(i) === 'Aves',
         });
         if (target != null) this._setSpecies(b, target);
-        else this._renderTable();   // put the select back on the current species
+        else e.target.value = String(this._edit(b).species);   // put the select back on the current species
         return;
       }
       if (e.target.dataset.field === 'species') { this._setSpecies(b, +e.target.value); return; }
@@ -1102,10 +1120,23 @@ export class BirdBoxTab {
   }
 
   /**
-   * The list of boxes. Only rows that changed are replaced: the others keep an open
-   * menu and the focus while boxes come in.
+   * What a row shows, besides the language: its box and place, the person's edits, the
+   * species BirdNET V3.0 suggests for it (_candidates keeps one array per window range
+   * until the scores or the location filter change), the settings it reads, and its
+   * geometry (a drawn box is moved in place). The same key, the same row.
    */
-  _renderTable() {
+  _rowKey(b, i) {
+    const g = this._geom(b);
+    return [b, i, this.edits.get(b.id), this._candidates(g), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, g.t0, g.t1, g.flo, g.fhi];
+  }
+
+  /**
+   * The list of boxes. Only rows that changed are replaced: the others keep an open
+   * menu and the focus while boxes come in. A row whose key is unchanged is not even
+   * built again, so an update of a long recording costs little; `all` builds every row
+   * (another language for the species names).
+   */
+  _renderTable({ all = false } = {}) {
     const tbody = $('bb-table').querySelector('tbody');
     $('bb-table-wrap').hidden = !this.raw;
     if (!this.raw || !this.boxes.length) {
@@ -1118,14 +1149,18 @@ export class BirdBoxTab {
     const rows = [...tbody.children], template = document.createElement('template');
     if (rows[0]?.dataset.i == null) rows.splice(0).forEach(tr => tr.remove());   // the note
     this.boxes.forEach((b, i) => {
-      const html = this._rowHtml(b, i);
+      const key = this._rowKey(b, i);
       let tr = rows[i];
-      if (tr?.rowHtml !== html) {
-        template.innerHTML = html;
-        const fresh = template.content.firstElementChild;
-        fresh.rowHtml = html;
-        if (tr) tr.replaceWith(fresh); else tbody.appendChild(fresh);
-        tr = fresh;
+      if (all || !tr?.rowKey || key.some((v, k) => v !== tr.rowKey[k])) {
+        const html = this._rowHtml(b, i);
+        if (tr?.rowHtml !== html) {
+          template.innerHTML = html;
+          const fresh = template.content.firstElementChild;
+          fresh.rowHtml = html;
+          if (tr) tr.replaceWith(fresh); else tbody.appendChild(fresh);
+          tr = fresh;
+        }
+        tr.rowKey = key;
       }
       tr.classList.toggle('is-selected', b.id === this.selectedId);
       tr.classList.toggle('is-hover', b.id === this.hoverId);
@@ -1272,8 +1307,9 @@ export class BirdBoxTab {
       ctx.fillStyle = this.spec.light ? 'rgba(255,255,255,0.6)' : 'rgba(5,4,12,0.55)';
       if (x0 < h.width) ctx.fillRect(x0, 0, h.width - x0, h.height);
     }
-    ctx.font = '600 11px Inter Variable, Inter, system-ui, sans-serif';
+    ctx.font = LABEL_FONT;
     ctx.textBaseline = 'alphabetic';
+    const width = label => labelWidth(ctx, label);
     this.boxes.forEach((b, i) => {
       const g = this._geom(b), x0 = h.timeToX(g.t0), x1 = h.timeToX(g.t1);
       if (x1 < 0 || x0 > h.width) return;
@@ -1304,8 +1340,8 @@ export class BirdBoxTab {
       const num = `${i + 1}${edit.verified && !b.manual ? ' ✓' : ''}`;
       let label = sp.s !== AVES ? `${num} · ${catalog.name(sp.s)}` : b.manual || edit.verified ? num : `${num} · ${fmtNumber(b.avg, 2)}`;
       // Keep crowded views readable: numbers only unless the label fits or the box is active
-      if (!active && ctx.measureText(label).width > Math.max(x1 - x0, 0) + 24) label = num;
-      const tw = ctx.measureText(label).width + 8, ly = Math.max(14, y0 - 2);
+      if (!active && width(label) > Math.max(x1 - x0, 0) + 24) label = num;
+      const tw = width(label) + 8, ly = Math.max(14, y0 - 2);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.9;
       ctx.fillRect(x0, ly - 13, tw, 15);
