@@ -837,7 +837,7 @@ export class BirdBoxTab {
       if (!v3.workers) status.textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
       await v3.ensure(p => {
         if (!p.cached) status.textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
-      });
+      }, { suggest: true });
       while (this.mask === undefined) {
         const version = this.maskVersion, mask = await activeMask();
         if (version !== this.maskVersion) continue;   // the filter changed meanwhile
@@ -854,7 +854,7 @@ export class BirdBoxTab {
       this.pumping = false;
     }
     v3.wake();
-    for (let k; this.scoring.size < 2 * v3.pool.size && (k = this._nextWindow()) != null;) this._scoreWindow(k);
+    for (let k; this.scoring.size < 2 * v3.suggestWorkers && (k = this._nextWindow()) != null;) this._scoreWindow(k);
   }
 
   /**

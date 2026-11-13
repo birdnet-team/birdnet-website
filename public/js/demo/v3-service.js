@@ -11,6 +11,9 @@ import { catalog } from './species.js';
 
 export const SR = 32000;
 const IDLE_TRIM_MS = 120000; // keep one warm worker after two idle minutes
+// Species for BirdBox's boxes: two workers keep up with its detection, and each
+// further one holds another copy of the model (about 400 MB)
+const SUGGEST_WORKERS = 2;
 
 /** Chunk plan of analyze.py chunk_audio(): [startSample, endSample] per window. */
 export function planChunks(numSamples, chunkSec, overlapSec) {
@@ -31,6 +34,7 @@ class V3Service extends EventTarget {
     this.ready = null;
     this.pool = null;
     this.gen = 0;
+    this.analyzing = 0;   // analyze() calls running
   }
 
   async manifestEntry() {
@@ -41,8 +45,11 @@ class V3Service extends EventTarget {
     try { return await isCached((await this.manifestEntry()).model); } catch { return false; }
   }
 
-  /** Download (or restore) the model and start the worker pool. */
-  ensure(onProgress) {
+  /**
+   * Download (or restore) the model and start the worker pool. `suggest`: for
+   * BirdBox's species, which start only the workers wake() lets them use.
+   */
+  ensure(onProgress, { suggest = false } = {}) {
     if (!this.ready) {
       this.ready = (async () => {
         const m = await this.manifestEntry();
@@ -50,6 +57,7 @@ class V3Service extends EventTarget {
         const model = await fetchAsset(m.model, onProgress);
         this.dispatchEvent(new CustomEvent('status', { detail: 'starting' }));
         this.pool = new OrtPool({ name: 'birdnet-v3', size: workerCount('v3') });
+        if (suggest && !this.analyzing) this.pool.limitTo(SUGGEST_WORKERS);
         this.pool.addEventListener('change', () => this.dispatchEvent(new Event('workers')));
         await this.pool.start(model, { input: m.input, output: m.output });
         this.dispatchEvent(new CustomEvent('status', { detail: 'ready' }));
@@ -75,6 +83,15 @@ class V3Service extends EventTarget {
    * any order). Returns { chunks, scores: Float32Array(n x species), ms }.
    */
   async analyze(pcm, { chunkSec = 3, overlapSec = 0, onChunk } = {}) {
+    this.analyzing++;
+    try {
+      return await this._analyze(pcm, chunkSec, overlapSec, onChunk);
+    } finally {
+      this.analyzing--;
+    }
+  }
+
+  async _analyze(pcm, chunkSec, overlapSec, onChunk) {
     await this.ensure();
     this.cancel();
     this._busy();
@@ -106,12 +123,25 @@ class V3Service extends EventTarget {
     return { chunks, scores, ms: performance.now() - t0, cancelled: gen !== this.gen };
   }
 
-  /** Bring the pool back to its full size before windows are scored one by one. */
+  /**
+   * Before BirdBox's windows are scored one by one: run SUGGEST_WORKERS workers,
+   * or the full pool while the V3.0 tab analyzes.
+   */
   wake() {
-    if (this.pool) this._busy();
+    if (!this.pool) return;
+    if (!this.analyzing) this.pool.limitTo(SUGGEST_WORKERS);
+    this._grow();
   }
 
+  /** The workers BirdBox's species may keep busy. */
+  get suggestWorkers() { return this.pool?.target || 0; }
+
   _busy() {
+    this.pool.limitTo(Infinity);
+    this._grow();
+  }
+
+  _grow() {
     clearTimeout(this.trimTimer);
     this.pool.grow(async () => fetchAsset((await this.manifestEntry()).model)).catch(() => {});
   }
