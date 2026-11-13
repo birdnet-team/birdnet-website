@@ -27,9 +27,13 @@ export class OrtPool extends EventTarget {
     this.allReady = null;
     this.lastError = null;
     this.spawning = 0;
+    this.limit = Infinity;   // workers allowed for now (limitTo)
   }
 
   get readyCount() { return this.slots.length; }
+
+  /** The workers the pool runs: its size, or fewer while limited. */
+  get target() { return Math.min(this.size, this.limit); }
 
   /**
    * Start the pool with a model. Resolves when the first worker can run jobs.
@@ -38,8 +42,8 @@ export class OrtPool extends EventTarget {
   start(model, config) {
     if (this.started) return this.started;
     this.config = config;
-    const copies = [];
-    for (let i = 0; i < this.size; i++) copies.push(i === this.size - 1 ? model : model.slice(0));
+    const copies = [], n = this.target;
+    for (let i = 0; i < n; i++) copies.push(i === n - 1 ? model : model.slice(0));
     this.started = (async () => {
       const first = await this._spawn(copies[0], config);
       if (!first) throw this.lastError || new Error(`${this.name}: worker failed to start`);
@@ -62,6 +66,11 @@ export class OrtPool extends EventTarget {
       worker.onmessage = ({ data }) => {
         if (data.type === 'ready') {
           this.spawning--;
+          if (this.slots.length >= this.target) {   // limited while it started
+            worker.terminate();
+            resolve(null);
+            return;
+          }
           const slot = { worker, job: null, ms: data.ms };
           worker.onmessage = e => this._onMessage(slot, e.data);
           worker.onerror = e => this._onCrash(slot, e);
@@ -124,7 +133,27 @@ export class OrtPool extends EventTarget {
       if (msg.type === 'error') job.reject(new Error(msg.error));
       else job.resolve(msg);
     }
+    if (this.slots.length > this.target) this._retire(slot);
     this._pump();
+  }
+
+  /** Stop an idle worker. */
+  _retire(slot) {
+    slot.worker.terminate();
+    this.slots = this.slots.filter(s => s !== slot);
+    this.dispatchEvent(new Event('change'));
+  }
+
+  /**
+   * Run at most `n` workers (Infinity: the pool's size again; grow() starts the
+   * missing ones). Workers beyond it stop now if idle, or when their job is done.
+   */
+  limitTo(n) {
+    this.limit = Math.max(1, n);
+    for (const slot of [...this.slots]) {
+      if (this.slots.length <= this.target) break;
+      if (!slot.job) this._retire(slot);
+    }
   }
 
   _onCrash(slot, event) {
@@ -154,9 +183,9 @@ export class OrtPool extends EventTarget {
     this.dispatchEvent(new Event('change'));
   }
 
-  /** Start workers up to the pool size again after trim(). */
+  /** Start workers up to the pool size (or its limit) again after trim(). */
   async grow(getModel) {
-    const missing = this.size - this.slots.length - this.spawning;
+    const missing = this.target - this.slots.length - this.spawning;
     if (missing <= 0 || this.growing || !this.config) return;
     this.growing = true;
     try {
