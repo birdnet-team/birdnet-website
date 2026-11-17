@@ -1299,7 +1299,8 @@ export class BirdBoxTab {
   _drawBoxes(ctx, h) {
     const now = performance.now(), calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (this.recording) {
-      if (this.analyzedTo != null) this._drawFrontier(ctx, h);
+      // Not before the live view starts: until then, time 0 is at the left edge
+      if (this.analyzedTo != null && (this.spec.liveMode || !this.rec)) this._drawFrontier(ctx, h);
     }
     // Dim what is not analyzed yet, as on the V3.0 tab
     else if (this.analyzedTo != null) {
