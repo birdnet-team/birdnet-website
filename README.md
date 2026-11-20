@@ -24,13 +24,24 @@ with [ONNX Runtime Web](https://onnxruntime.ai/) (WASM, self-hosted under
 TensorFlow.js. Inference runs in a pool of web workers; nothing is uploaded.
 
 The ONNX models are too large for this repository. `npm run build` and
-`npm run serve` call `npm run fetch-models` first, which downloads them from
-pinned commits of [birdnet-live-app](https://github.com/birdnet-team/birdnet-live-app)
-and [BirdBox](https://github.com/birdnet-team/BirdBox), checks their SHA-256,
-derives label and species-name files, and writes everything to `_models/`
-(gitignored). Eleventy publishes that folder as `/models/`, and the deploy
-workflow caches it. To update a model, change the commit and hash in
-`scripts/fetch-models.mjs`.
+`npm run serve` call `npm run fetch-models` first, which downloads them,
+checks their SHA-256, derives label and species-name files, and writes
+everything to `_models/` (gitignored). Eleventy publishes that folder as
+`/models/`, and the deploy workflow caches it.
+
+- BirdNET+ V3.0 Global 12K (the pruned FP16 ONNX model, 69 MB), the BirdNET+
+  Geomodel V3.0.5 and the BirdNET+ Taxonomy come from the Zenodo record
+  [BirdNET+ V3.0 model files](https://zenodo.org/records/24362980), version 3.0.1.
+- BirdBox comes from a pinned commit of [BirdBox](https://github.com/birdnet-team/BirdBox).
+
+To update a model, change the record or commit and the hashes in
+`scripts/fetch-models.mjs`. The first build downloads about 270 MB.
+
+The two BirdNET+ models join by BirdNET ID. The audio model has 11,709 species
+and 16 non-animal sound classes; the geomodel knows 10,926 of these species.
+With the location filter on, a species the geomodel lacks is hidden, except in
+the groups it has no species of at all (fishes, reptiles, the one arachnid and
+the sound classes), which the filter leaves alone.
 
 Species details (photo credit, descriptions, links) come from the
 [BirdNET taxonomy service](https://birdnet.cornell.edu/taxonomy/docs). Its API is
@@ -51,6 +62,21 @@ python scripts/dev/v3_parity.py public/audio/BirdNET_soundscape_32kHz.flac demo.
 For the sample soundscape the rows are identical and scores differ by at most
 0.0012 (WASM vs. native floating point). The sample is stored at 32 kHz, so no
 resampling is involved.
+
+The species of a BirdBox box comes from BirdNET+ V3.0 run on the box itself,
+not on a fixed window: the audio of the box's time span (at least 1 s, centred
+on a shorter box), limited to the box's frequency band by a bandpass filter
+(`public/js/demo/bandpass.js`: 4th-order Butterworth high-pass and low-pass at
+the box's edges), at that length, which the model's variable input allows. The
+five best-scoring birds become the box's candidates, and the best one its
+species if it scores at least 35%. A box longer than 10 s is scored in equal
+parts, and each species keeps its highest score.
+
+Where two boxes overlap in time and frequency, both would hear the sound in
+the overlap. The overlap belongs to the smaller box; it is cut out of the
+larger box's audio before scoring (`public/js/demo/region-cut.js`, a
+short-time Fourier transform that removes only that time-frequency region),
+so a box around another bird's call is not named after that bird.
 
 BirdBox runs as a stream, a few seconds of audio at a time, in a file and
 while the microphone records. `fetch-models.mjs` takes the model's two
@@ -88,7 +114,7 @@ them only after map consent. Keep attribution visible and do not prefetch tiles.
 ## License
 
 - **Source Code**: The source code for this project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-- **Models**: The models used in this project are licensed under the [Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+- **Models**: The BirdNET V2.4 model in this repository is licensed under the [Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/). The BirdNET+ V3.0 audio model and the BirdNET+ Geomodel, downloaded at build time, are licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) and come with an acceptable use policy (`MODEL_LICENSE.txt` and `ACCEPTABLE_USE.txt` in the [Zenodo record](https://zenodo.org/records/24362980)).
 
 Please ensure you review and adhere to the specific license terms provided with each model.
 

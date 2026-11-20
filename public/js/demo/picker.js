@@ -1,6 +1,6 @@
 /**
  * Species picker dialog: suggested species first, then search over all
- * 9,789 labels. Resolves with a V3.0 species index, or null when dismissed.
+ * labels. Resolves with a V3.0 species index, or null when dismissed.
  */
 import { esc, fmtPct, t } from './core.js';
 import { catalog, CLASS_INFO } from './species.js';

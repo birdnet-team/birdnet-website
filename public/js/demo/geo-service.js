@@ -4,9 +4,12 @@
  * phenology) and as the location filter of the V3.0 and BirdBox tabs.
  *
  * Species lists use the model output directly. Range maps score cells from a
- * cached 128-d embedding per cell (an extra output of the same graph) with
- * the model's final layer, so switching species or replaying weeks needs no
- * new inference.
+ * cached embedding per cell (an extra output of the same graph) with the
+ * model's final layer, so switching species or replaying weeks needs no new
+ * inference.
+ *
+ * The geomodel and the audio model each know species the other lacks; they
+ * join by BirdNET ID (catalog.geoIndex, v3Index here).
  */
 import { workerCount } from './core.js';
 import { fetchAsset, fetchJson, getManifest } from './model-store.js';
@@ -15,26 +18,12 @@ import { catalog } from './species.js';
 
 export const RICHNESS_THRESHOLDS = [0.01, 0.03, 0.05, 0.1, 0.25, 0.5];
 
-// fp16 helpers (the geomodel computes its head in half precision)
+// The final layer's weights are stored in half precision; the model casts them to float32 and computes there
 const HALF = new Float32Array(65536);
 for (let h = 0; h < 65536; h++) {
   const s = h & 0x8000 ? -1 : 1, e = (h >> 10) & 31, f = h & 1023;
   HALF[h] = e === 0 ? s * f * 2 ** -24 : e === 31 ? (f ? NaN : s * Infinity) : s * (1 + f / 1024) * 2 ** (e - 15);
 }
-const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
-function toHalf(x) {
-  f32[0] = x;
-  const b = u32[0], sign = (b >>> 16) & 0x8000, exp = ((b >>> 23) & 0xff) - 127 + 15, mant = b & 0x7fffff;
-  if (exp >= 31) return sign | 0x7c00;
-  if (exp <= 0) {
-    if (exp < -10) return sign;
-    const m = (mant | 0x800000) >> (1 - exp);
-    return sign | ((m + 0x1000 + ((m >> 13) & 1) - 1) >> 13);
-  }
-  const h = sign | (exp << 10) | (mant >> 13), rest = mant & 0x1fff;
-  return rest > 0x1000 || (rest === 0x1000 && (h & 1)) ? h + 1 : h;
-}
-const roundHalf = x => HALF[toHalf(x)];
 
 class GeoService extends EventTarget {
   constructor() {
@@ -58,11 +47,15 @@ class GeoService extends EventTarget {
         ]);
         this.S = m.head.numSpecies;
         this.D = m.head.featureDim;
-        const halfs = new Uint16Array(head);
-        this.W = Float32Array.from(halfs.subarray(0, this.S * this.D), h => HALF[h]);
-        this.B = Float32Array.from(halfs.subarray(this.S * this.D), h => HALF[h]);
+        if (m.head.weights !== 'float16' || m.head.bias !== 'float32') throw new Error('geomodel: unexpected head format');
+        const nW = this.S * this.D;
+        this.W = Float32Array.from(new Uint16Array(head, 0, nW), h => HALF[h]);
+        this.B = new Float32Array(head.slice(nW * 2));
         this.v3Index = Int32Array.from(labels.v3Index);
-        const classOf = Uint8Array.from(this.v3Index, v => (v >= 0 ? catalog.cls[v] : 0));
+        // Species the audio model lacks are in no list: they count for no group (NONE)
+        const NONE = 255, classOf = Uint8Array.from(this.v3Index, v => (v >= 0 ? catalog.cls[v] : NONE));
+        // Groups without a single geomodel species (fishes, reptiles, non-animal sounds): the location filter cannot judge them
+        this.classCovered = catalog.classes.map((_, c) => this.v3Index.some(v => v >= 0 && catalog.cls[v] === c));
         this.pool = new OrtPool({ name: 'geomodel', size: workerCount('geo') });
         await this.pool.start(model, {
           input: m.input, output: m.output, features: m.features,
@@ -93,10 +86,14 @@ class GeoService extends EventTarget {
     return this._probs(inputs, opts);
   }
 
-  /** Probabilities re-indexed to the V3.0 label order. */
+  /**
+   * Probabilities re-indexed to the V3.0 label order, for the location filter. A species
+   * the geomodel lacks gets 0 and is filtered out, unless the geomodel has no species of
+   * its whole group: those get 1 and pass.
+   */
   async v3Scores(lat, lon, week) {
     const probs = await this.predict(lat, lon, week);
-    const out = new Float32Array(catalog.count);
+    const out = Float32Array.from(catalog.cls, c => (this.classCovered[c] ? 0 : 1));
     for (let g = 0; g < this.S; g++) { const v = this.v3Index[g]; if (v >= 0) out[v] = probs[g]; }
     return out;
   }
@@ -108,8 +105,8 @@ class GeoService extends EventTarget {
   }
 
   /**
-   * Score one species (V3.0 index) for cells from their fp16 embeddings,
-   * mirroring the model's final Gemm + Sigmoid in half precision.
+   * Score one species (V3.0 index) for cells from their embeddings,
+   * mirroring the model's final Gemm + Sigmoid.
    */
   scoreCells(features, count, v3Index, out = new Float32Array(count)) {
     const g = catalog.geoIndex[v3Index];
@@ -118,9 +115,8 @@ class GeoService extends EventTarget {
     for (let c = 0; c < count; c++) {
       let acc = 0;
       const f0 = c * D;
-      for (let k = 0; k < D; k++) acc += HALF[features[f0 + k]] * W[w0 + k];
-      const logit = roundHalf(Math.fround(acc + bias));
-      out[c] = roundHalf(1 / (1 + Math.exp(-logit)));
+      for (let k = 0; k < D; k++) acc += features[f0 + k] * W[w0 + k];
+      out[c] = 1 / (1 + Math.exp(-(acc + bias)));
     }
     return out;
   }

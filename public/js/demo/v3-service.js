@@ -3,6 +3,10 @@
  * inference with the same chunking as the desktop analyzer (analyze.py):
  * windows start every (chunk - overlap) seconds, the last one is zero-padded,
  * and scores are the model's sigmoid outputs without further processing.
+ *
+ * For BirdBox it scores single boxes (scoreBox): the model takes audio of any
+ * length, so a box is scored on its own time span and frequency band, without
+ * the parts of it that belong to other boxes.
  */
 import { workerCount } from './core.js';
 import { fetchAsset, getManifest, isCached } from './model-store.js';
@@ -14,6 +18,33 @@ const IDLE_TRIM_MS = 120000; // keep one warm worker after two idle minutes
 // Species for BirdBox's boxes: two workers keep up with its detection, and each
 // further one holds another copy of the model (about 400 MB)
 const SUGGEST_WORKERS = 2;
+const BOX_MIN = 1;        // seconds: a shorter box is scored with the audio around it
+const BOX_MAX = 10;       // seconds in one run: a longer box is scored in equal parts
+const BOX_SETTLE = 0.05;  // seconds of audio before a box that only settle the bandpass
+
+/**
+ * The audio a box is scored on, as [startSample, endSample] ranges: its time span,
+ * or BOX_MIN seconds centred on a shorter box (moved, at the ends of the recording,
+ * to where there is audio). A box longer than BOX_MAX is cut into equal parts.
+ * `open`: the recording goes on, and null says that audio after the box is still to come.
+ */
+export function boxCrops(g, total, open = false) {
+  const min = BOX_MIN * SR;
+  let s = Math.max(0, Math.round(g.t0 * SR)), e = Math.round(g.t1 * SR);
+  const short = e - s < min;
+  if (short) {
+    s = Math.max(0, Math.round((g.t0 + g.t1) / 2 * SR - min / 2));
+    e = s + min;
+  }
+  if (e > total) {
+    if (open) return null;
+    if (short) s = Math.max(0, total - min);
+    e = total;
+  }
+  if (e <= s) return [];
+  const parts = Math.ceil((e - s) / (BOX_MAX * SR)), len = Math.ceil((e - s) / parts);
+  return Array.from({ length: parts }, (_, i) => [s + i * len, Math.min(e, s + (i + 1) * len)]);
+}
 
 /** Chunk plan of analyze.py chunk_audio(): [startSample, endSample] per window. */
 export function planChunks(numSamples, chunkSec, overlapSec) {
@@ -79,6 +110,31 @@ class V3Service extends EventTarget {
   }
 
   /**
+   * Score the sound of one box { t0, t1, flo, fhi } in the first `total` samples of
+   * pcm: cropped in time (boxCrops), without the rectangles `cuts` (the sound of
+   * other boxes inside it, region-cut.js), limited to the box's band (bandpass.js),
+   * and run through the model at that length; all of it in the worker. Resolves to
+   * [[class, score], ...] for the classes scoring at least `min`: over the parts of
+   * a long box, each class's highest score.
+   */
+  async scoreBox(pcm, total, g, cuts, min, opts) {
+    this._idle();
+    const best = new Map();
+    await Promise.all((boxCrops(g, total) || []).map(async ([s, e]) => {
+      const skip = Math.min(s, Math.round(BOX_SETTLE * SR));
+      // Zero-padded only where the recording ends within BOX_MIN of the crop's start
+      const audio = new Float32Array(skip + Math.max(e - s, BOX_MIN * SR));
+      audio.set(pcm.subarray(s - skip, e));
+      // The cuts in this part, in seconds from the start of `audio`
+      const from = (s - skip) / SR;
+      const regions = Float32Array.from(cuts.filter(c => c.t1 * SR > s && c.t0 * SR < e).flatMap(c => [c.t0 - from, c.t1 - from, c.flo, c.fhi]));
+      const r = await this.pool.run('v3box', { audio, skip, sampleRate: SR, flo: g.flo, fhi: g.fhi, cuts: regions, min }, [audio.buffer], opts);
+      r.index.forEach((c, k) => { if (!(best.get(c) >= r.score[k])) best.set(c, r.score[k]); });
+    }));
+    return [...best];
+  }
+
+  /**
    * Analyze a recording. Calls onChunk(index, scores) as windows finish (in
    * any order). Returns { chunks, scores: Float32Array(n x species), ms }.
    */
@@ -124,7 +180,7 @@ class V3Service extends EventTarget {
   }
 
   /**
-   * Before BirdBox's windows are scored one by one: run SUGGEST_WORKERS workers,
+   * Before BirdBox's boxes are scored one by one: run SUGGEST_WORKERS workers,
    * or the full pool while the V3.0 tab analyzes.
    */
   wake() {

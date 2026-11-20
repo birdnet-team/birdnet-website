@@ -13,7 +13,8 @@ export const NAME_LANGS = {
   bg: 'Български', sr: 'Srpski', hr: 'Hrvatski', lt: 'Lietuvių', et: 'Eesti', cy: 'Cymraeg', fa: 'فارسی',
 };
 
-const SITE_TO_NAMES = { 'pt-BR': 'pt', pt: 'pt_PT', tlh: 'en' };
+// Site language -> name language, the first one that is shipped
+const SITE_TO_NAMES = { 'pt-BR': ['pt'], pt: ['pt_PT', 'pt'], tlh: ['en'] };
 const STORAGE_KEY = 'birdnet-demo-species-lang';
 
 export const CLASS_INFO = {
@@ -21,6 +22,11 @@ export const CLASS_INFO = {
   Amphibia: { icon: 'fa-frog', key: 'demo.taxa.amphibians', label: 'Amphibians' },
   Insecta: { icon: 'fa-bug', key: 'demo.taxa.insects', label: 'Insects' },
   Mammalia: { icon: 'fa-paw', key: 'demo.taxa.mammals', label: 'Mammals' },
+  Arachnida: { icon: 'fa-spider', key: 'demo.taxa.arachnids', label: 'Arachnids' },
+  Reptilia: { icon: 'fa-dragon', key: 'demo.taxa.reptiles', label: 'Reptiles' },
+  Actinopterygii: { icon: 'fa-fish', key: 'demo.taxa.fishes', label: 'Fishes' },
+  // The model's non-animal classes: engines, sirens, music, ...
+  Sound: { icon: 'fa-volume-high', key: 'demo.taxa.sounds', label: 'Other sounds' },
 };
 
 export const classLabel = cls => t(CLASS_INFO[cls]?.key || '', CLASS_INFO[cls]?.label || cls);
@@ -69,8 +75,7 @@ class Catalog extends EventTarget {
     const shipped = new Set(this.availableLangs().map(([c]) => c));
     if (stored && shipped.has(stored)) return stored;
     const site = siteLang();
-    const mapped = SITE_TO_NAMES[site] || site;
-    return shipped.has(mapped) ? mapped : 'en';
+    return (SITE_TO_NAMES[site] || [site]).find(lang => shipped.has(lang)) || 'en';
   }
 
   async setLang(lang, { silent = false, remember = false } = {}) {

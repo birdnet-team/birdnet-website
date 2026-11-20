@@ -5,9 +5,13 @@
  * Messages in:
  *   { type: 'init', ortModule, wasmPaths, model: ArrayBuffer, config }
  *   { type: 'v3', id, audio: Float32Array, batch, samples }
+ *   { type: 'v3box', id, audio: Float32Array, skip, sampleRate, flo, fhi, cuts: Float32Array, min }
  *   { type: 'geo', id, inputs: Float32Array (B x [lat, lon, week]), mode: 'probs' | 'grid' }
  * Messages out: { type: 'ready', ms } | { type: 'result', id, ... } | { type: 'error', id, error }
  */
+
+import { bandpass } from './bandpass.js';
+import { cutRegions } from './region-cut.js';
 
 let ort = null;
 let session = null;
@@ -42,6 +46,25 @@ async function runV3(msg) {
   return [{ scores }, [scores.buffer]];
 }
 
+/**
+ * The audio of one box: without the regions `cuts` (the sound of other boxes inside it),
+ * limited to the box's band, then scored at its own length (the model takes any). The
+ * first `skip` samples only settle the filter and are not scored. Returns the classes
+ * scoring at least `min`, not the whole table.
+ */
+async function runV3Box(msg) {
+  cutRegions(msg.audio, msg.sampleRate, msg.cuts);
+  const clip = bandpass(msg.audio, msg.sampleRate, msg.flo, msg.fhi).subarray(msg.skip);
+  const input = new ort.Tensor('float32', clip, [1, clip.length]);
+  const out = await session.run({ [config.input]: input }, [config.output]);
+  const scores = out[config.output].data, min = msg.min;
+  let n = 0;
+  for (let s = 0; s < scores.length; s++) if (scores[s] >= min) n++;
+  const index = new Int32Array(n), score = new Float32Array(n);
+  for (let s = 0, k = 0; s < scores.length; s++) if (scores[s] >= min) { index[k] = s; score[k++] = scores[s]; }
+  return [{ index, score }, [index.buffer, score.buffer]];
+}
+
 async function runGeo(msg) {
   const rows = msg.inputs.length / 3;
   const input = new ort.Tensor('float32', msg.inputs, [rows, 3]);
@@ -54,8 +77,7 @@ async function runGeo(msg) {
   // and taxon class, so the map never has to move full probability tables.
   const out = await session.run({ [config.input]: input }, [config.output, config.features]);
   const probs = out[config.output].data;
-  const feat = out[config.features].data;
-  const features = feat instanceof Uint16Array ? feat.slice() : new Uint16Array(feat.buffer, feat.byteOffset, feat.length).slice();
+  const features = own(out[config.features].data);
   const thresholds = config.thresholds, classOf = config.classOf, nClasses = config.nClasses;
   const nThr = thresholds.length, stride = nClasses + 1, S = classOf.length;
   const counts = new Uint16Array(rows * nThr * stride);
@@ -64,7 +86,7 @@ async function runGeo(msg) {
     const base = r * S, cbase = r * nThr * stride;
     for (let s = 0; s < S; s++) {
       const p = probs[base + s];
-      if (p < t0) continue;
+      if (p < t0 || classOf[s] >= nClasses) continue;   // below every threshold, or not a species of the demo
       const c = classOf[s] + 1;
       for (let k = 0; k < nThr && p >= thresholds[k]; k++) {
         counts[cbase + k * stride]++;
@@ -75,7 +97,7 @@ async function runGeo(msg) {
   return [{ features, counts }, [features.buffer, counts.buffer]];
 }
 
-const handlers = { v3: runV3, geo: runGeo };
+const handlers = { v3: runV3, v3box: runV3Box, geo: runGeo };
 
 self.onmessage = async ({ data: msg }) => {
   if (msg.type === 'init') {

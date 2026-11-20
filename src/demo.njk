@@ -128,9 +128,16 @@ permalink: "/demo/"
             <div id="v3-taxa" class="demo-taxa">
               <label><input type="checkbox" value="Aves" checked><i class="fa-solid fa-dove"></i><span data-i18n="demo.taxa.birds">Birds</span></label>
               <label><input type="checkbox" value="Amphibia" checked><i class="fa-solid fa-frog"></i><span data-i18n="demo.taxa.amphibians">Amphibians</span></label>
-              <label><input type="checkbox" value="Insecta" checked><i class="fa-solid fa-bug"></i><span data-i18n="demo.taxa.insects">Insects</span></label>
+              <label><input type="checkbox" value="Insecta Arachnida" checked><i class="fa-solid fa-bug"></i><span data-i18n="demo.taxa.insects">Insects</span></label>
               <label><input type="checkbox" value="Mammalia" checked><i class="fa-solid fa-paw"></i><span data-i18n="demo.taxa.mammals">Mammals</span></label>
+              <label><input type="checkbox" value="Reptilia" checked><i class="fa-solid fa-dragon"></i><span data-i18n="demo.taxa.reptiles">Reptiles</span></label>
+              <label><input type="checkbox" value="Actinopterygii" checked><i class="fa-solid fa-fish"></i><span data-i18n="demo.taxa.fishes">Fishes</span></label>
             </div>
+            <div class="form-check form-switch mt-2 mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="v3-sounds" aria-describedby="v3-sounds-help">
+              <label class="form-check-label small fw-medium" for="v3-sounds" data-i18n="demo.v3.sounds">Show other sound classes</label>
+            </div>
+            <div id="v3-sounds-help" class="form-text mt-0" data-i18n="demo.v3.soundsHelp">Non-animal sounds the model also recognizes, such as engines, sirens and music.</div>
           </div>
           <div class="mb-3">
             <label for="v3-names" class="form-label small fw-medium mb-1"><span data-i18n="demo.settings.labels">Species labels</span></label>
@@ -172,7 +179,7 @@ permalink: "/demo/"
   </div>
 
   <p class="demo-hint demo-hint-end">
-    <span data-i18n="demo.v3.hint">BirdNET+ V3.0 developer preview 3.1 recognizes 9,789 species of birds, frogs, insects and mammals in 32 kHz audio. The 64 MB model downloads once, stays cached in your browser and runs locally with ONNX Runtime Web.</span>
+    <span data-i18n="demo.v3.hint">BirdNET+ V3.0 recognizes 11,709 species of birds, insects, amphibians, mammals, fishes and reptiles, and 16 other sounds such as engines and sirens, in 32 kHz audio. The 69 MB model downloads once, stays cached in your browser and runs locally with ONNX Runtime Web.</span>
     <span id="v3-model-chip" class="demo-status"></span>
   </p>
 </section>
@@ -218,7 +225,7 @@ permalink: "/demo/"
               <div class="geo-species-label"><strong id="geo-species-name">…</strong><i id="geo-species-sci"></i></div>
             </div>
             <div class="geo-search">
-              <input type="search" id="geo-search" class="form-control form-control-sm" autocomplete="off" placeholder="Search 9,789 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
+              <input type="search" id="geo-search" class="form-control form-control-sm" autocomplete="off" placeholder="Search 11,709 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
               <div id="geo-search-results" class="geo-search-results" hidden></div>
             </div>
           </div>
@@ -292,7 +299,7 @@ permalink: "/demo/"
   </div>
 
   <p class="demo-hint demo-hint-end">
-    <span data-i18n="demo.geo.hint">BirdNET+ Geomodel V3.0.4 predicts which of 9,789 species occur at a place in each of 48 weeks; the 13 MB model runs locally.</span>
+    <span data-i18n="demo.geo.hint">BirdNET+ Geomodel V3.0.5 predicts which of 10,926 species occur at a place in each of 48 weeks; the 7 MB model runs locally.</span>
     <a href="https://github.com/birdnet-team/geomodel" target="_blank" rel="noopener">GitHub</a>
   </p>
 </section>
@@ -388,7 +395,7 @@ permalink: "/demo/"
             <dt data-i18n="demo.bb.explain.confT">Conf.</dt>
             <dd data-i18n="demo.bb.explain.conf">How sure BirdBox is that the box holds a bird sound, from 0 to 1. It does not say which species. A box joined from several calls shows their average; hover over the number to see the highest.</dd>
             <dt data-i18n="demo.bb.explain.speciesT">Species %</dt>
-            <dd data-i18n="demo.bb.explain.species">BirdNET V3.0's confidence score for the sound around the box: how closely it matches that species. Below 35%, the box keeps no species, but you can still pick one from the suggestions.</dd>
+            <dd data-i18n="demo.bb.explain.species">BirdNET V3.0's confidence score for the sound in the box: how closely it matches that species. The model hears the box's time span (at least one second, so a shorter box brings the sound around it) and only its frequency band. Below 35%, the box keeps no species, but you can still pick one from the suggestions.</dd>
             <dt data-i18n="demo.bb.explain.notT">Not a probability</dt>
             <dd data-i18n="demo.bb.explain.not">A high number does not prove a box right, and a low one does not prove it wrong. Faint, distant or overlapping calls score lower. Listen to a box before you verify it.</dd>
           </dl>
@@ -738,7 +745,7 @@ permalink: "/demo/"
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-i18n-aria="demo.geo.close"></button>
       </div>
       <div class="modal-body pt-2">
-        <input type="search" class="form-control form-control-sm mb-2" id="species-picker-q" autocomplete="off" placeholder="Search 9,789 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
+        <input type="search" class="form-control form-control-sm mb-2" id="species-picker-q" autocomplete="off" placeholder="Search 11,709 species…" data-i18n-placeholder="demo.geo.searchPlaceholder">
         <div id="species-picker-list" class="picker-list"></div>
       </div>
     </div>

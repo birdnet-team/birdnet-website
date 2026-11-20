@@ -137,7 +137,7 @@ export class V3Tab {
     $('v3-conf-val').textContent = fmtPct(+conf.value, 0);
     $('v3-overlap').addEventListener('change', () => this.run());
     $('v3-window').addEventListener('change', () => this.run());
-    document.querySelectorAll('#v3-taxa input').forEach(cb => cb.addEventListener('change', () => this._refresh()));
+    document.querySelectorAll('#v3-taxa input, #v3-sounds').forEach(cb => cb.addEventListener('change', () => this._refresh()));
     $('v3-run').addEventListener('click', () => (this.running ? this.stop() : this.run()));
     $('v3-export-csv').addEventListener('click', () => this._exportCsv());
     $('v3-export-raven').addEventListener('click', () => this._exportRaven());
@@ -415,7 +415,9 @@ export class V3Tab {
   /* ---------------- derived results ---------------- */
 
   _allowedFn() {
-    const taxa = new Set([...document.querySelectorAll('#v3-taxa input:checked')].map(cb => cb.value));
+    // A checkbox may stand for several groups; the non-animal sound classes have their own switch
+    const taxa = new Set([...document.querySelectorAll('#v3-taxa input:checked')].flatMap(cb => cb.value.split(' ')));
+    if ($('v3-sounds').checked) taxa.add('Sound');
     const classOk = catalog.classes.map(c => taxa.has(c));
     const mask = this.state.mask;
     return {
@@ -606,7 +608,7 @@ export class V3Tab {
         ${thumb(s)}
         <div class="v3-text">
           <div class="v3-name-row"><span class="v3-name"></span><i class="bi bi-pencil-fill v3-edited" title="${esc(t('demo.edit.edited', 'Changed by you'))}"></i></div>
-          <div class="v3-sci text-truncate"><i>${esc(sci)}</i> · ${esc(classLabel(cls))}</div>
+          <div class="v3-sci text-truncate">${cls === 'Sound' ? '' : `<i>${esc(sci)}</i> · `}${esc(classLabel(cls))}</div>
         </div>
         <div class="v3-side">
           <div class="v3-conf" title="${esc(t('demo.v3.confTitle', 'Highest confidence score of this species in the recording'))}"></div>

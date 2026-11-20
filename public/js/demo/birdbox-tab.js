@@ -9,9 +9,13 @@
  * phrase gap) setting, so both sliders update instantly. The boxes export as
  * Xeno-canto Annota-JSON.
  *
- * BirdNET V3.0 suggests a species for every box. It scores the same 3 s
- * windows alongside the detection, so a box's species is usually there when
- * the box appears, and a box that changes needs no new scoring.
+ * BirdNET V3.0 suggests a species for every box. It scores the box itself:
+ * the audio of its time span (at least 1 s: a shorter box brings the audio
+ * around it), limited to its frequency band by a bandpass filter, at that
+ * length. Where boxes overlap, the overlap belongs to the smaller box: it is
+ * cut out of the larger one's audio, so a box around another bird's call is
+ * not named after that bird. Boxes are scored alongside the detection, the
+ * ones that can no longer change first.
  *
  * While this tab's card records, the spectrogram flies in from the right and
  * each window is detected once, as soon as it is complete. The model takes a
@@ -35,11 +39,14 @@ import { isoTime, RAVEN_CLOCK, ravenClock } from './recording-time.js';
 import { SpecView } from './spec-view.js';
 import { pickSpecies } from './picker.js';
 import { catalog } from './species.js';
-import { SR, v3 } from './v3-service.js';
+import { boxCrops, SR, v3 } from './v3-service.js';
 import { stopSpectrogram, streamSpectrogram, thumb } from './v3-tab.js';
 
 const CLIP = 3, HOP = 1.5;    // the model's windows: seconds long, seconds apart
 const MIN_SCORE = 0.05;       // BirdNET V3.0 scores below this are not kept
+const CANDIDATES = 5;         // species a box offers, best first
+const CUT_MIN_DUR = 0.02;     // an overlap with another box counts from this many seconds
+const CUT_MIN_BAND = 50;      // and this many Hz
 const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line no longer changes, unless linked to one that may
 const SCORES_MS = 120;        // show new species at most this often
 const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
@@ -65,6 +72,9 @@ const xcContributor = v => v.trim().replace(/^.*\/contributor\//i, '').replace(/
 
 /** Detector boxes keep their identity through slider changes by their geometry. */
 const boxKey = b => `${b.t0.toFixed(4)}|${b.t1.toFixed(4)}|${b.flo}|${b.fhi}`;
+
+/** A rectangle of sound, to the millisecond and the hertz. */
+const soundKey = g => `${g.t0.toFixed(3)}|${g.t1.toFixed(3)}|${Math.round(g.flo)}|${Math.round(g.fhi)}`;
 
 /**
  * Width of a box label in LABEL_FONT. The spectrogram measures every label on every
@@ -107,11 +117,11 @@ export class BirdBoxTab {
     this.fusion = {};              // fuseBoxes' cache: the boxes later windows cannot change
     this.userBoxes = [];           // boxes drawn by the user
     this.boxes = [];               // both, ordered by start time
-    this.scores = new Map();       // window -> [[species, score], ...]: the birds BirdNET V3.0 hears in it
-    this.scoring = new Set();      // windows on their way
-    this.wanted = new Set();       // windows the boxes lie in that are not scored yet
-    this.ahead = 0;                // next window to score ahead of the detection
-    this.candidates = new Map();   // 'first-last' window -> [{ s, p }]: the species of a box in these windows
+    this.sounds = new Map();       // box -> { key, g, cuts, later }: the audio it is scored on (_buildSounds)
+    this.scores = new Map();       // sound key -> [[species, score], ...]: the birds BirdNET V3.0 hears in a box
+    this.scoring = new Set();      // sound keys on their way
+    this.wanted = new Map();       // sound key -> { g, cuts, later }: boxes not scored yet, by start time; later: it may still change
+    this.candidates = new Map();   // sound key -> [{ s, p }]: the species a box offers within the location filter
     this.mask = undefined;         // location filter for the candidates, null when off; undefined: not fetched yet
     this.maskVersion = 0;
     this.retryAt = 0;
@@ -327,7 +337,7 @@ export class BirdBoxTab {
       if (e.target.dataset.field === 'species' && e.target.value === 'pick') {
         const target = await pickSpecies({
           title: t('demo.bb.pickTitle', 'Species for box {n}', { n: +tr.dataset.i + 1 }),
-          suggestions: this._candidates(this._geom(b)) || [],
+          suggestions: this._candidates(b) || [],
           filter: i => catalog.className(i) === 'Aves',
         });
         if (target != null) this._setSpecies(b, target);
@@ -500,7 +510,7 @@ export class BirdBoxTab {
     this.duration = rec.n / SR;
     rec.specWorker.postMessage({ type: 'live-audio', pcm }, [pcm.buffer]);
     rec.wake?.();
-    this._pumpScores();   // a window may be complete now
+    this._pumpScores();   // the audio around a short box may be complete now
   }
 
   /**
@@ -650,7 +660,6 @@ export class BirdBoxTab {
     this.songs = [];
     this.userBoxes = [];
     if (!this.raw) this._resetScores();
-    this.candidates.clear();   // the last windows of a file are not those of a recording in progress
     // So do the edits made while recording: they are on solid boxes, which the file keeps as they are
     if (!this.raw) {
       this.edits = new Map();
@@ -775,6 +784,7 @@ export class BirdBoxTab {
     this.boxes = [...this.songs, ...this.userBoxes].sort((a, b) => this._geom(a).t0 - this._geom(b).t0);
     if (this.selectedId != null && !this.boxes.some(b => b.id === this.selectedId)) this.selectedId = null;
     this.spec.main.classList.toggle('is-editing', this.drawMode || this.selectedId != null);
+    this._buildSounds();
     this._renderSummary();
     this._renderTable();
     this._renderHint();
@@ -783,65 +793,75 @@ export class BirdBoxTab {
     this.wanted.clear();
     if ($('bb-suggest').checked) {
       for (const b of this.boxes) {
-        const [first, last] = this._windowsOf(this._geom(b));
-        for (let k = first; k <= last; k++) if (!this.scores.has(k)) this.wanted.add(k);
+        const sound = this.sounds.get(b);
+        if (!this.scores.has(sound.key)) this.wanted.set(sound.key, sound);
       }
     }
     this._pumpScores();
   }
 
-  /* ---------------- species: BirdNET V3.0 on the same windows ---------------- */
+  /* ---------------- species: BirdNET V3.0 on each box ---------------- */
 
   /**
-   * The windows a box lies in, [first, last]. BirdNET V3.0 scores the 3 s windows
-   * BirdBox detects on, one every 1.5 s. A window owns its middle half, as in the
-   * window fusion, so a box up to 1.5 s long takes the window that owns its centre:
-   * the one BirdBox found it in. A longer box takes the windows from the one around
-   * its first 1.5 s to the one around its last, which cover it.
+   * The audio every box is scored on: its rectangle, without the parts of it that
+   * smaller boxes cover (`cuts`). Two boxes that overlap in time and frequency both
+   * hold the sound in their overlap, and BirdNET V3.0 would name both after it. The
+   * overlap goes to the smaller box, the tighter fit around a sound; the larger one
+   * is scored on what it holds besides. A box taken out of the list claims nothing.
+   * `later`: the box, or one cut out of it, may still change while detection runs.
+   * The key names the rectangle and its cuts: the same key, the same audio.
    */
-  _windowsOf(g) {
-    const end = this.recording ? Infinity : windowCount(this.pcm.length) - 1;
-    const owner = time => clamp(Math.floor((time - CLIP / 4) / HOP), 0, end);
-    if (g.t1 - g.t0 <= HOP) {
-      const k = owner((g.t0 + g.t1) / 2);
-      return [k, k];
+  _buildSounds() {
+    const items = this.boxes.map(b => {
+      const g = this._geom(b);
+      return { g, area: (g.t1 - g.t0) * (g.fhi - g.flo), on: this.edits.get(b.id)?.include ?? true, cuts: [], later: this._pending(b) };
+    });
+    // The boxes come by start time: only the following ones that start before a box ends can overlap it
+    for (let i = 0; i < items.length; i++) {
+      const a = items[i];
+      for (let j = i + 1; j < items.length && items[j].g.t0 < a.g.t1; j++) {
+        const c = items[j], [small, large] = a.area <= c.area ? [a, c] : [c, a];
+        const cut = { t0: c.g.t0, t1: Math.min(a.g.t1, c.g.t1), flo: Math.max(a.g.flo, c.g.flo), fhi: Math.min(a.g.fhi, c.g.fhi) };
+        if (!small.on || cut.t1 - cut.t0 < CUT_MIN_DUR || cut.fhi - cut.flo < CUT_MIN_BAND) continue;
+        large.cuts.push(cut);
+        if (small.later) large.later = true;
+      }
     }
-    return [owner(g.t0 + HOP / 2), owner(g.t1 - HOP / 2)];
+    this.sounds = new Map(items.map((it, i) => [this.boxes[i], {
+      key: [soundKey(it.g), ...it.cuts.map(soundKey).sort()].join('#'), g: it.g, cuts: it.cuts, later: it.later,
+    }]));
   }
 
   /**
-   * Up to five species for a box, best first: each species' highest score in the box's
-   * windows, within the location filter. null while a window is still to be scored.
+   * Up to CANDIDATES species for a box, best first: the birds BirdNET V3.0 hears in
+   * the box's audio, within the location filter. null while the box is still to be
+   * scored, and while it is dragged: its audio is settled when it is let go.
    */
-  _candidates(g) {
-    const [first, last] = this._windowsOf(g), key = `${first}-${last}`;
+  _candidates(b) {
+    const key = this.live?.id === b.id ? null : this.sounds.get(b)?.key;
+    if (key == null) return null;
     let cands = this.candidates.get(key);
     if (cands || this.mask === undefined) return cands || null;
-    const best = new Map(), mask = this.mask;
-    for (let k = first; k <= last; k++) {
-      const birds = this.scores.get(k);
-      if (!birds) return null;
-      for (const [s, p] of birds) if (!(best.get(s) >= p)) best.set(s, p);
-    }
-    cands = [...best].filter(([s]) => !mask || mask.scores[s] >= mask.threshold).map(([s, p]) => ({ s, p })).sort((a, b) => b.p - a.p).slice(0, 5);
+    const birds = this.scores.get(key), mask = this.mask;
+    if (!birds) return null;
+    cands = birds.filter(([s]) => !mask || mask.scores[s] >= mask.threshold).map(([s, p]) => ({ s, p })).sort((a, b) => b.p - a.p).slice(0, CANDIDATES);
     this.candidates.set(key, cands);
     return cands;
   }
 
-  /** Other audio: forget what BirdNET V3.0 heard, and ignore the windows still on their way. */
+  /** Other audio: forget what BirdNET V3.0 heard, and ignore the boxes still on their way. */
   _resetScores() {
     this.scoreToken++;
     this.scores = new Map();
     this.scoring.clear();
     this.wanted.clear();
     this.candidates.clear();
-    this.ahead = 0;
     v3.cancel('birdbox');
   }
 
   /**
    * Keep BirdNET V3.0 busy alongside the detection. Called whenever there may be a
-   * window to score: boxes or audio arrived, or a window is done.
+   * box to score: boxes or audio arrived, or a box is done.
    */
   async _pumpScores() {
     if (this.pumping || !this.pcm || !$('bb-suggest').checked || performance.now() < this.retryAt) return;
@@ -861,51 +881,67 @@ export class BirdBoxTab {
       status.textContent = '';
     } catch (err) {
       console.error(err);
-      this.retryAt = performance.now() + RETRY_MS;
+      this._retryScores();
       status.textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
       return;
     } finally {
       this.pumping = false;
     }
+    if (!this.pcm) return;   // the audio went away meanwhile
     v3.wake();
-    for (let k; this.scoring.size < 2 * v3.suggestWorkers && (k = this._nextWindow()) != null;) this._scoreWindow(k);
+    for (let key; this.scoring.size < 2 * v3.suggestWorkers && (key = this._nextBox()) != null;) this._scoreBox(key, this.wanted.get(key));
+  }
+
+  /** After a failure: wait RETRY_MS, then go on with the boxes still waiting. */
+  _retryScores() {
+    this.retryAt = performance.now() + RETRY_MS;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => this._pumpScores(), RETRY_MS + 50);
   }
 
   /**
-   * The window to score next: first the earliest one a box is waiting for, then the
-   * next one ahead of the detection, whose boxes are about to appear. A window the
-   * detection has passed without a box is never scored.
+   * The samples there are, and whether more are to come. While the microphone records,
+   * a short box near the end waits for the audio around it, so it is scored on the same
+   * audio as in the saved file.
    */
-  _nextWindow() {
+  _audioSoFar() {
     const rec = this.rec || this.liveEnded;
-    const complete = rec ? readyWindows(rec.n) : windowCount(this.pcm.length);
-    for (const k of this.wanted) {
-      if (this.scores.has(k)) this.wanted.delete(k);
-      else if (!this.scoring.has(k) && k < complete) return k;
-    }
-    if (this.analyzedTo == null || this.raw?.stopped) return null;   // no detection is running
-    this.ahead = Math.max(this.ahead, this.raw?.next ?? 0);
-    while (this.scores.has(this.ahead) || this.scoring.has(this.ahead)) this.ahead++;
-    return this.ahead < complete ? this.ahead : null;
+    return rec ? { total: rec.n, open: !!this.rec } : { total: this.pcm.length, open: false };
   }
 
-  /** BirdNET V3.0 on window k (silence after the end of the recording, as for BirdBox). */
-  async _scoreWindow(k) {
-    const token = this.scoreToken, start = k * HOP * SR, length = CLIP * SR;
-    this.scoring.add(k);
+  /**
+   * The box to score next: the earliest one that can no longer change, or else the
+   * earliest that still may (a box near the detection line, see _markPending), so its
+   * species is there when it settles unchanged.
+   */
+  _nextBox() {
+    const { total, open } = this._audioSoFar();
+    let later = null;
+    for (const [key, want] of this.wanted) {
+      if (this.scores.has(key)) { this.wanted.delete(key); continue; }
+      if (this.scoring.has(key) || (later != null && want.later) || !boxCrops(want.g, total, open)) continue;
+      if (!want.later) return key;
+      later = key;
+    }
+    return later;
+  }
+
+  /** BirdNET V3.0 on the audio of one box. Only birds are kept: BirdBox finds bird sounds. */
+  async _scoreBox(key, sound) {
+    const token = this.scoreToken, { total } = this._audioSoFar();
+    this.scoring.add(key);
     try {
-      const out = await v3.scoreWindow(this.pcm, start, start + length, length, { gen: 'birdbox', priority: 5 });
+      const out = await v3.scoreBox(this.pcm, total, sound.g, sound.cuts, MIN_SCORE, { gen: 'birdbox', priority: 5 });
       if (token !== this.scoreToken) return;
-      const aves = catalog.classes.indexOf('Aves'), birds = [];
-      for (let s = 0; s < out.length; s++) if (out[s] >= MIN_SCORE && catalog.cls[s] === aves) birds.push([s, out[s]]);
-      this.scores.set(k, birds);
-      this.scoring.delete(k);
-      if (this.wanted.delete(k)) this.scoresChanged();
+      const aves = catalog.classes.indexOf('Aves');
+      this.scores.set(key, out.filter(([s]) => catalog.cls[s] === aves));
+      this.scoring.delete(key);
+      if (this.wanted.delete(key)) this.scoresChanged();
     } catch (err) {
       if (token !== this.scoreToken || err.cancelled) return;
-      this.scoring.delete(k);
+      this.scoring.delete(key);
       console.error(err);
-      this.retryAt = performance.now() + RETRY_MS;
+      this._retryScores();
       $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
       return;
     }
@@ -921,7 +957,7 @@ export class BirdBoxTab {
   /** Species, sound type and inclusion: the user's choices over the defaults. */
   _edit(b) {
     const o = this.edits.get(b.id) || {};
-    const cands = $('bb-suggest').checked ? this._candidates(this._geom(b)) : null;
+    const cands = $('bb-suggest').checked ? this._candidates(b) : null;
     const top = cands?.[0];
     return {
       species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
@@ -952,7 +988,7 @@ export class BirdBoxTab {
   }
 
   _species(b) {
-    const edit = this._edit(b), cands = this._candidates(this._geom(b)) || [];
+    const edit = this._edit(b), cands = this._candidates(b) || [];
     return { s: edit.species, p: cands.find(c => c.s === edit.species)?.p ?? null };
   }
 
@@ -1135,14 +1171,14 @@ export class BirdBoxTab {
 
   /**
    * What a row shows, besides the language: its box and place, the person's edits, the
-   * species BirdNET V3.0 suggests for it (_candidates keeps one array per window range
-   * until the scores or the location filter change), the settings it reads, whether it
-   * can be played and edited, and its geometry (a drawn box is moved in place). The same
+   * species BirdNET V3.0 suggests for it (_candidates keeps one array per box
+   * until the location filter changes), the settings it reads, whether it can be
+   * played and edited, and its geometry (a drawn box is moved in place). The same
    * key, the same row.
    */
   _rowKey(b, i) {
     const g = this._geom(b);
-    return [b, i, this.edits.get(b.id), this._candidates(g), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, this._locked(b), g.t0, g.t1, g.flo, g.fhi];
+    return [b, i, this.edits.get(b.id), this._candidates(b), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, this._locked(b), g.t0, g.t1, g.flo, g.fhi];
   }
 
   /**
@@ -1190,7 +1226,7 @@ export class BirdBoxTab {
   _rowHtml(b, i) {
     const suggest = $('bb-suggest').checked, silent = this.recording ? ' disabled' : '';
     const pending = this._locked(b), locked = pending ? ' disabled' : '';
-    const g = this._geom(b), edit = this._edit(b), cands = this._candidates(g);
+    const g = this._geom(b), edit = this._edit(b), cands = this._candidates(b);
     let speciesCell;
     if (suggest && !cands) speciesCell = `<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>${esc(t('demo.bb.identifying', 'Identifying…'))}</span>`;
     else {
@@ -1326,6 +1362,48 @@ export class BirdBoxTab {
     return this._pending(b) && !this.raw?.stopped;
   }
 
+  /**
+   * The label of every box in view: its number, and its species (or its confidence) too
+   * wherever that fits without covering another box's label. So a box shows its species
+   * as soon as there is room beside it, however narrow the box itself; in a crowded view
+   * the numbers stay. The selected and the hovered box always show theirs. The tag of a
+   * box that begins left of the view stays at the view's edge while the box is in view.
+   * @returns {Map<object, {label:string, x:number, w:number}>} x, w: left edge and width of the label's tag
+   */
+  _boxLabels(h, width) {
+    const items = [];
+    // A tag starts at its box's left edge, or at the view's while the box reaches in from the left
+    const place = (bx0, bx1, w) => (bx0 >= 0 ? bx0 : Math.max(bx0, Math.min(0, bx1 - w)));
+    this.boxes.forEach((b, i) => {
+      const g = this._geom(b), bx0 = h.timeToX(g.t0), bx1 = h.timeToX(g.t1);
+      if (bx1 < 0 || bx0 > h.width) return;
+      const edit = this._edit(b), sp = this._species(b);
+      const num = `${i + 1}${edit.verified && !b.manual ? ' ✓' : ''}`;
+      const full = sp.s !== AVES ? `${num} · ${catalog.name(sp.s)}` : b.manual || edit.verified ? num : `${num} · ${fmtNumber(b.avg, 2)}`;
+      const y = Math.max(14, h.freqToY(g.fhi) - 2);   // as drawn: the tag spans y - 13 .. y + 2
+      const w = width(num) + 8;
+      items.push({ b, bx0, bx1, x0: place(bx0, bx1, w), y, num, full, w, active: b.id === this.selectedId || b.id === this.hoverId });
+    });
+    // Tags start at their box's left edge, and the boxes come by start time: only neighbors can be in the way.
+    // The selected and the hovered box take their room first, so no other label grows over theirs.
+    let reach = Math.max(0, ...items.map(it => it.w));   // px: the widest tag so far
+    const order = [...items.keys()].sort((a, b) => items[b].active - items[a].active || a - b);
+    order.forEach(i => {
+      const it = items[i];
+      if (it.full === it.num) return;
+      const wFull = width(it.full) + 8, x = place(it.bx0, it.bx1, wFull);
+      const hit = o => o.x0 < x + wFull + 2 && o.x0 + o.w + 2 > x && Math.abs(o.y - it.y) < 16;
+      let free = true;
+      if (!it.active) {
+        for (let j = i + 1; free && j < items.length && items[j].x0 < x + wFull + 2; j++) free = !hit(items[j]);
+        for (let j = i - 1; free && j >= 0 && items[j].x0 > x - reach - 2; j--) free = !hit(items[j]);
+      }
+      if (free) { it.x0 = x; it.w = wFull; reach = Math.max(reach, wFull); }
+      it.label = free ? it.full : it.num;
+    });
+    return new Map(items.map(it => [it.b, { label: it.label ?? it.num, x: it.x0, w: it.w }]));
+  }
+
   _drawBoxes(ctx, h) {
     const now = performance.now(), calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (this.recording) {
@@ -1340,7 +1418,7 @@ export class BirdBoxTab {
     }
     ctx.font = LABEL_FONT;
     ctx.textBaseline = 'alphabetic';
-    const width = label => labelWidth(ctx, label);
+    const labels = this._boxLabels(h, label => labelWidth(ctx, label));
     this.boxes.forEach((b, i) => {
       const g = this._geom(b), x0 = h.timeToX(g.t0), x1 = h.timeToX(g.t1);
       if (x1 < 0 || x0 > h.width) return;
@@ -1367,18 +1445,13 @@ export class BirdBoxTab {
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
       if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
-      const sp = this._species(b);
-      const num = `${i + 1}${edit.verified && !b.manual ? ' ✓' : ''}`;
-      let label = sp.s !== AVES ? `${num} · ${catalog.name(sp.s)}` : b.manual || edit.verified ? num : `${num} · ${fmtNumber(b.avg, 2)}`;
-      // Keep crowded views readable: numbers only unless the label fits or the box is active
-      if (!active && width(label) > Math.max(x1 - x0, 0) + 24) label = num;
-      const tw = width(label) + 8, ly = Math.max(14, y0 - 2);
+      const { label, x: tx, w: tw } = labels.get(b), ly = Math.max(14, y0 - 2);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.9;
-      ctx.fillRect(x0, ly - 13, tw, 15);
+      ctx.fillRect(tx, ly - 13, tw, 15);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#05040c';
-      ctx.fillText(label, x0 + 4, ly - 2);
+      ctx.fillText(label, tx + 4, ly - 2);
       // Handles on the selected box show that it can be moved and resized
       if (selected && !this.drawMode && edit.include) {
         ctx.fillStyle = '#ffffff';

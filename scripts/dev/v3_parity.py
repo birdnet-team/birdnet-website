@@ -6,8 +6,8 @@ reference run of the same ONNX model in Python (onnxruntime, CPU).
 The reference follows the BirdNET V3.0 command-line analyzer: audio loaded
 with librosa at 32 kHz mono, fixed windows (zero-padded at the end), sigmoid
 scores straight from the model. Use the same window, overlap and minimum
-confidence as in the demo, with all species groups enabled and no location
-filter or manual edits.
+confidence as in the demo, with all species groups and "Show other sound
+classes" enabled and no location filter or manual edits.
 
     pip install onnxruntime librosa numpy
     npm run fetch-models
@@ -36,7 +36,7 @@ def default(pattern):
 
 def load_labels(path):
     with open(path, newline="", encoding="utf-8") as f:
-        return [f"{r['sci_name'].strip()}_{r['com_name'].strip()}" for r in csv.DictReader(f, delimiter=";")]
+        return [f"{r['scientific_name'].strip()}_{(r['common_name'].strip() or r['scientific_name'].strip())}" for r in csv.DictReader(f)]
 
 
 def reference_rows(audio, model, labels, chunk, overlap, min_conf):
@@ -61,7 +61,7 @@ def main():
     parser.add_argument("audio")
     parser.add_argument("web_csv", help="CSV downloaded from the V3.0 tab")
     parser.add_argument("--model", default=default("dist/v3/*.onnx"))
-    parser.add_argument("--labels", default=default("upstream/*V3.0*Labels.csv"))
+    parser.add_argument("--labels", default=default("upstream/*V3.0_Global*Labels.csv"))
     parser.add_argument("--chunk", type=float, default=3.0)
     parser.add_argument("--overlap", type=float, default=0.0)
     parser.add_argument("--min-conf", type=float, default=0.15)

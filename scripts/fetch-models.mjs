@@ -3,18 +3,18 @@
  * Fetch and prepare the ONNX models for the browser demo (/demo/).
  *
  * The models are too large to keep in this repository, so they are pulled
- * from pinned upstream commits at build time, verified by SHA-256, and
- * written to _models/dist/ (gitignored). Eleventy copies that folder to
+ * from a pinned Zenodo record and a pinned BirdBox commit at build time,
+ * verified by SHA-256, and written to _models/dist/ (gitignored). Eleventy copies that folder to
  * /models/ in the built site. Downloads are cached in _models/upstream/, so
  * repeated builds are offline and fast; CI caches the whole _models folder.
  *
  * Derived files:
  *   v3/labels.json        species table for the V3.0 audio model
  *   v3/names/<lang>.json  localized common names, aligned with labels.json
- *   geo/<model>.onnx      geomodel with its 128-d species embedding exposed
+ *   geo/<model>.onnx      geomodel with its species embedding exposed
  *                         as an extra graph output (weights untouched)
- *   geo/head.bin          fp16 weights + bias of the final species layer
- *   geo/labels.json       geomodel output index -> V3 label index
+ *   geo/head.bin          fp16 weights + fp32 bias of the final species layer
+ *   geo/labels.json       geomodel output index -> V3 label index (joined by BirdNET ID)
  *   birdbox/<model>.spectrogram.onnx, birdbox/<model>.detect.onnx
  *                         the two streaming graphs stored in the BirdBox model:
  *                         audio to spectrogram frames, and frames to the boxes
@@ -27,8 +27,9 @@
 
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inflateRawSync } from 'node:zlib';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, '_models');
@@ -36,30 +37,38 @@ const UPSTREAM = join(OUT, 'upstream');
 const DIST = join(OUT, 'dist');
 const FORCE = process.argv.includes('--force');
 
-// Pinned upstream sources. Bump the commit (and the expected hashes) to update.
-const LIVE_APP = { repo: 'birdnet-team/birdnet-live-app', commit: '351310119bd17fe9c2149051055e810903e007e1' };
+// Pinned upstream sources. Bump the record or commit (and the expected hashes) to update.
+// BirdNET+ V3.0 model files: audio model, geomodel and taxonomy (version 3.0.1 of the record)
+const ZENODO = { record: '24362980' };
 const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '24632a5560f6fd93959c2de157e94471be8ea0e7' };
 
+const zenodo = name => `https://zenodo.org/api/records/${ZENODO.record}/files/${encodeURIComponent(name)}/content`;
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
-// Git LFS objects are served from media.githubusercontent.com
-const lfs = (src, path) => `https://media.githubusercontent.com/media/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
 
-const V3_MODEL = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_FP16.onnx';
-const V3_LABELS = 'BirdNET+_V3.0-preview3.1_Global_10K-pruned_Labels.csv';
-const GEO_MODEL = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_FP16.onnx';
-const GEO_LABELS = 'BirdNET+_Geomodel_V3.0.4_Global_10K-pruned_Labels.txt';
+// The pruned FP16 audio model uses one of the model's three classifier heads: 69 MB instead of 166 MB
+const V3_MODEL = 'BirdNET+_V3.0_Global_12K_FP16_pruned.onnx';
+const V3_LABELS = 'BirdNET+_V3.0_Global_12K_Labels.csv';
+const GEO_ZIP = 'BirdNET+_Geomodel_V3.0.5_Global_14K.zip';
+const GEO_MODEL = 'BirdNET+_Geomodel_V3.0.5_Global_14K_FP16.onnx';
+const GEO_LABELS = 'BirdNET+_Geomodel_V3.0.5_Global_14K_Labels.txt';
+const TAXONOMY_ZIP = 'BirdNET+_Taxonomy_v0.5-Nov2026.zip';
+const TAXONOMY_CSV = 'BirdNET+_Taxonomy_v0.5-Nov2026.csv';
 const BIRDBOX_MODEL = 'Just-Bird_fp16.onnx';
 
 const FILES = {
-  v3Model: { url: lfs(LIVE_APP, `assets/models/${V3_MODEL}`), name: V3_MODEL, sha256: '306e74f3edc5b95acc6e87ea7f3f1c701fdc0b18ec868b7615208cd6fc2f9457' },
-  v3Labels: { url: raw(LIVE_APP, `assets/models/${V3_LABELS}`), name: V3_LABELS },
-  geoModel: { url: lfs(LIVE_APP, `assets/models/${GEO_MODEL}`), name: GEO_MODEL, sha256: '198adb7bcb3cf03341ffa51fbfa7b2d295e5cd900ba09183dcfdbf6d12b5c63b' },
-  geoLabels: { url: raw(LIVE_APP, `assets/models/${GEO_LABELS}`), name: GEO_LABELS },
-  taxonomy: { url: raw(LIVE_APP, 'assets/models/taxonomy.csv'), name: 'taxonomy.csv' },
+  v3Model: { url: zenodo(V3_MODEL), name: V3_MODEL, sha256: 'feadeccc84feb021aeb9c51ec5288f6f5bd7065fe3773e2d48a69ea8a26b412a' },
+  v3Labels: { url: zenodo(V3_LABELS), name: V3_LABELS, sha256: '88d976477fac81127ac8ac4c215c37749d0a6537944112ea606d321317cb7640' },
+  geoZip: { url: zenodo(GEO_ZIP), name: GEO_ZIP, sha256: '3c1a7c36cc998596fa71688e0eab4fc3b08a663546feaa03c503b1ee1fefb41c' },
+  taxonomyZip: { url: zenodo(TAXONOMY_ZIP), name: TAXONOMY_ZIP, sha256: '433f0d19aabdd5c67a26501d05b8826ad23af4c33149771b5d908c7efa7e4fd1' },
   birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '34b5720cb4fb65d5201d9e9d7cecd3b670d4838552d2a84a6843964407f7e057' },
 };
 
-// Species name languages shipped with the demo (taxonomy.csv column suffix).
+// Species groups in the order the demo lists them (labels column taxon_group). The
+// model's non-animal classes (gun, chainsaw, siren, ...) form one group, Sound.
+const CLASS_ORDER = ['Aves', 'Amphibia', 'Insecta', 'Arachnida', 'Mammalia', 'Reptilia', 'Actinopterygii', 'Sound'];
+const SOUND_GROUPS = new Set(['Anthropogenic', 'Geophony', 'Music']);
+
+// Species name languages shipped with the demo (labels column suffix).
 // Columns with poor coverage are left out; missing names fall back to English.
 const NAME_LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'pt_PT', 'nl', 'pl', 'ru', 'cs', 'sk', 'sv', 'da', 'no', 'fi',
   'uk', 'tr', 'ja', 'zh-CN', 'ca', 'bg', 'sr', 'hr', 'lt', 'et', 'cy', 'fa'];
@@ -132,6 +141,50 @@ function parseCsv(text, delimiter = ',') {
   if (field !== '' || row.length) { row.push(field); rows.push(row); }
   const [header, ...data] = rows;
   return data.map(r => Object.fromEntries(header.map((h, i) => [h.trim(), (r[i] ?? '').trim()])));
+}
+
+/* ------------------------------------------------------------------ */
+/* Zip reader                                                          */
+/* ------------------------------------------------------------------ */
+
+const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => {
+  for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
+  return n >>> 0;
+});
+
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+/**
+ * Files of a zip archive by base name, each checked against its CRC-32.
+ * Reads the central directory; archives over 4 GB (zip64) are not supported.
+ */
+function unzip(path, names) {
+  const buf = readFileSync(path);
+  let eocd = buf.length - 22;
+  while (eocd >= 0 && buf.readUInt32LE(eocd) !== 0x06054b50) eocd--;
+  if (eocd < 0) throw new Error(`${basename(path)}: not a zip archive`);
+  const out = {};
+  let pos = buf.readUInt32LE(eocd + 16);
+  for (let n = buf.readUInt16LE(eocd + 10); n > 0; n--) {
+    if (buf.readUInt32LE(pos) !== 0x02014b50) throw new Error(`${basename(path)}: broken zip directory`);
+    const method = buf.readUInt16LE(pos + 10), crc = buf.readUInt32LE(pos + 16), size = buf.readUInt32LE(pos + 20);
+    const nameLen = buf.readUInt16LE(pos + 28), local = buf.readUInt32LE(pos + 42);
+    const name = basename(buf.toString('utf8', pos + 46, pos + 46 + nameLen));
+    pos += 46 + nameLen + buf.readUInt16LE(pos + 30) + buf.readUInt16LE(pos + 32);
+    if (!names.includes(name)) continue;
+    const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+    const packed = buf.subarray(start, start + size);
+    const data = method === 0 ? Buffer.from(packed) : method === 8 ? inflateRawSync(packed) : null;
+    if (!data) throw new Error(`${basename(path)}: ${name} uses an unsupported compression`);
+    if (crc32(data) !== crc) throw new Error(`${basename(path)}: ${name} is damaged`);
+    out[name] = data;
+  }
+  for (const name of names) if (!out[name]) throw new Error(`${basename(path)}: no ${name}`);
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -212,9 +265,12 @@ function parseTensor(buf, f) {
 
 /**
  * Expose the input of the final species layer (Gemm -> Sigmoid) as an
- * additional fp16 graph output, and return that layer's weights. Running the
- * patched graph yields the original probabilities plus a 128-d embedding per
+ * additional graph output, and return that layer's weights. Running the
+ * patched graph yields the original probabilities plus an embedding per
  * location, from which any single species can be scored cheaply in JS.
+ *
+ * The FP16 geomodel is mixed precision: the layer's weights are stored in
+ * half precision and cast to float32 in the graph, where the layer runs.
  */
 function patchGeomodel(model) {
   const graphField = [...fields(model)].find(f => f.field === 7);
@@ -230,11 +286,13 @@ function patchGeomodel(model) {
   const gemm = nodes.find(n => n.op === 'Gemm' && n.outputs[0] === sigmoid[0].inputs[0]);
   if (!gemm) throw new Error('Geomodel: final Gemm not found');
   const [featureName, weightName, biasName] = gemm.inputs;
-  const W = tensors.get(weightName), B = tensors.get(biasName);
-  const FLOAT16 = 10;
-  if (!W?.raw || !B?.raw || W.dataType !== FLOAT16 || B.dataType !== FLOAT16) throw new Error('Geomodel: unexpected head weight layout');
+  const cast = nodes.find(n => n.op === 'Cast' && n.outputs[0] === weightName);
+  const W = tensors.get(cast ? cast.inputs[0] : weightName), B = tensors.get(biasName);
+  const FLOAT = 1, FLOAT16 = 10;
+  if (!cast || !W?.raw || !B?.raw || W.dataType !== FLOAT16 || B.dataType !== FLOAT) throw new Error('Geomodel: unexpected head weight layout');
   const [numSpecies, featureDim] = W.dims;
-  const patched = addGraphOutput(model, featureName, FLOAT16, ['batch', featureDim]);
+  if (W.raw.length !== numSpecies * featureDim * 2 || B.raw.length !== numSpecies * 4) throw new Error('Geomodel: unexpected head weight size');
+  const patched = addGraphOutput(model, featureName, FLOAT, ['batch', featureDim]);
   return { model: patched, featureName, numSpecies, featureDim, head: Buffer.concat([W.raw, B.raw]) };
 }
 
@@ -449,48 +507,55 @@ async function main() {
   mkdirSync(UPSTREAM, { recursive: true });
   const paths = {};
   for (const [key, file] of Object.entries(FILES)) paths[key] = await download(file);
+  // Downloads of earlier model versions would ride along in the build cache
+  const current = new Set(Object.values(FILES).flatMap(f => [f.name, `${f.name}.url`]));
+  for (const name of readdirSync(UPSTREAM)) if (!current.has(name)) rmSync(join(UPSTREAM, name));
 
   // --- V3.0 audio model + labels ---------------------------------------
-  const labels = parseCsv(readFileSync(paths.v3Labels, 'utf8'), ';');
-  labels.forEach((l, i) => { if (+l.idx !== i) throw new Error(`V3 labels: idx ${l.idx} at row ${i}`); });
-  const taxonomy = new Map(parseCsv(readFileSync(paths.taxonomy, 'utf8')).map(r => [r.scientific_name, r]));
-  const classes = [...new Set(labels.map(l => l.class))].sort();
+  const labels = parseCsv(readFileSync(paths.v3Labels, 'utf8'));
+  labels.forEach((l, i) => { if (+l.ix !== i) throw new Error(`V3 labels: ix ${l.ix} at row ${i}`); });
+  const groupOf = l => (SOUND_GROUPS.has(l.taxon_group) ? 'Sound' : l.taxon_group);
+  const present = new Set(labels.map(groupOf));
+  const classes = [...CLASS_ORDER.filter(c => present.has(c)), ...[...present].filter(c => !CLASS_ORDER.includes(c)).sort()];
+  const taxonomy = new Map(parseCsv(unzip(paths.taxonomyZip, [TAXONOMY_CSV])[TAXONOMY_CSV].toString('utf8')).map(r => [r.birdnet_id, r]));
   const v3Species = labels.map(l => {
-    const tax = taxonomy.get(l.sci_name) || {};
+    const tax = taxonomy.get(l.birdnet_id) || {};
     // [scientific name, English common name, class index, Xeno-canto name, eBird code]
-    return [l.sci_name, l.com_name, classes.indexOf(l.class), tax.xc_name || '', tax.ebird_code || ''];
+    return [l.scientific_name, l.common_name || l.scientific_name, classes.indexOf(groupOf(l)), tax.xc_name || '', l.ebird_code];
   });
 
   // --- Geomodel ----------------------------------------------------------
-  const geoLabels = readFileSync(paths.geoLabels, 'utf8').split(/\r?\n/).filter(Boolean).map(line => line.split('\t'));
-  const v3Index = new Map(labels.map((l, i) => [l.sci_name, i]));
-  const geoToV3 = geoLabels.map(([, sci]) => v3Index.get(sci) ?? -1);
+  // Its classes join to the audio model's by BirdNET ID. Each model has species the other lacks.
+  const geoFiles = unzip(paths.geoZip, [GEO_MODEL, GEO_LABELS]);
+  const geoLabels = geoFiles[GEO_LABELS].toString('utf8').split(/\r?\n/).filter(Boolean).map(line => line.split('\t'));
+  const v3Index = new Map(labels.map((l, i) => [l.birdnet_id, i]));
+  const geoToV3 = geoLabels.map(([id]) => v3Index.get(id) ?? -1);
   const v3ToGeo = new Array(labels.length).fill(-1);
   geoToV3.forEach((v, g) => { if (v >= 0) v3ToGeo[v] = g; });
 
-  const patched = patchGeomodel(readFileSync(paths.geoModel));
+  const patched = patchGeomodel(geoFiles[GEO_MODEL]);
   if (patched.numSpecies !== geoLabels.length) throw new Error('Geomodel: label count does not match head size');
 
   writeIfChanged(join(DIST, 'v3', V3_MODEL), readFileSync(paths.v3Model));
   writeIfChanged(join(DIST, 'v3', 'labels.json'), JSON.stringify({ classes, species: v3Species, geoIndex: v3ToGeo }));
   // Offline fallback for species details when the taxonomy API is not reachable
-  // (it is same-origin only on birdnet.cornell.edu): [iNat ID, Wikipedia (en), photo author, license, source]
+  // (it is same-origin only on birdnet.cornell.edu): [iNat ID, Wikipedia (en), photo author, license, source].
+  // The taxonomy CSV has no Wikipedia links, so that field stays empty.
   writeIfChanged(join(DIST, 'v3', 'info.json'), JSON.stringify(labels.map(l => {
-    const tax = taxonomy.get(l.sci_name) || {};
-    return [+tax.inat_id || 0, tax.wikipedia_url_en || '', tax.image_author || '', tax.image_license || '', tax.image_source || ''];
+    const tax = taxonomy.get(l.birdnet_id) || {};
+    return [+l.inat_id || 0, '', tax.image_author || '', tax.image_license || '', tax.image_source || ''];
   })));
   const names = {};
   for (const lang of NAME_LANGS) {
-    const column = lang === 'en' ? 'common_name' : `common_name_${lang}`;
+    if (lang === 'en') continue;   // English is the base list itself
+    const column = `common_name_${lang}`;
     let found = 0;
     const list = labels.map(l => {
-      const name = (taxonomy.get(l.sci_name) || {})[column] || '';
+      const name = l[column] || '';
       if (name) found++;
       return name;
     });
     if (found / labels.length < MIN_NAME_COVERAGE) continue;
-    // English is the base list itself; other languages only store differences
-    if (lang === 'en') continue;
     writeIfChanged(join(DIST, 'v3', 'names', `${lang}.json`), JSON.stringify(list));
     names[lang] = { coverage: +(found / labels.length).toFixed(3) };
   }
@@ -498,7 +563,7 @@ async function main() {
   writeIfChanged(join(DIST, 'geo', GEO_MODEL), patched.model);
   writeIfChanged(join(DIST, 'geo', 'head.bin'), patched.head);
   writeIfChanged(join(DIST, 'geo', 'labels.json'), JSON.stringify({
-    species: geoLabels.map(([code, sci, com]) => [sci, com || sci, code]),
+    species: geoLabels.map(([id, sci, com]) => [sci, com || sci, id]),
     v3Index: geoToV3,
   }));
 
@@ -514,14 +579,15 @@ async function main() {
   // --- Manifest -----------------------------------------------------------
   const manifest = {
     sources: {
-      liveApp: `https://github.com/${LIVE_APP.repo}/tree/${LIVE_APP.commit}/assets/models`,
+      zenodo: `https://zenodo.org/records/${ZENODO.record}`,
       birdbox: `https://github.com/${BIRDBOX.repo}/tree/${BIRDBOX.commit}/docs/models`,
     },
     v3: {
-      name: 'BirdNET+ V3.0-preview3.1 Global 10K-pruned (FP16)',
-      version: '3.0-preview3.1',
+      name: 'BirdNET+ V3.0 Global 12K (FP16, pruned)',
+      version: '3.0',
       sampleRate: 32000,
       species: labels.length,
+      sounds: labels.filter(l => groupOf(l) === 'Sound').length,
       classes,
       model: entry(`v3/${V3_MODEL}`),
       labels: entry('v3/labels.json'),
@@ -531,11 +597,12 @@ async function main() {
       output: 'predictions',
     },
     geo: {
-      name: 'BirdNET+ Geomodel V3.0.4 Global 10K-pruned (FP16)',
-      version: '3.0.4',
+      name: 'BirdNET+ Geomodel V3.0.5 Global 14K (FP16)',
+      version: '3.0.5',
       species: geoLabels.length,
+      shared: geoToV3.filter(v => v >= 0).length,   // species the audio model has too
       model: entry(`geo/${GEO_MODEL}`),
-      head: { ...entry('geo/head.bin'), featureDim: patched.featureDim, numSpecies: patched.numSpecies, dtype: 'float16' },
+      head: { ...entry('geo/head.bin'), featureDim: patched.featureDim, numSpecies: patched.numSpecies, weights: 'float16', bias: 'float32' },
       labels: entry('geo/labels.json'),
       input: 'input',
       output: 'probabilities',

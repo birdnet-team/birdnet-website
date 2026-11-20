@@ -41,13 +41,13 @@ class CellStore {
     this.slots = new Map();
     this.cap = 0;
     this.size = 0;
-    this.feat = new Uint16Array(0);
+    this.feat = new Float32Array(0);
     this.counts = new Uint16Array(0);
   }
   ensure(n) {
     if (this.size + n <= this.cap) return;
     const cap = Math.max(1024, (this.size + n) * 2);
-    const f = new Uint16Array(cap * this.D); f.set(this.feat);
+    const f = new Float32Array(cap * this.D); f.set(this.feat);
     const c = new Uint16Array(cap * this.stride); c.set(this.counts);
     this.feat = f; this.counts = c; this.cap = cap;
   }
@@ -196,7 +196,8 @@ export class GeoTab {
     let active = -1;
     const showResults = () => {
       const q = search.value.trim();
-      const ids = q ? catalog.search(q, 30) : FEATURED.map(s => catalog.bySci?.get(s)).filter(i => i != null);
+      // Only species the geomodel knows have a range map
+      const ids = q ? catalog.search(q, 30, i => catalog.geoIndex[i] >= 0) : FEATURED.map(s => catalog.bySci?.get(s)).filter(i => i != null);
       results.innerHTML = (q ? '' : `<div class="geo-sr-head">${esc(t('demo.geo.featured', 'Featured species'))}</div>`)
         + ids.map((i, k) => `<button type="button" class="geo-sr-item${k === active ? ' active' : ''}" data-i="${i}"><i class="fa-solid ${CLASS_INFO[catalog.className(i)]?.icon || 'fa-dove'} me-2 text-muted"></i>${esc(catalog.name(i))} <span class="geo-sr-sci">${esc(catalog.sci[i])}</span></button>`).join('')
         || `<div class="geo-sr-head">${esc(t('demo.geo.noMatch', 'No matching species'))}</div>`;
@@ -237,11 +238,13 @@ export class GeoTab {
   }
 
   _initTaxa() {
+    // Only the groups the geomodel has species of
+    const classes = catalog.classes.filter((_, c) => geo.classCovered?.[c]);
     for (const sel of [$('geo-rich-taxa'), $('geo-panel-taxa')]) {
-    const cur = sel.value || 'all';
-    sel.innerHTML = `<option value="all">${esc(t('demo.geo.allTaxa', 'All species'))}</option>`
-      + catalog.classes.map(c => `<option value="${c}">${esc(classLabel(c))}</option>`).join('');
-    sel.value = cur;
+      const cur = sel.value || 'all';
+      sel.innerHTML = `<option value="all">${esc(t('demo.geo.allTaxa', 'All species'))}</option>`
+        + classes.map(c => `<option value="${c}">${esc(classLabel(c))}</option>`).join('');
+      sel.value = cur;
     }
   }
 
@@ -399,7 +402,7 @@ export class GeoTab {
     }
     if (this.mode === 'range') {
       if (this.species == null) return { values, nI, nJ };
-      const feats = new Uint16Array(ids.length * geo.D);
+      const feats = new Float32Array(ids.length * geo.D);
       ids.forEach((slot, k) => feats.set(store.feat.subarray(slot * geo.D, (slot + 1) * geo.D), k * geo.D));
       const scores = geo.scoreCells(feats, ids.length, this.species);
       pos.forEach((p, k) => { values[p] = scores[k]; });

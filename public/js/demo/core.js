@@ -182,7 +182,7 @@ export const DEVICE = {
  * How many single-threaded inference workers to run for a model. Each worker
  * holds its own ONNX Runtime session (the page is not cross-origin isolated,
  * so WASM threads are unavailable), which scales well but costs memory:
- * roughly 500 MB per V3.0 worker and 60 MB per geomodel worker.
+ * roughly 500 MB per V3.0 worker and 40 MB per geomodel worker.
  */
 export function workerCount(kind) {
   const { cores, memoryGB, mobile, ios } = DEVICE;

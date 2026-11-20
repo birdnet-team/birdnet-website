@@ -19,8 +19,30 @@ export function getManifest() {
       return res.json();
     });
     manifestPromise.catch(() => { manifestPromise = null; });
+    manifestPromise.then(prune).catch(() => {});
   }
   return manifestPromise;
+}
+
+/**
+ * Drop cached files the manifest no longer lists: after a model update, the
+ * previous model would otherwise stay in the browser's storage for good.
+ */
+async function prune(manifest) {
+  const cache = await openCache();
+  if (!cache) return;
+  const listed = new Set();
+  const walk = value => {
+    if (!value || typeof value !== 'object') return;
+    if (typeof value.path === 'string' && value.sha256) listed.add(new URL(`${CONFIG.models}${value.path}`, location.href).pathname);
+    Object.values(value).forEach(walk);
+  };
+  walk(manifest);
+  const root = new URL(CONFIG.models, location.href).pathname;   // only this site's models folder
+  for (const req of await cache.keys()) {
+    const path = new URL(req.url).pathname;
+    if (path.startsWith(root) && !listed.has(path)) await cache.delete(req);
+  }
 }
 
 const assetUrl = entry => `${CONFIG.models}${entry.path}?v=${entry.sha256.slice(0, 12)}`;
