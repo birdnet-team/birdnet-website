@@ -752,6 +752,8 @@
   "demo.mic.denied": "Odmówiono dostępu do mikrofonu. Zezwól na dostęp w ustawieniach przeglądarki.",
   "demo.mic.notFound": "Nie znaleziono mikrofonu. Podłącz mikrofon i spróbuj ponownie.",
   "demo.mic.inUse": "Mikrofon jest używany przez inną aplikację.",
+  "demo.mic.insecure": "Nagrywanie działa tylko w bezpiecznej wersji tej strony.",
+  "demo.mic.insecureLink": "Otwórz bezpieczną stronę",
   "demo.geo.unsupported": "Twoja przeglądarka nie obsługuje geolokalizacji.",
   "demo.geo.detecting": "Wykrywanie...",
   "demo.geo.success": "Lokalizacja została wykryta.",

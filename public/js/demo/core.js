@@ -30,6 +30,20 @@ export function siteLang() {
   return (window.i18n && window.i18n.getCurrentLang && window.i18n.getCurrentLang()) || 'en';
 }
 
+/**
+ * The message for Record on a page served over plain http, where browsers give no
+ * microphone, with a link to the same page over https. The link carries the language,
+ * because the http and the https page keep separate storage.
+ */
+export function insecureMicMessage() {
+  const url = new URL(location.href);
+  url.protocol = 'https:';
+  if (!url.searchParams.has('lang')) url.searchParams.set('lang', siteLang());
+  return `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>`
+    + `${esc(t('demo.mic.insecure', 'Recording only works on the secure version of this page.'))}</span> `
+    + `<a href="${esc(url.href)}">${esc(t('demo.mic.insecureLink', 'Open the secure page'))}</a>`;
+}
+
 /** BCP-47 locale for number/date formatting (Klingon falls back to English). */
 export function locale() {
   const lang = siteLang();

@@ -752,6 +752,8 @@
   "demo.mic.denied": "Přístup k mikrofonu byl odepřen. Povol ho v nastavení prohlížeče.",
   "demo.mic.notFound": "Mikrofon nebyl nalezen. Připoj mikrofon a zkus to znovu.",
   "demo.mic.inUse": "Mikrofon používá jiná aplikace.",
+  "demo.mic.insecure": "Nahrávání funguje jen na zabezpečené verzi této stránky.",
+  "demo.mic.insecureLink": "Otevřít zabezpečenou stránku",
   "demo.geo.unsupported": "Tvůj prohlížeč nepodporuje určování polohy.",
   "demo.geo.detecting": "Zjišťování...",
   "demo.geo.success": "Poloha byla úspěšně zjištěna.",

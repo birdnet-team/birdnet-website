@@ -752,6 +752,8 @@
   "demo.mic.denied": "Acesso ao microfone negado. Permite o acesso ao microfone nas definições do navegador.",
   "demo.mic.notFound": "Nenhum microfone encontrado. Liga um microfone e tenta novamente.",
   "demo.mic.inUse": "O microfone está a ser usado por outra aplicação.",
+  "demo.mic.insecure": "A gravação só funciona na versão segura desta página.",
+  "demo.mic.insecureLink": "Abrir a página segura",
   "demo.geo.unsupported": "O teu navegador não suporta geolocalização.",
   "demo.geo.detecting": "A detetar...",
   "demo.geo.success": "Localização detetada com sucesso.",

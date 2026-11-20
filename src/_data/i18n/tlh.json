@@ -752,6 +752,8 @@
   "demo.mic.denied": "microphone naw' ghIjlu'. browser DuHmey yIchoH.",
   "demo.mic.notFound": "microphone tu'lu'be'. yIrar 'ej yInIDqa'.",
   "demo.mic.inUse": "latlh ghun microphone lo'.",
+  "demo.mic.insecure": "HTTPS Daq neH qonlu'laH.",
+  "demo.mic.insecureLink": "HTTPS Daq yIpoSmoH",
   "demo.geo.unsupported": "Daq SamlaHbe' browser.",
   "demo.geo.detecting": "nej...",
   "demo.geo.success": "Daq Samlu'.",
