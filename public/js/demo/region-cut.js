@@ -1,15 +1,24 @@
 /**
- * Cut time-frequency regions out of audio: the sound of other boxes inside a box.
+ * The audio of one box, for BirdNET: what lies outside the box's frequency band is
+ * replaced by background noise, and so are time-frequency regions inside it that
+ * belong to other boxes.
  *
- * Works on a short-time Fourier transform (1024 samples, Hann window, 3/4 overlap).
- * Only the frames a region covers are transformed: what a region holds there is
- * taken back to the time domain and subtracted from the audio, so everything else
- * stays as it was, sample for sample.
+ * Two things do not work here, measured on a busy dawn chorus (XC561949):
+ * - A filter with a gentle slope, or turning the rest down. BirdNET still hears a
+ *   bird 40 dB down, so a loud bird just above or below a box would name the box.
+ * - Silence instead of the rest. The model then scores the box's own bird much lower.
+ * So the rest is replaced by the recording's own background: on a short-time Fourier
+ * transform (1024 samples, square-root Hann windows, half overlap), where a band
+ * ends within one bin (31 Hz at 32 kHz), each replaced bin gets its typical level
+ * over the audio with a random phase. That is steady noise shaped like the
+ * recording's, without the sounds that come and go. What is not replaced stays as
+ * it was, sample for sample.
  */
 
-const N = 1024, HOP = N / 4;
-const WINDOW = Float64Array.from({ length: N }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N));
-const GAIN = 1.5;   // sum of the squared window over the overlapping frames
+const N = 1024, HOP = N / 2, BINS = N / 2 + 1;
+const BACKGROUND = 0.5;   // a bin's background is this quantile of its level over the audio: the median
+// Analysis and synthesis window: its square is a Hann window, which sums to 1 at half overlap
+const WINDOW = Float64Array.from({ length: N }, (_, i) => Math.sin(Math.PI * (i + 0.5) / N));
 const COS = Float64Array.from({ length: N / 2 }, (_, i) => Math.cos(2 * Math.PI * i / N));
 const SIN = Float64Array.from({ length: N / 2 }, (_, i) => Math.sin(2 * Math.PI * i / N));
 const REVERSED = Uint16Array.from({ length: N }, (_, i) => {
@@ -42,30 +51,50 @@ function fft(re, im, sign) {
 }
 
 /**
- * Remove regions from x, in place.
+ * Replace regions of x by the background noise of x, in place.
  * @param {Float32Array} x
  * @param {ArrayLike<number>} regions [t0, t1, flo, fhi] per region: seconds from the start of x, Hz
  * @returns {Float32Array} x
  */
 export function cutRegions(x, sr, regions) {
-  const count = Math.floor(regions.length / 4);
-  if (!count) return x;
   // Frame k holds the samples from k * HOP; a region covers the frames centred in its time span
-  const spans = [];
-  let first = Infinity, last = -Infinity;
-  for (let r = 0; r < count; r++) {
-    const k0 = Math.ceil((regions[r * 4] * sr - N / 2) / HOP), k1 = Math.floor((regions[r * 4 + 1] * sr - N / 2) / HOP);
-    const b0 = Math.max(0, Math.floor(regions[r * 4 + 2] * N / sr)), b1 = Math.min(N / 2, Math.ceil(regions[r * 4 + 3] * N / sr));
+  const kMin = Math.ceil((1 - N) / HOP), kMax = Math.floor((x.length - 1) / HOP), frames = kMax - kMin + 1;
+  const spans = [], used = new Uint8Array(BINS);
+  for (let r = 0; r + 3 < regions.length; r += 4) {
+    const k0 = Math.max(kMin, Math.ceil((regions[r] * sr - N / 2) / HOP)), k1 = Math.min(kMax, Math.floor((regions[r + 1] * sr - N / 2) / HOP));
+    const b0 = Math.max(0, Math.floor(regions[r + 2] * N / sr)), b1 = Math.min(N / 2, Math.ceil(regions[r + 3] * N / sr));
     if (k1 < k0 || b1 < b0) continue;
     spans.push([k0, k1, b0, b1]);
-    first = Math.min(first, k0);
-    last = Math.max(last, k1);
+    used.fill(1, b0, b1 + 1);
   }
-  first = Math.max(first, Math.ceil((1 - N) / HOP));
-  last = Math.min(last, Math.floor((x.length - 1) / HOP));
-  const re = new Float64Array(N), im = new Float64Array(N), cut = new Uint8Array(N / 2 + 1);
-  const out = new Float64Array(x.length);   // what the regions hold
-  for (let k = first; k <= last; k++) {
+  if (!spans.length || frames < 1) return x;
+
+  // The spectrum of every frame, for the background and for the frames to change
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const specRe = new Float32Array(frames * BINS), specIm = new Float32Array(frames * BINS);
+  for (let f = 0; f < frames; f++) {
+    const start = (kMin + f) * HOP;
+    for (let i = 0; i < N; i++) {
+      const q = start + i;
+      re[i] = q >= 0 && q < x.length ? x[q] * WINDOW[i] : 0;
+      im[i] = 0;
+    }
+    fft(re, im, -1);
+    specRe.set(re.subarray(0, BINS), f * BINS);
+    specIm.set(im.subarray(0, BINS), f * BINS);
+  }
+  // Background of a bin: its median level over the frames, which a sound that comes and goes does not raise much
+  const floor = new Float32Array(BINS), levels = new Float32Array(frames);
+  for (let b = 0; b < BINS; b++) {
+    if (!used[b]) continue;
+    for (let f = 0; f < frames; f++) levels[f] = Math.hypot(specRe[f * BINS + b], specIm[f * BINS + b]);
+    floor[b] = levels.sort()[Math.floor((frames - 1) * BACKGROUND)];
+  }
+
+  const cut = new Uint8Array(BINS), out = new Float64Array(x.length);   // out: what is taken from x
+  let seed = 12345;   // the same audio gives the same result
+  for (let f = 0; f < frames; f++) {
+    const k = kMin + f;
     cut.fill(0);
     let any = false;
     for (const [k0, k1, b0, b1] of spans) {
@@ -74,22 +103,38 @@ export function cutRegions(x, sr, regions) {
       any = true;
     }
     if (!any) continue;
-    const start = k * HOP;
-    for (let i = 0; i < N; i++) {
-      const p = start + i;
-      re[i] = p >= 0 && p < x.length ? x[p] * WINDOW[i] : 0;
-      im[i] = 0;
-    }
-    fft(re, im, -1);
-    for (let b = 0; b <= N / 2; b++) {
-      if (cut[b]) continue;
-      re[b] = 0; im[b] = 0;
-      if (b > 0 && b < N / 2) { re[N - b] = 0; im[N - b] = 0; }
+    // In the cut bins: the sound minus the background with a random phase; elsewhere nothing
+    re.fill(0); im.fill(0);
+    for (let b = 0; b < BINS; b++) {
+      if (!cut[b]) continue;
+      let dr = specRe[f * BINS + b], di = specIm[f * BINS + b];
+      if (b > 0 && b < N / 2) {
+        seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+        const phase = seed / 4294967296 * 2 * Math.PI;
+        dr -= floor[b] * Math.cos(phase); di -= floor[b] * Math.sin(phase);
+        re[N - b] = dr; im[N - b] = -di;
+      }
+      re[b] = dr; im[b] = di;
     }
     fft(re, im, 1);
+    const start = k * HOP;
     for (let i = Math.max(0, -start), end = Math.min(N, x.length - start); i < end; i++) out[start + i] += re[i] * WINDOW[i];
   }
-  const scale = 1 / (N * GAIN);
-  for (let i = 0; i < x.length; i++) if (out[i] !== 0) x[i] -= out[i] * scale;
+  for (let i = 0; i < x.length; i++) if (out[i] !== 0) x[i] -= out[i] / N;
   return x;
+}
+
+/**
+ * Keep of x the band flo..fhi (Hz) without the regions `cuts`, in place; the rest
+ * becomes background noise. A band edge within one bin of the bottom or the top of
+ * the spectrum cuts nothing there.
+ * @param {Float32Array} x
+ * @param {ArrayLike<number>} cuts [t0, t1, flo, fhi] per region, as for cutRegions
+ * @returns {Float32Array} x
+ */
+export function isolateBox(x, sr, flo, fhi, cuts = []) {
+  const always = [-1, x.length / sr + 1], bin = sr / N, regions = [...cuts];
+  if (flo > bin) regions.push(...always, 0, flo - bin);         // the bins below the one that holds flo
+  if (fhi < sr / 2 - bin) regions.push(...always, fhi + bin, sr / 2);
+  return cutRegions(x, sr, regions);
 }

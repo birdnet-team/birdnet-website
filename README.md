@@ -65,18 +65,21 @@ resampling is involved.
 
 The species of a BirdBox box comes from BirdNET+ V3.0 run on the box itself,
 not on a fixed window: the audio of the box's time span (at least 1 s, centred
-on a shorter box), limited to the box's frequency band by a bandpass filter
-(`public/js/demo/bandpass.js`: 4th-order Butterworth high-pass and low-pass at
-the box's edges), at that length, which the model's variable input allows. The
+on a shorter box), with everything outside the box's frequency band replaced
+by the recording's background noise (`public/js/demo/region-cut.js`), at that
+length, which the model's variable input allows. The band is cut on a
+short-time Fourier transform, where it ends within about 30 Hz. A filter with
+a gentle slope is not enough: BirdNET still hears a bird 40 dB down, so a loud
+bird just above or below a box would name the box. Silence outside the band
+does not work either, as the box's own bird then scores much lower. The
 five best-scoring birds become the box's candidates, and the best one its
 species if it scores at least 35%. A box longer than 10 s is scored in equal
 parts, and each species keeps its highest score.
 
 Where two boxes overlap in time and frequency, both would hear the sound in
-the overlap. The overlap belongs to the smaller box; it is cut out of the
-larger box's audio before scoring (`public/js/demo/region-cut.js`, a
-short-time Fourier transform that removes only that time-frequency region),
-so a box around another bird's call is not named after that bird.
+the overlap. The overlap belongs to the smaller box; that time-frequency
+region is replaced by background noise in the larger box's audio in the same
+step, so a box around another bird's call is not named after that bird.
 
 BirdBox runs as a stream, a few seconds of audio at a time, in a file and
 while the microphone records. `fetch-models.mjs` takes the model's two

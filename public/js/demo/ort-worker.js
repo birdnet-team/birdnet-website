@@ -5,13 +5,12 @@
  * Messages in:
  *   { type: 'init', ortModule, wasmPaths, model: ArrayBuffer, config }
  *   { type: 'v3', id, audio: Float32Array, batch, samples }
- *   { type: 'v3box', id, audio: Float32Array, skip, sampleRate, flo, fhi, cuts: Float32Array, min }
+ *   { type: 'v3box', id, audio: Float32Array, sampleRate, flo, fhi, cuts: Float32Array, min }
  *   { type: 'geo', id, inputs: Float32Array (B x [lat, lon, week]), mode: 'probs' | 'grid' }
  * Messages out: { type: 'ready', ms } | { type: 'result', id, ... } | { type: 'error', id, error }
  */
 
-import { bandpass } from './bandpass.js';
-import { cutRegions } from './region-cut.js';
+import { isolateBox } from './region-cut.js';
 
 let ort = null;
 let session = null;
@@ -47,14 +46,13 @@ async function runV3(msg) {
 }
 
 /**
- * The audio of one box: without the regions `cuts` (the sound of other boxes inside it),
- * limited to the box's band, then scored at its own length (the model takes any). The
- * first `skip` samples only settle the filter and are not scored. Returns the classes
- * scoring at least `min`, not the whole table.
+ * The audio of one box: what is outside the box's band, and the regions `cuts` (the
+ * sound of other boxes inside it), are replaced by background noise; then it is scored
+ * at its own length (the model takes any). Returns the classes scoring at least `min`,
+ * not the whole table.
  */
 async function runV3Box(msg) {
-  cutRegions(msg.audio, msg.sampleRate, msg.cuts);
-  const clip = bandpass(msg.audio, msg.sampleRate, msg.flo, msg.fhi).subarray(msg.skip);
+  const clip = isolateBox(msg.audio, msg.sampleRate, msg.flo, msg.fhi, msg.cuts);
   const input = new ort.Tensor('float32', clip, [1, clip.length]);
   const out = await session.run({ [config.input]: input }, [config.output]);
   const scores = out[config.output].data, min = msg.min;

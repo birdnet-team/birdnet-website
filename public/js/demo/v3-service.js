@@ -20,7 +20,6 @@ const IDLE_TRIM_MS = 120000; // keep one warm worker after two idle minutes
 const SUGGEST_WORKERS = 2;
 const BOX_MIN = 1;        // seconds: a shorter box is scored with the audio around it
 const BOX_MAX = 10;       // seconds in one run: a longer box is scored in equal parts
-const BOX_SETTLE = 0.05;  // seconds of audio before a box that only settle the bandpass
 
 /**
  * The audio a box is scored on, as [startSample, endSample] ranges: its time span,
@@ -111,9 +110,9 @@ class V3Service extends EventTarget {
 
   /**
    * Score the sound of one box { t0, t1, flo, fhi } in the first `total` samples of
-   * pcm: cropped in time (boxCrops), without the rectangles `cuts` (the sound of
-   * other boxes inside it, region-cut.js), limited to the box's band (bandpass.js),
-   * and run through the model at that length; all of it in the worker. Resolves to
+   * pcm: cropped in time (boxCrops), limited to the box's band and without the
+   * rectangles `cuts` (the sound of other boxes inside it), both in the worker
+   * (region-cut.js), and run through the model at that length. Resolves to
    * [[class, score], ...] for the classes scoring at least `min`: over the parts of
    * a long box, each class's highest score.
    */
@@ -121,14 +120,13 @@ class V3Service extends EventTarget {
     this._idle();
     const best = new Map();
     await Promise.all((boxCrops(g, total) || []).map(async ([s, e]) => {
-      const skip = Math.min(s, Math.round(BOX_SETTLE * SR));
       // Zero-padded only where the recording ends within BOX_MIN of the crop's start
-      const audio = new Float32Array(skip + Math.max(e - s, BOX_MIN * SR));
-      audio.set(pcm.subarray(s - skip, e));
-      // The cuts in this part, in seconds from the start of `audio`
-      const from = (s - skip) / SR;
+      const audio = new Float32Array(Math.max(e - s, BOX_MIN * SR));
+      audio.set(pcm.subarray(s, e));
+      // The cuts in this part, in seconds from its start
+      const from = s / SR;
       const regions = Float32Array.from(cuts.filter(c => c.t1 * SR > s && c.t0 * SR < e).flatMap(c => [c.t0 - from, c.t1 - from, c.flo, c.fhi]));
-      const r = await this.pool.run('v3box', { audio, skip, sampleRate: SR, flo: g.flo, fhi: g.fhi, cuts: regions, min }, [audio.buffer], opts);
+      const r = await this.pool.run('v3box', { audio, sampleRate: SR, flo: g.flo, fhi: g.fhi, cuts: regions, min }, [audio.buffer], opts);
       r.index.forEach((c, k) => { if (!(best.get(c) >= r.score[k])) best.set(c, r.score[k]); });
     }));
     return [...best];

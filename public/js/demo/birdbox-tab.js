@@ -11,10 +11,10 @@
  *
  * BirdNET V3.0 suggests a species for every box. It scores the box itself:
  * the audio of its time span (at least 1 s: a shorter box brings the audio
- * around it), limited to its frequency band by a bandpass filter, at that
- * length. Where boxes overlap, the overlap belongs to the smaller box: it is
- * cut out of the larger one's audio, so a box around another bird's call is
- * not named after that bird. Boxes are scored alongside the detection, the
+ * around it), with everything outside its frequency band replaced by
+ * background noise (region-cut.js), at that length. Where boxes overlap, the
+ * overlap belongs to the smaller box: it is replaced in the larger one's audio
+ * too, so a box around another bird's call is not named after that bird. Boxes are scored alongside the detection, the
  * ones that can no longer change first.
  *
  * While this tab's card records, the spectrogram flies in from the right and
