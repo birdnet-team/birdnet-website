@@ -11,7 +11,7 @@
  * with MediaRecorder (Recorder), and the WAV as audio.lossless for BirdBox.
  */
 import { decodeAudio, LiveRecorder, MAX_SECONDS, Recorder, SAMPLE_RATE } from './audio.js';
-import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, locale, shared, t, toast } from './core.js';
+import { CONFIG, esc, fmtBytes, fmtPct, fmtTime, insecureMicMessage, locale, shared, t, toast } from './core.js';
 import { player } from './player.js';
 import { localStart, readRecordingStart, utcLabel } from './recording-time.js';
 
@@ -335,6 +335,10 @@ export class AudioSource extends EventTarget {
   }
 
   _startRecording() {
+    if (!window.isSecureContext) {
+      this.$('status').innerHTML = insecureMicMessage();
+      return;
+    }
     return this.live ? this._startLive() : this._startCompressed();
   }
 

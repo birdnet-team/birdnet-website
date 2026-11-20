@@ -752,6 +752,8 @@
   "demo.mic.denied": "Mikrofonzugriff verweigert. Bitte erlauben Sie den Mikrofonzugriff in Ihren Browsereinstellungen.",
   "demo.mic.notFound": "Kein Mikrofon gefunden. Bitte schließen Sie ein Mikrofon an und versuchen Sie es erneut.",
   "demo.mic.inUse": "Das Mikrofon wird von einer anderen Anwendung verwendet.",
+  "demo.mic.insecure": "Aufnehmen funktioniert nur auf der sicheren Version dieser Seite.",
+  "demo.mic.insecureLink": "Sichere Seite öffnen",
   "demo.geo.unsupported": "Ihr Browser unterstützt keine Standortbestimmung.",
   "demo.geo.detecting": "Wird ermittelt...",
   "demo.geo.success": "Standort erfolgreich ermittelt.",

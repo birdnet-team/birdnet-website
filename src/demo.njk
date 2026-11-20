@@ -753,6 +753,8 @@ permalink: "/demo/"
 
 <!-- App logic -->
 <script type="module">
+import { insecureMicMessage } from '{{ "/js/demo/core.js" | url }}';
+
 /* -----------------------------
    Global state / configuration
 ----------------------------- */
@@ -1337,6 +1339,10 @@ function hideRecordingUI() {
 }
 
 async function startRecording() {
+  if (!window.isSecureContext) {
+    $('#statusLine').html(insecureMicMessage());
+    return;
+  }
   try {
     // Request microphone access with 48kHz sample rate for best BirdNET compatibility
     const stream = await navigator.mediaDevices.getUserMedia({

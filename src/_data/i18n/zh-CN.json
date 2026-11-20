@@ -752,6 +752,8 @@
   "demo.mic.denied": "麦克风访问被拒绝。请在浏览器设置中允许访问麦克风。",
   "demo.mic.notFound": "未找到麦克风。请连接麦克风后重试。",
   "demo.mic.inUse": "麦克风正被其他应用程序使用。",
+  "demo.mic.insecure": "录音仅在此页面的安全版本中可用。",
+  "demo.mic.insecureLink": "打开安全页面",
   "demo.geo.unsupported": "您的浏览器不支持地理定位。",
   "demo.geo.detecting": "正在定位...",
   "demo.geo.success": "已成功获取位置。",
