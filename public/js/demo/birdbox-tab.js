@@ -256,12 +256,12 @@ export class BirdBoxTab {
     });
     this.spec.addEventListener('toggleplay', () => { if (!this.recording) player.toggle(); });
     this.spec.addEventListener('pick', e => {
-      if (this.recording) return;
       const { time, freq } = e.detail;
       const hit = freq != null ? this._boxAt(time, freq) : null;
-      if (hit) { this._select(hit.id, { play: true, scroll: 'list' }); return; }
+      // While recording there is nothing to play yet: a click only selects
+      if (hit) { this._select(hit.id, { play: !this.recording, scroll: 'list' }); return; }
       if (this.selectedId != null) this._select(null);
-      player.play(time);
+      if (!this.recording) player.play(time);
     });
     this.spec.addEventListener('hover', e => {
       const d = e.detail;
@@ -274,17 +274,19 @@ export class BirdBoxTab {
         : `<div>${esc(t('demo.bb.boxConf', 'Box confidence'))} <b>${fmtNumber(b.avg, 2)}</b>${this._edit(b).verified ? ` · ${esc(t('demo.bb.verified', 'Verified by you'))}` : ''}</div>`;
       this.spec.showTooltip(`<div class="tt-time">#${n} · ${fmtTime(g.t0, 2)} – ${fmtTime(g.t1, 2)}</div><div>${fmtNumber(g.flo)}–${fmtNumber(g.fhi)} Hz</div>${origin}${sp.s !== AVES ? `<div class="tt-species mt-1">${thumb(sp.s, 'tt-img')}<span>${esc(catalog.name(sp.s))}${sp.p != null ? ` <b>${fmtPct(sp.p, 0)}</b>` : ''}</span></div>` : ''}`, d.x, d.y);
     });
-    // Editing keys work anywhere on the tab except while typing in a field or a dialog
+    // Editing keys work anywhere on the tab except while typing in a field or a dialog.
+    // While recording, boxes cannot be drawn, and one that may still change cannot be edited.
     document.addEventListener('keydown', e => {
-      if (!this.visible || !this.raw || this.recording || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!this.visible || !this.raw || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest?.('input, select, textarea, [contenteditable], .modal')) return;
+      const selected = this.selectedId != null ? this.boxes.find(b => b.id === this.selectedId) : null;
       if (e.key === 'Escape') {
         if (this.drawMode || this.gesture) this._setDrawMode(false);
         else if (this.selectedId != null) this._select(null);
         else return;
-      } else if (e.key === 'b' || e.key === 'B') this._setDrawMode(!this.drawMode);
-      else if ((e.key === 'v' || e.key === 'V') && this.selectedId != null) this._toggleVerified(this.boxes.find(b => b.id === this.selectedId));
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId != null) this._removeBox(this.boxes.find(b => b.id === this.selectedId));
+      } else if ((e.key === 'b' || e.key === 'B') && !this.recording) this._setDrawMode(!this.drawMode);
+      else if ((e.key === 'v' || e.key === 'V') && selected && !this._locked(selected)) this._toggleVerified(selected);
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !this._locked(selected)) this._removeBox(selected);
       else return;
       e.preventDefault();
     });
@@ -301,8 +303,13 @@ export class BirdBoxTab {
     table.addEventListener('click', e => {
       const tr = e.target.closest('tr[data-i]');
       const b = tr ? this.boxes[+tr.dataset.i] : null;
-      if (!b || this.recording) return;
-      if (e.target.closest('[data-play]')) { e.stopPropagation(); this._select(b.id, { play: true, scroll: true }); return; }
+      if (!b) return;
+      if (e.target.closest('[data-play]')) {
+        e.stopPropagation();
+        if (!this.recording) this._select(b.id, { play: true, scroll: true });
+        return;
+      }
+      if (e.target.closest('[data-act]') && this._locked(b)) { e.stopPropagation(); return; }
       if (e.target.closest('[data-act="toggle"]')) { e.stopPropagation(); this._removeBox(b); return; }
       if (e.target.closest('[data-act="verify"]')) { e.stopPropagation(); this._toggleVerified(b); return; }
       if (e.target.closest('[data-act="reset-geom"]')) {
@@ -316,7 +323,7 @@ export class BirdBoxTab {
     table.addEventListener('change', async e => {
       const tr = e.target.closest('tr[data-i]');
       const b = tr ? this.boxes[+tr.dataset.i] : null;
-      if (!b) return;
+      if (!b || this._locked(b)) return;
       if (e.target.dataset.field === 'species' && e.target.value === 'pick') {
         const target = await pickSpecies({
           title: t('demo.bb.pickTitle', 'Species for box {n}', { n: +tr.dataset.i + 1 }),
@@ -350,15 +357,19 @@ export class BirdBoxTab {
   _renderHint() {
     const el = $('bb-edit-hint');
     if (!el) return;
+    const selected = this.selectedId != null ? this.boxes.find(b => b.id === this.selectedId) : null;
     let text;
     if (this.rec) {
       const behind = Math.floor(this.rec.n / SR - (this.analyzedTo ?? 0) - CLIP);
       text = this.raw && behind >= LIVE_BEHIND
         ? t('demo.bb.hint.liveBehind', 'This device is {n} s behind the sound. Nothing is lost: the rest is detected when you stop.', { n: behind })
-        : t('demo.bb.hint.live', 'The line shows how far detection has come. Dashed boxes may still change; solid ones are final, the same as in the saved recording.');
+        : selected && this._locked(selected) ? t('demo.bb.pendingRow', 'This box may still change. It can be edited once it is drawn solid.')
+          : selected ? t('demo.bb.hint.liveSelected', 'V verifies the box · Delete removes it · Esc deselects')
+            : t('demo.bb.hint.live', 'The line shows how far detection has come. Dashed boxes may still change; solid ones are final, the same as in the saved recording.');
     } else if (this.liveEnded) text = t('demo.bb.hint.liveEnd', 'Finishing the recording…');
     else if (!this.raw) text = t('demo.bb.hint.wait', 'Boxes appear here while detection runs.');
     else if (this.drawMode) text = t('demo.bb.hint.draw', 'Drag across a sound to draw a box · Esc cancels');
+    else if (selected && this._locked(selected)) text = t('demo.bb.pendingRow', 'This box may still change. It can be edited once it is drawn solid.');
     else if (this.selectedId != null) text = t('demo.bb.hint.selected', 'Drag the box to move it, or its edges to resize · V verifies it · Delete removes it · Esc deselects');
     else text = t('demo.bb.hint.idle', 'Click a box to hear and select it · press B to draw a new one');
     el.textContent = text;
@@ -640,8 +651,11 @@ export class BirdBoxTab {
     this.userBoxes = [];
     if (!this.raw) this._resetScores();
     this.candidates.clear();   // the last windows of a file are not those of a recording in progress
-    this.edits = new Map();
-    this.selectedId = null;
+    // So do the edits made while recording: they are on solid boxes, which the file keeps as they are
+    if (!this.raw) {
+      this.edits = new Map();
+      this.selectedId = null;
+    }
     this.hoverId = null;
     this.born.clear();
     this._setDrawMode(false);
@@ -992,7 +1006,7 @@ export class BirdBoxTab {
   /** Which part of the selected box is under the pointer: an edge, a corner or its body. */
   _handleAt(p) {
     const b = this.selectedId != null && this.boxes.find(x => x.id === this.selectedId);
-    if (!b) return null;
+    if (!b || this._locked(b)) return null;   // a box that may still change cannot be moved yet
     const g = this._geom(b), s = this.spec;
     const x0 = s.timeToX(g.t0), x1 = s.timeToX(g.t1), y0 = s.freqToY(g.fhi), y1 = s.freqToY(g.flo);
     const out = p.pointerType === 'mouse' ? 6 : 14;          // grab distance outside the box
@@ -1122,12 +1136,13 @@ export class BirdBoxTab {
   /**
    * What a row shows, besides the language: its box and place, the person's edits, the
    * species BirdNET V3.0 suggests for it (_candidates keeps one array per window range
-   * until the scores or the location filter change), the settings it reads, and its
-   * geometry (a drawn box is moved in place). The same key, the same row.
+   * until the scores or the location filter change), the settings it reads, whether it
+   * can be played and edited, and its geometry (a drawn box is moved in place). The same
+   * key, the same row.
    */
   _rowKey(b, i) {
     const g = this._geom(b);
-    return [b, i, this.edits.get(b.id), this._candidates(g), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, g.t0, g.t1, g.flo, g.fhi];
+    return [b, i, this.edits.get(b.id), this._candidates(g), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, this._locked(b), g.t0, g.t1, g.flo, g.fhi];
   }
 
   /**
@@ -1168,8 +1183,13 @@ export class BirdBoxTab {
     rows.slice(this.boxes.length).forEach(tr => tr.remove());
   }
 
+  /**
+   * A box's row. While recording there is nothing to play yet; a box that may still change
+   * cannot be edited until it is final (drawn solid), so no edit is lost.
+   */
   _rowHtml(b, i) {
-    const suggest = $('bb-suggest').checked, locked = this.recording ? ' disabled' : '';
+    const suggest = $('bb-suggest').checked, silent = this.recording ? ' disabled' : '';
+    const pending = this._locked(b), locked = pending ? ' disabled' : '';
     const g = this._geom(b), edit = this._edit(b), cands = this._candidates(g);
     let speciesCell;
     if (suggest && !cands) speciesCell = `<span class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>${esc(t('demo.bb.identifying', 'Identifying…'))}</span>`;
@@ -1192,8 +1212,9 @@ export class BirdBoxTab {
     const verify = b.manual
       ? `<span class="bb-verify is-on is-drawn" title="${drawn}"><i class="bi bi-check-circle-fill"></i></span>`
       : `<button type="button" class="bb-verify${edit.verified ? ' is-on' : ''}" data-act="verify" aria-pressed="${edit.verified}" title="${verifyLabel}" aria-label="${verifyLabel}"${locked}><i class="bi ${edit.verified ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i></button>`;
-    return `<tr data-i="${i}" class="${edit.include ? '' : 'is-excluded'}">
-        <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"${locked}><i class="bi bi-play-fill"></i>${i + 1}</button></td>
+    const title = pending ? ` title="${esc(t('demo.bb.pendingRow', 'This box may still change. It can be edited once it is drawn solid.'))}"` : '';
+    return `<tr data-i="${i}" class="${edit.include ? '' : 'is-excluded'}"${title}>
+        <td class="bb-c-play"><button type="button" class="bb-play${b.manual ? ' is-manual' : ''}" data-play="${i}" aria-label="${esc(t('demo.results.playSegment', 'Play segment'))} ${i + 1}"${silent}><i class="bi bi-play-fill"></i>${i + 1}</button></td>
         <td class="bb-c-time">${fmtTime(g.t0, 2)}–${fmtTime(g.t1, 2)}<span>${fmtNumber(g.flo / 1000, 1)}–${fmtNumber(g.fhi / 1000, 1)} kHz${mark}</span></td>
         <td class="bb-c-conf"${b.manual ? ` title="${drawn}"` : ` title="max ${fmtNumber(b.max, 2)} · ${b.n}×"`}>${b.manual ? '–' : fmtNumber(b.avg, 2)}</td>
         <td class="bb-c-species"><div class="bb-species-wrap">${speciesCell}</div></td>
@@ -1233,12 +1254,13 @@ export class BirdBoxTab {
     const i = this.boxes.findIndex(b => b.id === id), b = this.boxes[i];
     document.querySelectorAll('#bb-table tr[data-i]').forEach(tr => tr.classList.toggle('is-selected', +tr.dataset.i === i));
     this.spec.main.classList.toggle('is-editing', this.drawMode || !!b);
-    if (b) {
+    // While recording, the view follows the sound and there is nothing to play yet
+    if (b && !this.recording) {
       this._scrollToRow(i, scroll);
       const g = this._geom(b), span = this.spec.view.t1 - this.spec.view.t0;
       if (g.t0 < this.spec.view.t0 || g.t1 > this.spec.view.t1) this.spec.setView(g.t0 - span * 0.3, g.t0 - span * 0.3 + span);
       if (play) player.play(Math.max(0, g.t0 - 0.15), g.t1 + 0.15);
-    }
+    } else if (b) this._scrollToRow(i, scroll);
     this._renderHint();
     this.spec.render();
   }
@@ -1294,6 +1316,14 @@ export class BirdBoxTab {
   /** A detected box that may still change. Drawn and adjusted boxes are the person's own. */
   _pending(b) {
     return !!this.pending?.has(b) && !this.edits.get(b.id)?.geom;
+  }
+
+  /**
+   * A box that cannot be edited yet: it may still change while detection runs, which
+   * would give it another id and lose the edits. A stopped detection leaves it editable.
+   */
+  _locked(b) {
+    return this._pending(b) && !this.raw?.stopped;
   }
 
   _drawBoxes(ctx, h) {

@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "A linha mostra até onde a deteção chegou. As caixas tracejadas ainda podem mudar; as contínuas são definitivas, iguais às da gravação guardada.",
   "demo.bb.hint.liveBehind": "Este dispositivo está {n} s atrás do som. Nada se perde: o resto é detetado quando parares.",
   "demo.bb.hint.liveEnd": "A terminar a gravação…",
+  "demo.bb.hint.liveSelected": "V verifica-a · Delete remove-a · Esc anula a seleção",
+  "demo.bb.pendingRow": "Esta caixa ainda pode mudar. Poderá ser editada quando for desenhada a traço contínuo.",
   "demo.bb.how1": "Abre um ficheiro, grava ou escreve um número do Xeno-canto. O áudio do separador V3.0 também está disponível aqui.",
   "demo.bb.how2": "Clica numa caixa para a ouvir, depois verifica-a ou ajusta-a, ou desenha as que o detetor não encontrou.",
   "demo.bb.how2Title": "Revê as caixas",

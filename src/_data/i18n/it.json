@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "La linea mostra fin dove è arrivato il rilevamento. I riquadri tratteggiati possono ancora cambiare; quelli continui sono definitivi, come nella registrazione salvata.",
   "demo.bb.hint.liveBehind": "Questo dispositivo è indietro di {n} s rispetto al suono. Non si perde nulla: il resto viene rilevato quando ti fermi.",
   "demo.bb.hint.liveEnd": "Completamento della registrazione…",
+  "demo.bb.hint.liveSelected": "V lo verifica · Canc lo rimuove · Esc deseleziona",
+  "demo.bb.pendingRow": "Questo riquadro può ancora cambiare. Si potrà modificare quando sarà disegnato a linea continua.",
   "demo.bb.how1": "Apri un file, registra o inserisci un numero Xeno-canto. L'audio della scheda V3.0 è disponibile anche qui.",
   "demo.bb.how2": "Clicca un riquadro per ascoltarlo, poi verificalo o regolalo, oppure disegna quelli che il rilevatore non ha trovato.",
   "demo.bb.how2Title": "Controlla i riquadri",

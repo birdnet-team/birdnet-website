@@ -1140,6 +1140,8 @@
   "demo.bb.hint.live": "La ligne indique où en est la détection. Les boîtes en pointillés peuvent encore changer ; les boîtes pleines sont définitives, comme dans l'enregistrement sauvegardé.",
   "demo.bb.hint.liveBehind": "Cet appareil a {n} s de retard sur le son. Rien n'est perdu : le reste est détecté à l'arrêt.",
   "demo.bb.hint.liveEnd": "Finalisation de l'enregistrement…",
+  "demo.bb.hint.liveSelected": "V la vérifie · Suppr la retire · Échap désélectionne",
+  "demo.bb.pendingRow": "Cette boîte peut encore changer. Elle pourra être modifiée une fois tracée en trait plein.",
   "demo.geo.hint": "Le géomodèle BirdNET+ V3.0.4 prédit lesquelles de 9 789 espèces sont présentes à un endroit pour chacune des 48 semaines ; le modèle de 13 Mo s'exécute localement.",
   "demo.geo.how1": "La carte montre combien d'espèces sont attendues dans chaque zone. Faites glisser le curseur des semaines ou appuyez sur lecture pour suivre les saisons.",
   "demo.geo.how1Title": "Voyez où vivent les espèces",

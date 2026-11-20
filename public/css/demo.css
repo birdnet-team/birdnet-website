@@ -901,11 +901,12 @@ button.bb-verify:hover { background: #f0fdf4; color: #16a34a; }
 .bb-verify.is-on { color: #16a34a; }
 .bb-verify.is-drawn { color: #d97706; }
 .demo-table tbody tr.is-excluded .bb-verify { opacity: 0.4; }
+/* A box that may still change (dashed) can be edited once it is solid */
+.bb-toggle:disabled, button.bb-verify:disabled { opacity: 0.35; background: none; color: #94a3b8; cursor: default; }
 
-/* While recording there is nothing to play or edit yet */
+/* While recording there is nothing to play yet, and no box to draw */
 #pane-birdbox.is-recording [data-role="draw"] { display: none; }
-#pane-birdbox.is-recording .demo-table tbody tr { cursor: default; }
-#pane-birdbox.is-recording .bb-play .bi, #pane-birdbox.is-recording .bb-c-toggle > * { visibility: hidden; }
+#pane-birdbox.is-recording .bb-play .bi { visibility: hidden; }
 
 /* Phones: each box becomes a two-line row */
 @media (max-width: 575.98px) {

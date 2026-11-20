@@ -1140,6 +1140,8 @@
   "demo.bb.hint.live": "La línea muestra hasta dónde ha llegado la detección. Las cajas discontinuas aún pueden cambiar; las continuas son definitivas, igual que en la grabación guardada.",
   "demo.bb.hint.liveBehind": "Este dispositivo va {n} s por detrás del sonido. No se pierde nada: el resto se detecta cuando pares.",
   "demo.bb.hint.liveEnd": "Terminando la grabación…",
+  "demo.bb.hint.liveSelected": "V la verifica · Supr la quita · Esc deselecciona",
+  "demo.bb.pendingRow": "Esta caja aún puede cambiar. Podrá editarse cuando se dibuje con línea continua.",
   "demo.geo.hint": "BirdNET+ Geomodel V3.0.4 predice cuáles de 9789 especies aparecen en un lugar en cada una de las 48 semanas; el modelo de 13 MB se ejecuta localmente.",
   "demo.geo.how1": "El mapa muestra cuántas especies se esperan en cada zona. Arrastra el control de semana o pulsa reproducir para seguir las estaciones.",
   "demo.geo.how1Title": "Mira dónde hay especies",
