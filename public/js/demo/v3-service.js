@@ -81,9 +81,9 @@ class V3Service extends EventTarget {
 
   /**
    * Download (or restore) the model and start the worker pool. `suggest`: for
-   * BirdBox's species, which start only the workers wake() lets them use.
+   * BirdBox's species, which start only `workers` workers, as wake() lets them use.
    */
-  ensure(onProgress, { suggest = false } = {}) {
+  ensure(onProgress, { suggest = false, workers = SUGGEST_WORKERS } = {}) {
     if (!this.ready) {
       this.ready = (async () => {
         const m = await this.manifestEntry();
@@ -92,7 +92,7 @@ class V3Service extends EventTarget {
         this.dispatchEvent(new CustomEvent('status', { detail: 'starting' }));
         this.pool = new OrtPool({ name: 'birdnet-v3', size: workerCount('v3'), retireOnError: true });
         this.pool.addEventListener('lost', () => this._replace());
-        if (suggest && !this.analyzing) this.pool.limitTo(SUGGEST_WORKERS);
+        if (suggest && !this.analyzing) this.pool.limitTo(Math.min(workers, SUGGEST_WORKERS));
         this.pool.addEventListener('change', () => this.dispatchEvent(new Event('workers')));
         await this.pool.start(model, { input: m.input, output: m.output });
         this.dispatchEvent(new CustomEvent('status', { detail: 'ready' }));
@@ -128,6 +128,7 @@ class V3Service extends EventTarget {
     let crops = boxCrops(g, total) || [];
     if (crops.length > BOX_PARTS) crops = Array.from({ length: BOX_PARTS }, (_, i) => crops[Math.round(i * (crops.length - 1) / (BOX_PARTS - 1))]);
     for (const [s, e] of crops) {
+      if (opts?.alive && !opts.alive()) break;   // the audio is gone: the parts left are not worth their runs
       // Zero-padded only where the recording ends within BOX_MIN of the crop's start
       const audio = new Float32Array(Math.max(e - s, BOX_MIN * SR));
       audio.set(pcm.subarray(s, e));
@@ -169,11 +170,18 @@ class V3Service extends EventTarget {
       while (next < chunks.length && gen === this.gen) {
         const i = next++, [s, e] = chunks[i];
         let out;
-        try {
-          out = await this.scoreWindow(pcm, s, e, len, { gen: `v3-${gen}` });
-        } catch (err) {
-          if (err.cancelled) return;
-          throw err;
+        // A window whose worker failed is tried once more, on the worker that replaces it
+        for (let attempt = 0; ; attempt++) {
+          try {
+            out = await this.scoreWindow(pcm, s, e, len, { gen: `v3-${gen}` });
+            break;
+          } catch (err) {
+            if (err.cancelled || gen !== this.gen) return;
+            if (attempt) {
+              this.cancel();   // the other windows stop too
+              throw err;
+            }
+          }
         }
         if (gen !== this.gen) return;
         scores.set(out, i * S);

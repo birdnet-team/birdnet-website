@@ -68,19 +68,21 @@ not on a fixed window: the audio of the box's time span (at least 1 s, centred
 on a shorter box), with everything outside the box's frequency band replaced
 by the recording's background noise (`public/js/demo/region-cut.js`), at that
 length, which the model's variable input allows. The band is cut on a
-short-time Fourier transform, where it ends within about 30 Hz. A filter with
+short-time Fourier transform: a tone 100 Hz outside the band is 47 dB down. A filter with
 a gentle slope is not enough: BirdNET still hears a bird 40 dB down, so a loud
 bird just above or below a box would name the box. Silence outside the band
 does not work either, as the box's own bird then scores much lower. The
 five best-scoring birds become the box's candidates. A box longer than 10 s is
-scored in equal parts, and each species keeps its highest score.
+scored in equal parts (of a box longer than a minute, six parts spread over
+it), and each species keeps its highest score.
 
 A box is named after its best-scoring bird among the species the recording
-surely holds: those that reach the species confidence (a slider, 70% by
-default) in some box, or that the person chose for a box. Such a species names
+surely holds: those that are the best bird of some box at the species
+confidence (a slider, 70% by default) or more, or that the person chose or
+verified for a box. Such a species names
 a box from half that score; a lone weaker score names nothing. On five annotated soundscapes from Xeno-canto (XC1132662,
 XC1132833, XC1132744, XC1132710, XC1132836; 241 BirdBox boxes against 313
-human ones), 92% of the boxes named this way carry a species the annotators
+human ones), 91% of the boxes named this way carry a species the annotators
 gave to a box in that place, against 83% when every best bird from 35% is
 taken. At a species confidence of 90% it is 95%, of 83 named boxes instead of
 137. BirdBox's own defaults (confidence 0.15, phrase gap 0.05 s) and the 1 s

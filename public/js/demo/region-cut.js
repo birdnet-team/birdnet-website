@@ -8,15 +8,21 @@
  *   bird 40 dB down, so a loud bird just above or below a box would name the box.
  * - Silence instead of the rest. The model then scores the box's own bird much lower.
  * So the rest is replaced by the recording's own background: on a short-time Fourier
- * transform (1024 samples, square-root Hann windows, half overlap), where a band
- * ends within one bin (31 Hz at 32 kHz), each replaced bin gets its typical level
- * over the audio with a random phase. That is steady noise shaped like the
- * recording's, without the sounds that come and go. What is not replaced stays as
- * it was, sample for sample.
+ * transform (1024 samples, square-root Hann windows, half overlap), each replaced bin
+ * gets its typical level over the audio with a random phase. That is steady noise
+ * shaped like the recording's, without the sounds that come and go.
+ *
+ * How sharp it is: a steady tone 40 Hz outside the band is left at -29 dB, one 100 Hz
+ * outside at -47 dB, one 300 Hz outside below -70 dB. Frames no region covers are not
+ * touched at all; inside a covered frame the kept band loses only what it leaked into
+ * the replaced bins (about -40 dB of it).
  */
 
 const N = 1024, HOP = N / 2, BINS = N / 2 + 1;
-const BACKGROUND = 0.5;   // a bin's background is this quantile of its level over the audio: the median
+// A bin's background is this quantile of its level over the audio: the median. Written back as it is, the
+// noise comes out about 5 dB below the real background (the window and the median both take some). Raising
+// it to the real level named boxes worse on the annotated recordings (89% right instead of 91%), so it stays.
+const BACKGROUND = 0.5;
 // Analysis and synthesis window: its square is a Hann window, which sums to 1 at half overlap
 const WINDOW = Float64Array.from({ length: N }, (_, i) => Math.sin(Math.PI * (i + 0.5) / N));
 const COS = Float64Array.from({ length: N / 2 }, (_, i) => Math.cos(2 * Math.PI * i / N));
@@ -126,15 +132,16 @@ export function cutRegions(x, sr, regions) {
 
 /**
  * Keep of x the band flo..fhi (Hz) without the regions `cuts`, in place; the rest
- * becomes background noise. A band edge within one bin of the bottom or the top of
- * the spectrum cuts nothing there.
+ * becomes background noise. The band is kept in whole bins (31 Hz at 32 kHz): from the
+ * first bin wholly above flo to the one that holds fhi. A band edge within one bin of
+ * the bottom or the top of the spectrum cuts nothing there.
  * @param {Float32Array} x
  * @param {ArrayLike<number>} cuts [t0, t1, flo, fhi] per region, as for cutRegions
  * @returns {Float32Array} x
  */
 export function isolateBox(x, sr, flo, fhi, cuts = []) {
   const always = [-1, x.length / sr + 1], bin = sr / N, regions = [...cuts];
-  if (flo > bin) regions.push(...always, 0, flo - bin);         // the bins below the one that holds flo
+  if (flo > bin) regions.push(...always, 0, flo - bin);         // up to the bin below flo
   if (fhi < sr / 2 - bin) regions.push(...always, fhi + bin, sr / 2);
   return cutRegions(x, sr, regions);
 }

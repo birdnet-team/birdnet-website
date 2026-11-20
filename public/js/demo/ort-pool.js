@@ -14,6 +14,15 @@ export class CancelledError extends Error {
   constructor() { super('cancelled'); this.cancelled = true; }
 }
 
+const SPAWN_TIMEOUT_MS = 120000;   // a worker that has not loaded its model by then is given up
+
+/** The error of a job that never ran: the workers were gone before its turn. `lost` tells it from a job that failed. */
+function lostError(cause) {
+  const err = new Error(cause?.message || 'no worker could run the job');
+  err.lost = true;
+  return err;
+}
+
 export class OrtPool extends EventTarget {
   /**
    * @param {{name:string, size:number, retireOnError?:boolean}} options  retireOnError: a worker whose
@@ -62,13 +71,16 @@ export class OrtPool extends EventTarget {
     return new Promise(resolve => {
       const worker = new Worker(CONFIG.workerUrl, { type: 'module', name: this.name });
       const fail = err => {
+        clearTimeout(timer);
         this.spawning--;
         worker.terminate();
         this.lastError = err;
         resolve(null);
       };
+      const timer = setTimeout(() => fail(new Error(`${this.name}: worker did not start`)), SPAWN_TIMEOUT_MS);
       worker.onmessage = ({ data }) => {
         if (data.type === 'ready') {
+          clearTimeout(timer);
           this.spawning--;
           if (this.slots.length >= this.target) {   // limited while it started
             worker.terminate();
@@ -147,11 +159,16 @@ export class OrtPool extends EventTarget {
 
   /** A worker is gone for a failure. With none left and none starting, the queued jobs fail too. */
   _lost() {
-    if (!this.slots.length && !this.spawning) {
-      for (const job of this.queue) job.reject(this.lastError);
-      this.queue = [];
-    }
-    this.dispatchEvent(new Event('lost'));
+    this.dispatchEvent(new Event('lost'));   // a listener may start a replacement, which takes the queue
+    this._orphans();
+  }
+
+  /** With no worker left and none starting, the queued jobs can never run: they fail as lost. */
+  _orphans() {
+    if (this.slots.length || this.spawning || this.growing || !this.queue.length) return;
+    const err = lostError(this.lastError);
+    for (const job of this.queue) job.reject(err);
+    this.queue = [];
   }
 
   /** Stop an idle worker. */
@@ -179,12 +196,8 @@ export class OrtPool extends EventTarget {
     this.slots = this.slots.filter(s => s !== slot);
     this.lastError = new Error(event.message || `${this.name}: worker stopped (out of memory?)`);
     if (slot.job) slot.job.reject(this.lastError);
-    if (!this.slots.length) {
-      for (const job of this.queue) job.reject(this.lastError);
-      this.queue = [];
-    }
     this.dispatchEvent(new Event('change'));
-    this.dispatchEvent(new Event('lost'));
+    this._lost();
     this._pump();
   }
 
@@ -202,14 +215,23 @@ export class OrtPool extends EventTarget {
 
   /** Start workers up to the pool size (or its limit) again after trim(). */
   async grow(getModel) {
-    if (this.target - this.slots.length - this.spawning <= 0 || this.growing || !this.config) return;
+    if (this.target - this.slots.length - this.spawning <= 0 || !this.config) return;
+    if (this.growing) { this.growAgain = true; return; }   // the limit may be higher by the time this one is done
     this.growing = true;
     try {
       const model = await getModel();
       const missing = this.target - this.slots.length - this.spawning;   // the limit may have changed meanwhile
       await Promise.all(Array.from({ length: Math.max(0, missing) }, (_, i) => this._spawn(i === missing - 1 ? model : model.slice(0), this.config)));
+    } catch (err) {
+      this.lastError = err;   // the model could not be fetched
+      throw err;
     } finally {
       this.growing = false;
+      this._orphans();   // no worker came of it: the jobs waiting for one fail instead of waiting forever
+      if (this.growAgain) {
+        this.growAgain = false;
+        this.grow(getModel).catch(() => {});
+      }
     }
   }
 

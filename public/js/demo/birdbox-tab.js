@@ -281,6 +281,7 @@ export class BirdBoxTab {
     // Another place or date: the scores stay, and the species are picked from them again
     this.location.addEventListener('change', () => {
       this.maskVersion++;
+      this.retryAt = 0;   // the person asks for something now: no waiting out an earlier failure
       this.mask = undefined;
       this.sure = null;
       this.candidates.clear();
@@ -930,7 +931,7 @@ export class BirdBoxTab {
       if (!v3.workers) status.textContent = t('demo.bb.suggest.loading', 'Loading BirdNET V3.0 for species suggestions…');
       await v3.ensure(p => {
         if (!p.cached) status.textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
-      }, { suggest: true });
+      }, { suggest: true, workers: this._workers() });
       while (this.mask === undefined) {
         const version = this.maskVersion;
         // Without the geomodel the suggestions go on unfiltered
@@ -953,14 +954,23 @@ export class BirdBoxTab {
     } finally {
       this.pumping = false;
     }
-    if (!this.pcm) return;   // the audio went away meanwhile
-    // A worker more only for a real backlog: not for the last boxes after a recording
-    v3.wake(this.rec ? LIVE_WORKERS : this.wanted.size >= MORE_WORKERS_FROM ? undefined : Math.max(1, v3.workers));
+    if (!this.pcm || !this.wanted.size) return;   // the audio went away meanwhile, or only the location filter was due
+    v3.wake(this._workers());
     for (let key; this.scoring.size < 2 * v3.suggestWorkers && (key = this._nextBox()) != null;) this._scoreBox(key, this.wanted.get(key));
+  }
+
+  /**
+   * BirdNET V3.0 workers to use now: one while the microphone records, and a second one
+   * only for a real backlog, not for the last boxes after a recording.
+   */
+  _workers() {
+    if (this.rec) return LIVE_WORKERS;
+    return this.wanted.size >= MORE_WORKERS_FROM ? 2 : Math.max(1, Math.min(2, v3.workers));
   }
 
   /** After a failure: wait, twice as long each time in a row, then go on with the boxes still waiting. */
   _retryScores() {
+    if (performance.now() < this.retryAt) return;   // already waiting: several boxes of one failure count once
     this.retryAt = performance.now() + this.retryMs;
     clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => this._pumpScores(), this.retryMs + 50);
@@ -1001,7 +1011,7 @@ export class BirdBoxTab {
     const token = this.scoreToken, { total } = this._audioSoFar();
     this.scoring.add(key);
     try {
-      const out = await v3.scoreBox(this.pcm, total, sound.g, sound.cuts, MIN_SCORE, { gen: 'birdbox', priority: 5 });
+      const out = await v3.scoreBox(this.pcm, total, sound.g, sound.cuts, MIN_SCORE, { gen: 'birdbox', priority: 5, alive: () => token === this.scoreToken });
       if (token !== this.scoreToken) return;
       const aves = catalog.classes.indexOf('Aves');
       this.scores.set(key, out.filter(([s]) => catalog.cls[s] === aves));
@@ -1013,8 +1023,9 @@ export class BirdBoxTab {
       if (token !== this.scoreToken || err.cancelled) return;
       this.scoring.delete(key);
       console.error(err);
-      // A box that fails again (too long for the memory there is, most likely) goes without a species
-      const tries = (this.failed.get(key) || 0) + 1;
+      // A box that fails again (too long for the memory there is, most likely) goes without a species.
+      // A box that only waited behind one that failed (err.lost) has not been tried.
+      const tries = (this.failed.get(key) || 0) + (err.lost ? 0 : 1);
       this.failed.set(key, tries);
       if (tries >= SCORE_TRIES) {
         this.scores.set(key, []);
@@ -1083,7 +1094,7 @@ export class BirdBoxTab {
     const o = this.edits.get(b.id) || {};
     return {
       species: o.species ?? ($('bb-suggest').checked ? this._suggested(b) : AVES),
-      auto: o.species == null,
+      auto: o.species == null || !!o.pinned,   // BirdNET's suggestion, also when verifying it has pinned it
       soundType: o.soundType ?? $('bb-sound-default').value,
       include: o.include ?? true,
       verified: !!b.manual || !!o.verified,   // drawn boxes are the person's own
@@ -1099,7 +1110,13 @@ export class BirdBoxTab {
   /** Verify a detected box (or take it back); drawn boxes always count as verified. */
   _toggleVerified(b) {
     if (!b || b.manual) return;
-    this._override(b, { verified: !this._edit(b).verified || undefined, include: undefined });
+    const o = this.edits.get(b.id) || {}, on = !this._edit(b).verified;
+    const patch = { verified: on || undefined, include: undefined };
+    // What is verified is the species the box shows now. A suggestion is kept as it is (pinned): it
+    // would otherwise change with the slider, the location filter or the species of other boxes.
+    if (on && o.species == null && this._candidates(b)) Object.assign(patch, { species: this._edit(b).species, pinned: true });
+    if (!on && o.pinned) Object.assign(patch, { species: undefined, pinned: undefined });
+    this._override(b, patch);
     this._refresh();
   }
 
@@ -1271,8 +1288,11 @@ export class BirdBoxTab {
     // Exports wait for the whole recording. A stopped run exports its part as CSV and
     // Raven; the Annota-JSON goes to Xeno-canto, where it would look complete
     const stopped = !!this.raw?.stopped;
-    $('bb-export-xc').disabled = !this.raw?.done || !this.boxes.length;
-    ['bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !(this.raw?.done || stopped) || !this.boxes.length; });
+    // And for the species: a box still to be scored would export as unidentified, and names can change until the last one is
+    // (not while BirdNET V3.0 keeps failing: the boxes can still be exported without it)
+    const naming = $('bb-suggest').checked && this.retryMs === RETRY_MS && (this.wanted.size > 0 || this.scoring.size > 0 || (this.mask === undefined && this.boxes.length > 0));
+    $('bb-export-xc').disabled = !this.raw?.done || !this.boxes.length || naming;
+    ['bb-export-csv', 'bb-export-raven'].forEach(id => { $(id).disabled = !(this.raw?.done || stopped) || !this.boxes.length || naming; });
     const note = $('bb-export-note');
     note.hidden = !stopped;
     if (stopped) {
