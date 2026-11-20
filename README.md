@@ -72,9 +72,19 @@ short-time Fourier transform, where it ends within about 30 Hz. A filter with
 a gentle slope is not enough: BirdNET still hears a bird 40 dB down, so a loud
 bird just above or below a box would name the box. Silence outside the band
 does not work either, as the box's own bird then scores much lower. The
-five best-scoring birds become the box's candidates, and the best one its
-species if it scores at least 35%. A box longer than 10 s is scored in equal
-parts, and each species keeps its highest score.
+five best-scoring birds become the box's candidates. A box longer than 10 s is
+scored in equal parts, and each species keeps its highest score.
+
+A box is named after its best-scoring bird among the species the recording
+surely holds: those that score 70% or more in some box, or that the person
+chose for a box. Such a species names a box from 35%; a lone weaker score
+names nothing. On five annotated soundscapes from Xeno-canto (XC1132662,
+XC1132833, XC1132744, XC1132710, XC1132836; 241 BirdBox boxes against 313
+human ones), 92% of the boxes named this way carry a species the annotators
+gave to a box in that place, against 83% when every best bird from 35% is
+taken. Joining neighboring boxes of one species into one box was tried on the
+same recordings and changed neither that figure nor the match with the human
+boxes, so boxes stay as BirdBox finds them.
 
 Where two boxes overlap in time and frequency, both would hear the sound in
 the overlap. The overlap belongs to the smaller box; that time-frequency

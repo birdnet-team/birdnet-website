@@ -14,8 +14,13 @@
  * around it), with everything outside its frequency band replaced by
  * background noise (region-cut.js), at that length. Where boxes overlap, the
  * overlap belongs to the smaller box: it is replaced in the larger one's audio
- * too, so a box around another bird's call is not named after that bird. Boxes are scored alongside the detection, the
- * ones that can no longer change first.
+ * too, so a box around another bird's call is not named after that bird.
+ * Boxes are scored alongside the detection, the ones that can no longer
+ * change first.
+ *
+ * A box is named after its best-scoring bird if the recording surely holds
+ * that species: it scores SPECIES_SURE or more in some box, or the person
+ * chose it for one. A lone weaker score names nothing (_suggested).
  *
  * While this tab's card records, the spectrogram flies in from the right and
  * each window is detected once, as soon as it is complete. The model takes a
@@ -60,6 +65,11 @@ const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for t
 const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
 const AVES = -1;
 const SPECIES_MIN = 0.35;     // weaker suggestions leave a box unidentified; they stay in its species list
+const SPECIES_SURE = 0.7;     // a species scoring this in a box is surely in the recording, and named from SPECIES_MIN elsewhere
+// One color per species, in the order the species turn up; with more species than colors they are used again.
+// None is close to the colors of boxes without a species (STATUS_COLORS).
+const SPECIES_COLORS = ['#60a5fa', '#f87171', '#a3e635', '#c084fc', '#fb923c', '#f9a8d4', '#e7c9a0', '#818cf8'];
+const STATUS_COLORS = { detected: '#22d3ee', verified: '#4ade80', drawn: '#fbbf24' };
 const FREQ_MAX = 15000;       // top of the spectrogram and of any box
 const MIN_DUR = 0.05;         // smallest box: seconds
 const MIN_BAND = 100;         // smallest box: Hz
@@ -122,6 +132,8 @@ export class BirdBoxTab {
     this.scoring = new Set();      // sound keys on their way
     this.wanted = new Map();       // sound key -> { g, cuts, later }: boxes not scored yet, by start time; later: it may still change
     this.candidates = new Map();   // sound key -> [{ s, p }]: the species a box offers within the location filter
+    this.sure = null;              // species the recording surely holds (_sureSpecies); null: to be found again
+    this.colors = new Map();       // species -> its color on the spectrogram, for this recording
     this.mask = undefined;         // location filter for the candidates, null when off; undefined: not fetched yet
     this.maskVersion = 0;
     this.retryAt = 0;
@@ -152,9 +164,9 @@ export class BirdBoxTab {
     });
     this.spec.overlay = (ctx, h) => this._drawBoxes(ctx, h);
     this.spec.minimapOverlay = (ctx, h) => {
-      ctx.fillStyle = '#22d3ee';
       for (const b of this.boxes) {
         const g = this._geom(b);
+        ctx.fillStyle = this._boxColor(b, this._edit(b));
         ctx.fillRect(h.timeToX(g.t0), h.height - 4, Math.max(1, h.timeToX(g.t1) - h.timeToX(g.t0)), 4);
       }
     };
@@ -243,6 +255,7 @@ export class BirdBoxTab {
     this.location.addEventListener('change', () => {
       this.maskVersion++;
       this.mask = undefined;
+      this.sure = null;
       this.candidates.clear();
       this._update();
     });
@@ -812,6 +825,7 @@ export class BirdBoxTab {
    * The key names the rectangle and its cuts: the same key, the same audio.
    */
   _buildSounds() {
+    this.sure = null;   // other boxes, other species
     const items = this.boxes.map(b => {
       const g = this._geom(b);
       return { g, area: (g.t1 - g.t0) * (g.fhi - g.flo), on: this.edits.get(b.id)?.include ?? true, cuts: [], later: this._pending(b) };
@@ -853,6 +867,8 @@ export class BirdBoxTab {
   _resetScores() {
     this.scoreToken++;
     this.scores = new Map();
+    this.sure = null;
+    this.colors.clear();
     this.scoring.clear();
     this.wanted.clear();
     this.candidates.clear();
@@ -876,6 +892,7 @@ export class BirdBoxTab {
         const version = this.maskVersion, mask = await activeMask();
         if (version !== this.maskVersion) continue;   // the filter changed meanwhile
         this.mask = mask;
+        this.sure = null;
         this.scoresChanged();
       }
       status.textContent = '';
@@ -935,6 +952,7 @@ export class BirdBoxTab {
       if (token !== this.scoreToken) return;
       const aves = catalog.classes.indexOf('Aves');
       this.scores.set(key, out.filter(([s]) => catalog.cls[s] === aves));
+      this.sure = null;
       this.scoring.delete(key);
       if (this.wanted.delete(key)) this.scoresChanged();
     } catch (err) {
@@ -954,13 +972,54 @@ export class BirdBoxTab {
     return this.edits.get(b.id)?.geom || b;
   }
 
+  /**
+   * The species the recording surely holds: the best bird of a box at SPECIES_SURE or
+   * more, and every species the person chose for a box. Boxes taken out do not count.
+   */
+  _sureSpecies() {
+    if (this.sure) return this.sure;
+    const sure = new Set();
+    for (const b of this.boxes) {
+      const o = this.edits.get(b.id) || {};
+      if (o.include === false) continue;
+      if (o.species != null) { if (o.species !== AVES) sure.add(o.species); continue; }
+      const top = this._candidates(b)?.[0];
+      if (top && top.p >= SPECIES_SURE) sure.add(top.s);
+    }
+    return this.sure = sure;
+  }
+
+  /**
+   * The species BirdNET V3.0 gives a box, or AVES for none: its best-scoring bird among
+   * the species the recording surely holds, from SPECIES_MIN. A single box is short, and
+   * its best bird at a middling score is wrong one time in five; a species that is also
+   * heard clearly elsewhere in the recording is right far more often. On five annotated
+   * soundscapes (Xeno-canto, 241 boxes), 92% of the boxes named this way carry the
+   * annotator's species, against 83% when every best bird from SPECIES_MIN is taken.
+   */
+  _suggested(b) {
+    const cands = this._candidates(b);
+    if (!cands?.length) return AVES;
+    const sure = this._sureSpecies(), pick = cands.find(c => sure.has(c.s));
+    return pick && pick.p >= SPECIES_MIN ? pick.s : AVES;
+  }
+
+  /**
+   * The color of a box: its species' while species are suggested, so the boxes of one bird
+   * are told from the others at a glance; else by how the box came about.
+   */
+  _boxColor(b, edit) {
+    const s = edit.species;
+    if (s === AVES || !$('bb-suggest').checked) return STATUS_COLORS[b.manual ? 'drawn' : edit.verified ? 'verified' : 'detected'];
+    if (!this.colors.has(s)) this.colors.set(s, SPECIES_COLORS[this.colors.size % SPECIES_COLORS.length]);
+    return this.colors.get(s);
+  }
+
   /** Species, sound type and inclusion: the user's choices over the defaults. */
   _edit(b) {
     const o = this.edits.get(b.id) || {};
-    const cands = $('bb-suggest').checked ? this._candidates(b) : null;
-    const top = cands?.[0];
     return {
-      species: o.species ?? (top && top.p >= SPECIES_MIN ? top.s : AVES),
+      species: o.species ?? ($('bb-suggest').checked ? this._suggested(b) : AVES),
       auto: o.species == null,
       soundType: o.soundType ?? $('bb-sound-default').value,
       include: o.include ?? true,
@@ -982,6 +1041,7 @@ export class BirdBoxTab {
   }
 
   _override(b, patch) {
+    this.sure = null;   // a species the person chose counts for the other boxes
     const next = { ...(this.edits.get(b.id) || {}), ...patch };
     Object.keys(next).forEach(k => { if (next[k] === undefined) delete next[k]; });
     this.edits.set(b.id, next);
@@ -1171,14 +1231,15 @@ export class BirdBoxTab {
 
   /**
    * What a row shows, besides the language: its box and place, the person's edits, the
-   * species BirdNET V3.0 suggests for it (_candidates keeps one array per box
-   * until the location filter changes), the settings it reads, whether it can be
+   * species BirdNET V3.0 offers for it (_candidates keeps one array per box
+   * until the location filter changes) and the one it gets, which depends on the
+   * other boxes too (_suggested), the settings it reads, whether it can be
    * played and edited, and its geometry (a drawn box is moved in place). The same
    * key, the same row.
    */
   _rowKey(b, i) {
     const g = this._geom(b);
-    return [b, i, this.edits.get(b.id), this._candidates(b), $('bb-suggest').checked, $('bb-sound-default').value, this.recording, this._locked(b), g.t0, g.t1, g.flo, g.fhi];
+    return [b, i, this.edits.get(b.id), this._candidates(b), this._edit(b).species, $('bb-suggest').checked, $('bb-sound-default').value, this.recording, this._locked(b), g.t0, g.t1, g.flo, g.fhi];
   }
 
   /**
@@ -1234,7 +1295,7 @@ export class BirdBoxTab {
       if (edit.species !== AVES && !(cands || []).some(c => c.s === edit.species)) opts.unshift(`<option value="${edit.species}" selected>${esc(catalog.name(edit.species))}</option>`);
       opts.push(`<option value="${AVES}"${edit.species === AVES ? ' selected' : ''}>${esc(t('demo.bb.aves', 'Bird (unidentified) · Aves'))}</option>`);
       opts.push(`<option value="pick">${esc(t('demo.bb.otherSpecies', 'Other species…'))}</option>`);
-      speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb') : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}"${locked}>${opts.join('')}</select>`;
+      speciesCell = `${edit.species !== AVES ? thumb(edit.species, 'bb-thumb', undefined, suggest ? this._boxColor(b, edit) : null) : '<span class="bb-thumb"><i class="fa-solid fa-dove"></i></span>'}<select class="form-select form-select-sm bb-select" data-field="species" aria-label="${esc(t('demo.bb.col.species', 'Species'))}"${locked}>${opts.join('')}</select>`;
     }
     const sound = (edit.soundType ? '' : `<option value="" selected>${esc(t('demo.bb.choose', 'Choose…'))}</option>`)
       + SOUND_TYPES.map(s => `<option value="${s}"${s === edit.soundType ? ' selected' : ''}>${esc(this._soundLabel(s))}</option>`).join('');
@@ -1424,7 +1485,7 @@ export class BirdBoxTab {
       if (x1 < 0 || x0 > h.width) return;
       const y0 = h.freqToY(g.fhi), y1 = h.freqToY(g.flo), edit = this._edit(b);
       const selected = b.id === this.selectedId, active = selected || b.id === this.hoverId;
-      const base = b.manual ? '#fbbf24' : edit.verified ? '#4ade80' : '#22d3ee';
+      const base = this._boxColor(b, edit);
       const color = !edit.include ? 'rgba(148,163,184,0.7)' : active ? '#ffffff' : base;
       const pop = calm ? 1 : this._popOf(b, now);
       if (pop < 1) {
@@ -1444,7 +1505,12 @@ export class BirdBoxTab {
       ctx.setLineDash(!edit.include ? [4, 3] : this._pending(b) ? [6, 3] : []);
       ctx.strokeRect(x0, y0, Math.max(2, x1 - x0), Math.max(2, y1 - y0));
       ctx.setLineDash([]);
-      if (active) { ctx.fillStyle = b.manual ? 'rgba(251,191,36,0.07)' : edit.verified ? 'rgba(74,222,128,0.07)' : 'rgba(34,211,238,0.07)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+      if (active) {
+        ctx.fillStyle = base;
+        ctx.globalAlpha = 0.07;
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        ctx.globalAlpha = 1;
+      }
       const { label, x: tx, w: tw } = labels.get(b), ly = Math.max(14, y0 - 2);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.9;

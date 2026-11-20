@@ -909,7 +909,7 @@
   "demo.bb.explain.confT": "Jistota",
   "demo.bb.explain.conf": "Jak jistý si je BirdBox, že rámeček obsahuje ptačí hlas, od 0 do 1. Neříká, o jaký druh jde. U rámečku spojeného z více hlasů je to jejich průměr; po najetí myší na číslo uvidíte nejvyšší hodnotu.",
   "demo.bb.explain.speciesT": "Druh %",
-  "demo.bb.explain.species": "Skóre spolehlivosti BirdNET V3.0 pro zvuk v rámečku: jak dobře odpovídá danému druhu. Model slyší časový úsek rámečku (nejméně jednu sekundu, takže kratší rámeček zahrne i zvuk kolem sebe) a jen jeho frekvenční pásmo. Pod 35 % zůstane rámeček bez druhu, ale i tak si můžete jeden z návrhů vybrat.",
+  "demo.bb.explain.species": "Skóre spolehlivosti BirdNET V3.0 pro zvuk v rámečku: jak dobře odpovídá danému druhu. Model slyší časový úsek rámečku (nejméně jednu sekundu, takže kratší rámeček zahrne i zvuk kolem sebe) a jen jeho frekvenční pásmo. Rámeček dostane druh od 70 %, nebo od 35 %, pokud tento druh dosáhne 70 % v jiném rámečku nahrávky nebo jste jej pro některý rámeček zvolili. Pod touto hranicí zůstane rámeček bez druhu, ale i tak si můžete jeden z návrhů vybrat.",
   "demo.bb.explain.notT": "Není to pravděpodobnost",
   "demo.bb.explain.not": "Vysoké číslo nedokazuje, že je rámeček správný, a nízké nedokazuje, že je špatný. Slabé, vzdálené nebo překrývající se hlasy mají nižší skóre. Než rámeček potvrdíte, poslechněte si ho.",
   "demo.bb.gap": "Mezera mezi slabikami",

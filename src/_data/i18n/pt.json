@@ -909,7 +909,7 @@
   "demo.bb.explain.confT": "Conf.",
   "demo.bb.explain.conf": "Quão certo o BirdBox está de que a caixa contém um som de ave, de 0 a 1. Não indica a espécie. Numa caixa formada por vários cantos, é a média deles; passe o rato sobre o número para ver o mais alto.",
   "demo.bb.explain.speciesT": "% espécie",
-  "demo.bb.explain.species": "A pontuação de confiança do BirdNET V3.0 para o som dentro da caixa: quanto se parece com essa espécie. O modelo ouve o intervalo de tempo da caixa (pelo menos um segundo; uma caixa mais curta inclui, por isso, o som à sua volta) e apenas a sua banda de frequências. Abaixo de 35%, a caixa fica sem espécie, mas pode ainda escolher uma das sugestões.",
+  "demo.bb.explain.species": "A pontuação de confiança do BirdNET V3.0 para o som dentro da caixa: quanto se parece com essa espécie. O modelo ouve o intervalo de tempo da caixa (pelo menos um segundo; uma caixa mais curta inclui, por isso, o som à sua volta) e apenas a sua banda de frequências. Uma caixa recebe uma espécie a partir de 70%, ou a partir de 35% se essa espécie atingir 70% noutra caixa da gravação ou se a tiver escolhido para alguma. Abaixo disso, a caixa fica sem espécie, mas pode ainda escolher uma das sugestões.",
   "demo.bb.explain.notT": "Não é uma probabilidade",
   "demo.bb.explain.not": "Um número alto não prova que uma caixa está certa, nem um baixo que está errada. Cantos fracos, distantes ou sobrepostos pontuam mais baixo. Ouça a caixa antes de a verificar.",
   "demo.bb.gap": "Intervalo de frase",

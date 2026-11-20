@@ -909,7 +909,7 @@
   "demo.bb.explain.confT": "Konf.",
   "demo.bb.explain.conf": "Wie sicher BirdBox ist, dass die Box einen Vogellaut enthält, von 0 bis 1. Der Wert sagt nichts über die Art. Bei einer Box aus mehreren Rufen steht hier ihr Mittelwert; fahren Sie mit der Maus über die Zahl, um den höchsten zu sehen.",
   "demo.bb.explain.speciesT": "Art-%",
-  "demo.bb.explain.species": "Der Konfidenzwert von BirdNET V3.0 für den Klang in der Box: wie gut er zu dieser Art passt. Das Modell hört die Zeitspanne der Box (mindestens eine Sekunde, bei einer kürzeren Box also auch den Klang um sie herum) und nur ihr Frequenzband. Unter 35 % bleibt die Box ohne Art, Sie können aber trotzdem eine aus den Vorschlägen wählen.",
+  "demo.bb.explain.species": "Der Konfidenzwert von BirdNET V3.0 für den Klang in der Box: wie gut er zu dieser Art passt. Das Modell hört die Zeitspanne der Box (mindestens eine Sekunde, bei einer kürzeren Box also auch den Klang um sie herum) und nur ihr Frequenzband. Eine Box erhält eine Art ab 70 %, oder ab 35 %, wenn diese Art in einer anderen Box der Aufnahme 70 % erreicht oder Sie sie für eine Box gewählt haben. Darunter bleibt die Box ohne Art, Sie können aber trotzdem eine aus den Vorschlägen wählen.",
   "demo.bb.explain.notT": "Keine Wahrscheinlichkeit",
   "demo.bb.explain.not": "Ein hoher Wert beweist nicht, dass eine Box richtig ist, ein niedriger nicht, dass sie falsch ist. Leise, entfernte oder sich überlagernde Rufe erhalten niedrigere Werte. Hören Sie sich eine Box an, bevor Sie sie bestätigen.",
   "demo.bb.gap": "Lücke zwischen Rufen",
