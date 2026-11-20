@@ -15,10 +15,14 @@ export class CancelledError extends Error {
 }
 
 export class OrtPool extends EventTarget {
-  /** @param {{name:string, size:number}} options */
-  constructor({ name, size }) {
+  /**
+   * @param {{name:string, size:number, retireOnError?:boolean}} options  retireOnError: a worker whose
+   *   job failed is stopped (its session may be out of memory for good); a 'lost' event says so
+   */
+  constructor({ name, size, retireOnError = false }) {
     super();
     this.name = name;
+    this.retireOnError = retireOnError;
     this.size = Math.max(1, size);
     this.slots = [];
     this.queue = [];
@@ -129,12 +133,25 @@ export class OrtPool extends EventTarget {
   _onMessage(slot, msg) {
     const job = slot.job;
     slot.job = null;
+    const failed = !!job && msg.id === job.id && msg.type === 'error';
     if (job && msg.id === job.id) {
-      if (msg.type === 'error') job.reject(new Error(msg.error));
+      if (failed) job.reject(this.lastError = new Error(msg.error));
       else job.resolve(msg);
     }
-    if (this.slots.length > this.target) this._retire(slot);
+    if (failed && this.retireOnError) {
+      this._retire(slot);
+      this._lost();
+    } else if (this.slots.length > this.target) this._retire(slot);
     this._pump();
+  }
+
+  /** A worker is gone for a failure. With none left and none starting, the queued jobs fail too. */
+  _lost() {
+    if (!this.slots.length && !this.spawning) {
+      for (const job of this.queue) job.reject(this.lastError);
+      this.queue = [];
+    }
+    this.dispatchEvent(new Event('lost'));
   }
 
   /** Stop an idle worker. */
@@ -165,15 +182,15 @@ export class OrtPool extends EventTarget {
     if (!this.slots.length) {
       for (const job of this.queue) job.reject(this.lastError);
       this.queue = [];
-      this.started = null;
     }
     this.dispatchEvent(new Event('change'));
+    this.dispatchEvent(new Event('lost'));
     this._pump();
   }
 
-  /** Stop idle workers beyond `keep` to give their memory back. */
+  /** Stop idle workers beyond `keep` to give their memory back; grow() starts them again. */
   trim(keep = 1) {
-    if (this.queue.length) return; // still working through a job list
+    if (this.queue.length || this.spawning) return; // still working through a job list
     for (const slot of [...this.slots]) {
       if (this.slots.length <= keep) break;
       if (slot.job) continue;
@@ -185,12 +202,12 @@ export class OrtPool extends EventTarget {
 
   /** Start workers up to the pool size (or its limit) again after trim(). */
   async grow(getModel) {
-    const missing = this.target - this.slots.length - this.spawning;
-    if (missing <= 0 || this.growing || !this.config) return;
+    if (this.target - this.slots.length - this.spawning <= 0 || this.growing || !this.config) return;
     this.growing = true;
     try {
       const model = await getModel();
-      await Promise.all(Array.from({ length: missing }, (_, i) => this._spawn(i === missing - 1 ? model : model.slice(0), this.config)));
+      const missing = this.target - this.slots.length - this.spawning;   // the limit may have changed meanwhile
+      await Promise.all(Array.from({ length: Math.max(0, missing) }, (_, i) => this._spawn(i === missing - 1 ? model : model.slice(0), this.config)));
     } finally {
       this.growing = false;
     }

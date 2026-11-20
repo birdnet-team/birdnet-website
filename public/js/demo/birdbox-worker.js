@@ -38,6 +38,7 @@ async function init(msg) {
 }
 
 async function detect(msg) {
+  live = null;   // a recording that ended: its audio and frames are not needed any more
   feed = new BlockSource(msg.length, (from, to) => post({ type: 'audio-want', id: msg.id, from, to }));
   feed.id = msg.id;
   try {

@@ -19,8 +19,8 @@
  * change first.
  *
  * A box is named after its best-scoring bird if the recording surely holds
- * that species: it scores SPECIES_SURE or more in some box, or the person
- * chose it for one. A lone weaker score names nothing (_suggested).
+ * that species: it reaches the species confidence (a slider) in some box, or
+ * the person chose it for one. A lone weaker score names nothing (_suggested).
  *
  * While this tab's card records, the spectrogram flies in from the right and
  * each window is detected once, as soon as it is complete. The model takes a
@@ -54,7 +54,12 @@ const CUT_MIN_DUR = 0.02;     // an overlap with another box counts from this ma
 const CUT_MIN_BAND = 50;      // and this many Hz
 const SETTLED = 1.5;          // a box this far (plus the phrase gap) behind the detection line no longer changes, unless linked to one that may
 const SCORES_MS = 120;        // show new species at most this often
-const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again
+const RETRY_MS = 10000;       // after BirdNET V3.0 failed, wait this long before trying again; twice as long each time in a row
+const RETRY_MAX_MS = 160000;
+const SCORE_TRIES = 2;        // a box whose scoring failed this often gets no species
+const KEYS_MAX = 4000;        // scores of this many sounds are kept; beyond, those of boxes that are gone are dropped
+const LIVE_WORKERS = 1;       // BirdNET V3.0 workers while the microphone records: memory is short then
+const MORE_WORKERS_FROM = 8;  // boxes waiting from which another worker (about 500 MB) is worth starting
 const LIVE_MAX_WINDOWS = 8;   // windows per run when detection has fallen behind a recording
 const LIVE_BEHIND = 6;        // seconds behind the sound at which the hint says so
 const LIVE_EDGE = 0.13;       // seconds the right edge stays behind the microphone, for the last frames
@@ -64,8 +69,7 @@ const HELP_KEY = 'birdnet-demo-birdbox-help-seen';
 const ANNOTATOR_KEY = 'birdnet-demo-annotator';   // the person's details, for the next export
 const ANNOTATOR_FIELDS = { name: 'bb-annotator', xcId: 'bb-xcid', license: 'bb-license' };
 const AVES = -1;
-const SPECIES_MIN = 0.35;     // weaker suggestions leave a box unidentified; they stay in its species list
-const SPECIES_SURE = 0.7;     // a species scoring this in a box is surely in the recording, and named from SPECIES_MIN elsewhere
+const SPECIES_LOW = 0.5;      // a species surely in the recording names a box from this share of the species confidence
 // One color per species, in the order the species turn up; with more species than colors they are used again.
 // None is close to the colors of boxes without a species (STATUS_COLORS).
 const SPECIES_COLORS = ['#60a5fa', '#f87171', '#a3e635', '#c084fc', '#fb923c', '#f9a8d4', '#e7c9a0', '#818cf8'];
@@ -105,11 +109,20 @@ function labelWidth(ctx, label) {
 }
 
 const geomOf = g => ({ t0: g.t0, t1: g.t1, flo: g.flo, fhi: g.fhi });
-const concat = (a, b) => {
-  const out = new Float32Array(a.length + b.length);
-  out.set(a);
-  out.set(b, a.length);
-  return out;
+/**
+ * The raw rows `data` (the first `rows` of it) with the rows `add` after them. The buffer
+ * grows by doubling: a copy per window would move the whole recording's rows every time.
+ * Earlier holders of `data` keep seeing their own rows.
+ */
+const appendRows = (data, rows, add) => {
+  const used = rows * 9;
+  if (used + add.length > data.length) {
+    const grown = new Float32Array(Math.max(used + add.length, 2 * data.length, 1152));
+    grown.set(data.subarray(0, used));
+    data = grown;
+  }
+  data.set(add, used);
+  return data;
 };
 
 export class BirdBoxTab {
@@ -137,6 +150,8 @@ export class BirdBoxTab {
     this.mask = undefined;         // location filter for the candidates, null when off; undefined: not fetched yet
     this.maskVersion = 0;
     this.retryAt = 0;
+    this.retryMs = RETRY_MS;
+    this.failed = new Map();       // sound key -> times its scoring failed
     this.edits = new Map();        // box id -> { species?, soundType?, include?, geom? }
     this.selectedId = null;
     this.hoverId = null;
@@ -250,7 +265,19 @@ export class BirdBoxTab {
     $('bb-continue').addEventListener('click', () => this.run(true));
     conf.addEventListener('input', () => { sync(); this._update(); });
     gap.addEventListener('input', () => { sync(); this._update(); });
-    $('bb-suggest').addEventListener('change', () => this._update());
+    const sure = $('bb-sure');
+    const syncSure = () => { $('bb-sure-val').textContent = fmtPct(+sure.value, 0); sure.disabled = !$('bb-suggest').checked; };
+    syncSure();
+    // Another species confidence: the scores stay, and the boxes are named from them again
+    sure.addEventListener('input', () => {
+      syncSure();
+      this.sure = null;
+      this._renderSummary();
+      this._renderTable();
+      this.spec.render();
+      if (!$('bb-xc-check').hidden) this._checkXc();
+    });
+    $('bb-suggest').addEventListener('change', () => { syncSure(); this._update(); });
     // Another place or date: the scores stay, and the species are picked from them again
     this.location.addEventListener('change', () => {
       this.maskVersion++;
@@ -556,7 +583,7 @@ export class BirdBoxTab {
         }
         const res = await birdbox.liveWindows(rec.next, Math.min(ready - rec.next, LIVE_MAX_WINDOWS));
         if (rec.ended) return;
-        rec.data = concat(rec.data, res.data);
+        rec.data = appendRows(rec.data, rec.rows, res.data);
         rec.rows += res.rows;
         rec.ms += res.ms;
         rec.next = res.next;
@@ -717,6 +744,8 @@ export class BirdBoxTab {
     if (!this.pcm || this.pcm.length < CLIP * SR || this.recording) return;
     this.pendingRun = false;
     const token = ++this.runToken;
+    let failed = false;
+    $('bb-error').hidden = true;
     const total = windowCount(this.pcm.length);
     const from = resume && this.raw && !this.raw.done ? this.raw.next : 0;
     if (from) this.raw.stopped = false;
@@ -758,7 +787,7 @@ export class BirdBoxTab {
       // The worker asks for the audio a block at a time: no copy of the whole recording
       await birdbox.detect(this.pcm, chunk => {
         if (token !== this.runToken) return;
-        data = concat(data, chunk.data);
+        data = appendRows(data, rows, chunk.data);
         rows += chunk.rows;
         pacer.push({ data, rows, ms: performance.now() - t0, next: chunk.next, analyzedTo: chunk.analyzedTo });
       }, from);
@@ -770,10 +799,14 @@ export class BirdBoxTab {
     } catch (err) {
       if (token !== this.runToken || err.cancelled) return;
       console.error(err);
+      failed = true;
+      // What was found stays, and Continue goes on after it
+      this.pacer?.stop();
+      this._showStopped();
       $('bb-error').hidden = false;
       $('bb-error').textContent = t('demo.bb.error', 'BirdBox failed: {message}', { message: err.message });
     } finally {
-      if (token === this.runToken) {
+      if (token === this.runToken && !failed) {
         this.analyzedTo = null;
         this._setProgress(null);
         this._update();
@@ -844,6 +877,11 @@ export class BirdBoxTab {
     this.sounds = new Map(items.map((it, i) => [this.boxes[i], {
       key: [soundKey(it.g), ...it.cuts.map(soundKey).sort()].join('#'), g: it.g, cuts: it.cuts, later: it.later,
     }]));
+    // Sliders and boxes that changed while detection ran leave scores no box has any more
+    if (this.scores.size > KEYS_MAX) {
+      const live = new Set([...this.sounds.values()].map(s => s.key));
+      for (const map of [this.scores, this.candidates, this.failed]) for (const key of map.keys()) if (!live.has(key)) map.delete(key);
+    }
   }
 
   /**
@@ -867,6 +905,9 @@ export class BirdBoxTab {
   _resetScores() {
     this.scoreToken++;
     this.scores = new Map();
+    this.failed.clear();
+    this.retryAt = 0;
+    this.retryMs = RETRY_MS;
     this.sure = null;
     this.colors.clear();
     this.scoring.clear();
@@ -881,6 +922,8 @@ export class BirdBoxTab {
    */
   async _pumpScores() {
     if (this.pumping || !this.pcm || !$('bb-suggest').checked || performance.now() < this.retryAt) return;
+    // Nothing to score: BirdNET V3.0 (about 500 MB per worker) is not loaded for it
+    if (!this.wanted.size && (this.mask !== undefined || !this.boxes.length)) return;
     const status = $('bb-suggest-status');
     this.pumping = true;
     try {
@@ -889,7 +932,13 @@ export class BirdBoxTab {
         if (!p.cached) status.textContent = t('demo.bb.suggest.downloading', 'Downloading BirdNET V3.0 for species suggestions: {pct}', { pct: fmtPct(p.loaded / p.total, 0) });
       }, { suggest: true });
       while (this.mask === undefined) {
-        const version = this.maskVersion, mask = await activeMask();
+        const version = this.maskVersion;
+        // Without the geomodel the suggestions go on unfiltered
+        const mask = await activeMask().catch(err => {
+          console.error(err);
+          toast(t('demo.geo.loadError', 'The geomodel could not be loaded: {message}', { message: err.message }), 'warning');
+          return null;
+        });
         if (version !== this.maskVersion) continue;   // the filter changed meanwhile
         this.mask = mask;
         this.sure = null;
@@ -905,15 +954,17 @@ export class BirdBoxTab {
       this.pumping = false;
     }
     if (!this.pcm) return;   // the audio went away meanwhile
-    v3.wake();
+    // A worker more only for a real backlog: not for the last boxes after a recording
+    v3.wake(this.rec ? LIVE_WORKERS : this.wanted.size >= MORE_WORKERS_FROM ? undefined : Math.max(1, v3.workers));
     for (let key; this.scoring.size < 2 * v3.suggestWorkers && (key = this._nextBox()) != null;) this._scoreBox(key, this.wanted.get(key));
   }
 
-  /** After a failure: wait RETRY_MS, then go on with the boxes still waiting. */
+  /** After a failure: wait, twice as long each time in a row, then go on with the boxes still waiting. */
   _retryScores() {
-    this.retryAt = performance.now() + RETRY_MS;
+    this.retryAt = performance.now() + this.retryMs;
     clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(() => this._pumpScores(), RETRY_MS + 50);
+    this.retryTimer = setTimeout(() => this._pumpScores(), this.retryMs + 50);
+    this.retryMs = Math.min(RETRY_MAX_MS, 2 * this.retryMs);
   }
 
   /**
@@ -929,14 +980,16 @@ export class BirdBoxTab {
   /**
    * The box to score next: the earliest one that can no longer change, or else the
    * earliest that still may (a box near the detection line, see _markPending), so its
-   * species is there when it settles unchanged.
+   * species is there when it settles unchanged. Not while the microphone records: there
+   * most such boxes change with the next window, and scoring them twice costs the memory
+   * and time the recording needs.
    */
   _nextBox() {
     const { total, open } = this._audioSoFar();
     let later = null;
     for (const [key, want] of this.wanted) {
       if (this.scores.has(key)) { this.wanted.delete(key); continue; }
-      if (this.scoring.has(key) || (later != null && want.later) || !boxCrops(want.g, total, open)) continue;
+      if (this.scoring.has(key) || (want.later && (open || later != null)) || !boxCrops(want.g, total, open)) continue;
       if (!want.later) return key;
       later = key;
     }
@@ -952,6 +1005,7 @@ export class BirdBoxTab {
       if (token !== this.scoreToken) return;
       const aves = catalog.classes.indexOf('Aves');
       this.scores.set(key, out.filter(([s]) => catalog.cls[s] === aves));
+      this.retryMs = RETRY_MS;
       this.sure = null;
       this.scoring.delete(key);
       if (this.wanted.delete(key)) this.scoresChanged();
@@ -959,6 +1013,13 @@ export class BirdBoxTab {
       if (token !== this.scoreToken || err.cancelled) return;
       this.scoring.delete(key);
       console.error(err);
+      // A box that fails again (too long for the memory there is, most likely) goes without a species
+      const tries = (this.failed.get(key) || 0) + 1;
+      this.failed.set(key, tries);
+      if (tries >= SCORE_TRIES) {
+        this.scores.set(key, []);
+        if (this.wanted.delete(key)) this.scoresChanged();
+      }
       this._retryScores();
       $('bb-suggest-status').textContent = t('demo.bb.suggest.failed', 'Species suggestions are unavailable: {message}', { message: err.message });
       return;
@@ -973,35 +1034,37 @@ export class BirdBoxTab {
   }
 
   /**
-   * The species the recording surely holds: the best bird of a box at SPECIES_SURE or
-   * more, and every species the person chose for a box. Boxes taken out do not count.
+   * The species the recording surely holds: the best bird of a box at the species
+   * confidence or more, and every species the person chose for a box. Boxes taken out
+   * do not count.
    */
   _sureSpecies() {
     if (this.sure) return this.sure;
-    const sure = new Set();
+    const sure = new Set(), level = +$('bb-sure').value;
     for (const b of this.boxes) {
       const o = this.edits.get(b.id) || {};
       if (o.include === false) continue;
       if (o.species != null) { if (o.species !== AVES) sure.add(o.species); continue; }
       const top = this._candidates(b)?.[0];
-      if (top && top.p >= SPECIES_SURE) sure.add(top.s);
+      if (top && top.p >= level) sure.add(top.s);
     }
     return this.sure = sure;
   }
 
   /**
    * The species BirdNET V3.0 gives a box, or AVES for none: its best-scoring bird among
-   * the species the recording surely holds, from SPECIES_MIN. A single box is short, and
-   * its best bird at a middling score is wrong one time in five; a species that is also
-   * heard clearly elsewhere in the recording is right far more often. On five annotated
-   * soundscapes (Xeno-canto, 241 boxes), 92% of the boxes named this way carry the
-   * annotator's species, against 83% when every best bird from SPECIES_MIN is taken.
+   * the species the recording surely holds, from SPECIES_LOW of the species confidence.
+   * A single box is short, and its best bird at a middling score is wrong one time in
+   * five; a species that is also heard clearly elsewhere in the recording is right far
+   * more often. On five annotated soundscapes (Xeno-canto, 241 boxes), at the default of
+   * 70%, 91% of the boxes named this way carry the annotator's species, against 83% when
+   * every best bird from 35% is taken; at 90% it is 95%, of 83 boxes instead of 137.
    */
   _suggested(b) {
     const cands = this._candidates(b);
     if (!cands?.length) return AVES;
     const sure = this._sureSpecies(), pick = cands.find(c => sure.has(c.s));
-    return pick && pick.p >= SPECIES_MIN ? pick.s : AVES;
+    return pick && pick.p >= SPECIES_LOW * +$('bb-sure').value ? pick.s : AVES;
   }
 
   /**

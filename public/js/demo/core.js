@@ -192,6 +192,7 @@ export function workerCount(kind) {
     else if (mobile) n = Math.min(n, memoryGB && memoryGB >= 6 ? 2 : 1);
     else if (memoryGB && memoryGB <= 2) n = 1;
     else if (memoryGB && memoryGB <= 4) n = Math.min(n, 2);
+    else if (!memoryGB) n = Math.min(n, 2);   // Firefox and Safari do not say how much memory there is
   } else if (kind === 'geo') {
     if (mobile) n = Math.min(n, 2);
   } else {

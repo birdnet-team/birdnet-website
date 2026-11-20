@@ -76,13 +76,17 @@ five best-scoring birds become the box's candidates. A box longer than 10 s is
 scored in equal parts, and each species keeps its highest score.
 
 A box is named after its best-scoring bird among the species the recording
-surely holds: those that score 70% or more in some box, or that the person
-chose for a box. Such a species names a box from 35%; a lone weaker score
-names nothing. On five annotated soundscapes from Xeno-canto (XC1132662,
+surely holds: those that reach the species confidence (a slider, 70% by
+default) in some box, or that the person chose for a box. Such a species names
+a box from half that score; a lone weaker score names nothing. On five annotated soundscapes from Xeno-canto (XC1132662,
 XC1132833, XC1132744, XC1132710, XC1132836; 241 BirdBox boxes against 313
 human ones), 92% of the boxes named this way carry a species the annotators
 gave to a box in that place, against 83% when every best bird from 35% is
-taken. Joining neighboring boxes of one species into one box was tried on the
+taken. At a species confidence of 90% it is 95%, of 83 named boxes instead of
+137. BirdBox's own defaults (confidence 0.15, phrase gap 0.05 s) and the 1 s
+minimum of a box's audio were checked on the same recordings: 98% of the boxes
+lie on a human box at these settings, and longer audio around short boxes
+names more boxes but more of them wrongly (88% right at 1.5 s, 84% at 2 s). Joining neighboring boxes of one species into one box was tried on the
 same recordings and changed neither that figure nor the match with the human
 boxes, so boxes stay as BirdBox finds them.
 

@@ -100,6 +100,12 @@ export class BlockSource {
   /** The samples before `before` are done with. */
   release(before) { this.keep = Math.max(this.keep, before); }
 
+  /** Before the first read: the samples before `sample` are never needed, and are not asked for. */
+  skipTo(sample) {
+    if (this.asked || this.data.length) return;
+    this.base = this.keep = this.asked = Math.max(0, Math.min(sample, this.length));
+  }
+
   _ask() {
     if (this.asked >= this.length || this.asked > this.end) return;   // all asked for, or a block is on its way
     const from = this.asked, to = Math.min(this.length, from + this.block);
@@ -345,6 +351,9 @@ export class StreamGraph {
     const content = f32(f32(n) / SAMPLE_RATE), duration = f32(f32(target) / SAMPLE_RATE);
     const padded = duration > f32(content + f32(0.5 / SAMPLE_RATE));
     const frames = new Frames();
+    // A run that continues needs the frames from its first floor window on, not the audio before
+    frames.base = Math.min(this._first(from), from * WINDOW_FRAMES);
+    source.skipTo?.(frames.base * HOP_LENGTH + this.origin);
     for (let w = from; w < total;) {
       const k = Math.min(step, total - w);
       // Only the frames of these windows: a run that also computed the next ones would take longer than the others

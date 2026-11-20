@@ -442,9 +442,11 @@ export class AudioSource extends EventTarget {
     // The other tabs get the browser's recording, as from their own cards; BirdBox the WAV
     const loaded = await this._run(async () => {
       const file = await compressed, wavFrom = wavStart && localStart(wavStart);
-      return file
-        ? loadFile(file, { start: start && localStart(start), lossless: wav, losslessStart: wavFrom, onStatus: (s, f) => this._status(s, null, f) })
-        : loadFile(wav, { start: wavFrom, onStatus: (s, f) => this._status(s, null, f) });
+      const plain = () => loadFile(wav, { start: wavFrom, onStatus: (s, f) => this._status(s, null, f) });
+      if (!file) return plain();
+      // A browser that cannot decode its own recording still has the WAV
+      return loadFile(file, { start: start && localStart(start), lossless: wav, losslessStart: wavFrom, onStatus: (s, f) => this._status(s, null, f) })
+        .catch(err => { console.error(err); return plain(); });
     });
     if (!loaded) this.dispatchEvent(new Event('livecancel'));
   }

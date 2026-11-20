@@ -14,10 +14,14 @@ import { OrtPool } from './ort-pool.js';
 import { catalog } from './species.js';
 
 export const SR = 32000;
-const IDLE_TRIM_MS = 120000; // keep one warm worker after two idle minutes
+const IDLE_TRIM_MS = 120000;     // keep one warm worker after two idle minutes
+const IDLE_RELEASE_MS = 600000;  // and none after ten: the model is back from the browser cache in a second or two
 // Species for BirdBox's boxes: two workers keep up with its detection, and each
-// further one holds another copy of the model (about 400 MB)
+// further one holds another copy of the model (about 500 MB)
 const SUGGEST_WORKERS = 2;
+const LOSS_WINDOW_MS = 120000;   // workers lost to failures are replaced, unless LOSS_MAX were lost within this time
+const LOSS_MAX = 3;
+const BOX_PARTS = 6;      // of a box longer than BOX_PARTS x BOX_MAX seconds, this many parts are scored, evenly spread
 const BOX_MIN = 1;        // seconds: a shorter box is scored with the audio around it
 const BOX_MAX = 10;       // seconds in one run: a longer box is scored in equal parts
 
@@ -86,7 +90,8 @@ class V3Service extends EventTarget {
         await catalog.load();
         const model = await fetchAsset(m.model, onProgress);
         this.dispatchEvent(new CustomEvent('status', { detail: 'starting' }));
-        this.pool = new OrtPool({ name: 'birdnet-v3', size: workerCount('v3') });
+        this.pool = new OrtPool({ name: 'birdnet-v3', size: workerCount('v3'), retireOnError: true });
+        this.pool.addEventListener('lost', () => this._replace());
         if (suggest && !this.analyzing) this.pool.limitTo(SUGGEST_WORKERS);
         this.pool.addEventListener('change', () => this.dispatchEvent(new Event('workers')));
         await this.pool.start(model, { input: m.input, output: m.output });
@@ -114,12 +119,15 @@ class V3Service extends EventTarget {
    * rectangles `cuts` (the sound of other boxes inside it), both in the worker
    * (region-cut.js), and run through the model at that length. Resolves to
    * [[class, score], ...] for the classes scoring at least `min`: over the parts of
-   * a long box, each class's highest score.
+   * a long box, each class's highest score. The parts run one after the other, so a
+   * long box neither fills the queue nor holds a copy of all its audio.
    */
   async scoreBox(pcm, total, g, cuts, min, opts) {
     this._idle();
     const best = new Map();
-    await Promise.all((boxCrops(g, total) || []).map(async ([s, e]) => {
+    let crops = boxCrops(g, total) || [];
+    if (crops.length > BOX_PARTS) crops = Array.from({ length: BOX_PARTS }, (_, i) => crops[Math.round(i * (crops.length - 1) / (BOX_PARTS - 1))]);
+    for (const [s, e] of crops) {
       // Zero-padded only where the recording ends within BOX_MIN of the crop's start
       const audio = new Float32Array(Math.max(e - s, BOX_MIN * SR));
       audio.set(pcm.subarray(s, e));
@@ -128,7 +136,7 @@ class V3Service extends EventTarget {
       const regions = Float32Array.from(cuts.filter(c => c.t1 * SR > s && c.t0 * SR < e).flatMap(c => [c.t0 - from, c.t1 - from, c.flo, c.fhi]));
       const r = await this.pool.run('v3box', { audio, sampleRate: SR, flo: g.flo, fhi: g.fhi, cuts: regions, min }, [audio.buffer], opts);
       r.index.forEach((c, k) => { if (!(best.get(c) >= r.score[k])) best.set(c, r.score[k]); });
-    }));
+    }
     return [...best];
   }
 
@@ -178,31 +186,45 @@ class V3Service extends EventTarget {
   }
 
   /**
-   * Before BirdBox's boxes are scored one by one: run SUGGEST_WORKERS workers,
-   * or the full pool while the V3.0 tab analyzes.
+   * Before BirdBox's boxes are scored one by one: run `workers` workers (SUGGEST_WORKERS
+   * at most), or the full pool while the V3.0 tab analyzes. The idle timer goes on:
+   * only scoring a box (scoreBox) counts as use.
    */
-  wake() {
+  wake(workers = SUGGEST_WORKERS) {
     if (!this.pool) return;
-    if (!this.analyzing) this.pool.limitTo(SUGGEST_WORKERS);
+    if (!this.analyzing) this.pool.limitTo(Math.min(workers, SUGGEST_WORKERS));
     this._grow();
+  }
+
+  /** A worker was lost to a failure: start another, unless they keep failing (out of memory, most likely). */
+  _replace() {
+    const now = performance.now();
+    this.losses = (this.losses || []).filter(t => now - t < LOSS_WINDOW_MS);
+    this.losses.push(now);
+    if (this.losses.length <= LOSS_MAX) this._grow();
+    else this.pool.limitTo(Math.max(1, this.pool.readyCount));   // go on with the workers that hold
   }
 
   /** The workers BirdBox's species may keep busy. */
   get suggestWorkers() { return this.pool?.target || 0; }
 
   _busy() {
+    clearTimeout(this.trimTimer);
+    clearTimeout(this.releaseTimer);
     this.pool.limitTo(Infinity);
     this._grow();
   }
 
   _grow() {
-    clearTimeout(this.trimTimer);
     this.pool.grow(async () => fetchAsset((await this.manifestEntry()).model)).catch(() => {});
   }
 
+  /** Unused from now on: after a while one worker stays, later none. Each holds about 500 MB. */
   _idle() {
     clearTimeout(this.trimTimer);
-    this.trimTimer = setTimeout(() => this.pool?.trim(1), IDLE_TRIM_MS);
+    clearTimeout(this.releaseTimer);
+    this.trimTimer = setTimeout(() => { if (!this.analyzing) this.pool?.trim(1); }, IDLE_TRIM_MS);
+    this.releaseTimer = setTimeout(() => { if (!this.analyzing) this.pool?.trim(0); }, IDLE_RELEASE_MS);
   }
 
   /** Abort the running analysis (its queued windows are dropped), or the queued jobs tagged `tag`. */
