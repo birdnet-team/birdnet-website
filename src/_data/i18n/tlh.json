@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "tlhegh: naDev SamtaH. box ngop choHlaH; box naQ choHbe', bo'pu'bogh ghogh rap.",
   "demo.bb.hint.liveBehind": "QIt jan: wab tlha' {n} lup. chIlbe'lu': bImevDI' ratlh Samlu'.",
   "demo.bb.hint.liveEnd": "bo'ta' rInmoHlI'…",
+  "demo.bb.hint.liveSelected": "V wIv'eghmoH · Delete teq · Esc wIvbe'",
+  "demo.bb.pendingRow": "wej rIn box; choHlaH. rInDI' DachoHmoHlaH.",
   "demo.bb.how1": "file yIpoSmoH, yIqon, pagh Xeno-canto mI' yIghItlh. V3.0 tab QoQ naDev lo'laH je.",
   "demo.bb.how2": "box yIwIv 'ej yIQoy, vaj yIwIv'eghmoH pagh yIchoH, pagh box Sambe'pu'bogh detector yIghItlh.",
   "demo.bb.how2Title": "box yInuD",

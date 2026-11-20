@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "Čára ukazuje, kam až detekce došla. Čárkované rámečky se ještě mohou změnit; plné jsou konečné, stejně jako v uložené nahrávce.",
   "demo.bb.hint.liveBehind": "Toto zařízení je {n} s za zvukem. Nic se neztratí: zbytek se zdetekuje, až nahrávání zastavíš.",
   "demo.bb.hint.liveEnd": "Dokončuji nahrávku…",
+  "demo.bb.hint.liveSelected": "V ho potvrdí · Delete ho odebere · Esc zruší výběr",
+  "demo.bb.pendingRow": "Tento rámeček se ještě může změnit. Upravit ho půjde, až bude nakreslen plnou čarou.",
   "demo.bb.how1": "Otevři soubor, nahrávej nebo zadej číslo z Xeno-canto. Zvuk z karty V3.0 je k dispozici i tady.",
   "demo.bb.how2": "Klikni na rámeček a poslechni si ho, pak ho potvrď nebo uprav, nebo nakresli rámečky, které detektor přehlédl.",
   "demo.bb.how2Title": "Zkontroluj rámečky",

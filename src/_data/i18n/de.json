@@ -1140,6 +1140,8 @@
   "demo.bb.hint.live": "Die Linie zeigt, wie weit die Erkennung ist. Gestrichelte Boxen können sich noch ändern; durchgezogene sind endgültig, wie in der gespeicherten Aufnahme.",
   "demo.bb.hint.liveBehind": "Dieses Gerät liegt {n} s hinter dem Ton zurück. Es geht nichts verloren: Der Rest wird erkannt, wenn Sie stoppen.",
   "demo.bb.hint.liveEnd": "Aufnahme wird abgeschlossen…",
+  "demo.bb.hint.liveSelected": "V bestätigt sie · Entf entfernt sie · Esc hebt die Auswahl auf",
+  "demo.bb.pendingRow": "Diese Box kann sich noch ändern. Sie lässt sich bearbeiten, sobald sie durchgezogen gezeichnet ist.",
   "demo.geo.hint": "Das BirdNET+ Geomodell V3.0.4 sagt vorher, welche von 9.789 Arten an einem Ort in jeder der 48 Wochen vorkommen; das 13-MB-Modell läuft lokal.",
   "demo.geo.how1": "Die Karte zeigt, wie viele Arten in jedem Gebiet zu erwarten sind. Ziehen Sie den Wochenregler oder drücken Sie auf Abspielen, um den Jahreszeiten zu folgen.",
   "demo.geo.how1Title": "Sehen, wo Arten vorkommen",

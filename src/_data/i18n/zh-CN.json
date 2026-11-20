@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "这条线表示检测已进行到的位置。虚线框仍可能变化；实线框为最终结果，与保存的录音相同。",
   "demo.bb.hint.liveBehind": "此设备比声音慢 {n} 秒。不会丢失任何内容：停止后会检测剩余部分。",
   "demo.bb.hint.liveEnd": "正在完成录音…",
+  "demo.bb.hint.liveSelected": "V 确认 · Delete 移除 · Esc 取消选择",
+  "demo.bb.pendingRow": "此框仍可能变化。待其显示为实线后即可编辑。",
   "demo.bb.how1": "打开文件、录音，或输入 Xeno-canto 编号。V3.0 标签页中加载的音频在这里同样可用。",
   "demo.bb.how2": "点击检测框即可收听，然后确认或调整，也可以补画检测器漏掉的框。",
   "demo.bb.how2Title": "检查检测框",

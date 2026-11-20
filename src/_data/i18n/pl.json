@@ -945,6 +945,8 @@
   "demo.bb.hint.live": "Linia pokazuje, dokąd doszło wykrywanie. Ramki przerywane mogą się jeszcze zmienić; ciągłe są ostateczne, tak jak w zapisanym nagraniu.",
   "demo.bb.hint.liveBehind": "To urządzenie jest {n} s za dźwiękiem. Nic nie przepada: reszta zostanie wykryta po zatrzymaniu.",
   "demo.bb.hint.liveEnd": "Kończenie nagrania…",
+  "demo.bb.hint.liveSelected": "V zatwierdza · Delete usuwa · Esc odznacza",
+  "demo.bb.pendingRow": "Ta ramka może się jeszcze zmienić. Można ją edytować, gdy zostanie narysowana linią ciągłą.",
   "demo.bb.how1": "Otwórz plik, nagraj lub wpisz numer Xeno-canto. Dźwięk z karty V3.0 jest dostępny także tutaj.",
   "demo.bb.how2": "Kliknij ramkę, aby ją odsłuchać, potem zatwierdź ją lub popraw albo narysuj ramki pominięte przez detektor.",
   "demo.bb.how2Title": "Sprawdź ramki",
