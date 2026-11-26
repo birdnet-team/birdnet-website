@@ -40,7 +40,7 @@ const FORCE = process.argv.includes('--force');
 // Pinned upstream sources. Bump the record or commit (and the expected hashes) to update.
 // BirdNET+ V3.0 model files: audio model, geomodel and taxonomy (version 3.0.1 of the record)
 const ZENODO = { record: '24362980' };
-const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: '24632a5560f6fd93959c2de157e94471be8ea0e7' };
+const BIRDBOX = { repo: 'birdnet-team/BirdBox', commit: 'd425631b8d913e4eaf719b024ec8346707f464ff' };
 
 const zenodo = name => `https://zenodo.org/api/records/${ZENODO.record}/files/${encodeURIComponent(name)}/content`;
 const raw = (src, path) => `https://raw.githubusercontent.com/${src.repo}/${src.commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
@@ -60,7 +60,7 @@ const FILES = {
   v3Labels: { url: zenodo(V3_LABELS), name: V3_LABELS, sha256: '88d976477fac81127ac8ac4c215c37749d0a6537944112ea606d321317cb7640' },
   geoZip: { url: zenodo(GEO_ZIP), name: GEO_ZIP, sha256: '3c1a7c36cc998596fa71688e0eab4fc3b08a663546feaa03c503b1ee1fefb41c' },
   taxonomyZip: { url: zenodo(TAXONOMY_ZIP), name: TAXONOMY_ZIP, sha256: '433f0d19aabdd5c67a26501d05b8826ad23af4c33149771b5d908c7efa7e4fd1' },
-  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: '34b5720cb4fb65d5201d9e9d7cecd3b670d4838552d2a84a6843964407f7e057' },
+  birdboxModel: { url: raw(BIRDBOX, `docs/models/${BIRDBOX_MODEL}`), name: BIRDBOX_MODEL, sha256: 'a74cee9f5c2cfb1f79e201df1bb669f544f5225a56f3d01448716fba7129e71f' },
 };
 
 // Species groups in the order the demo lists them (labels column taxon_group). The

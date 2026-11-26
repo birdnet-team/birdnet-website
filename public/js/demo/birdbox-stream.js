@@ -33,6 +33,8 @@ const SEGMENT_CLIPS = 60 / HOP_SECONDS;    // column 0 counts the windows of eac
 // The model's spectrogram (onnx_export.py in BirdBox)
 const N_MELS = 256, HOP_LENGTH = 375, N_FFT = 2048, CLIP_FRAMES = 252;
 const WINDOW_FRAMES = HOP_SAMPLES / HOP_LENGTH;    // 128 frames from one window to the next
+/** Frames per spectrogram run at most, 6 s: one run over the 60 s before a window that continues takes 160 MB more. */
+const RUN_FRAMES = 512;
 const LEFT_PAD = 16000;                            // audio the graph mirrors in front of the file: 0.5 s
 const f32 = Math.fround;
 const FLOOR_FRACTION = f32(20 / 100);             // FLOOR_PERCENTILE / 100 in BirdBox's onnx_export.py, in float32
@@ -276,14 +278,14 @@ export class StreamGraph {
 
   /**
    * Compute frames up to `upTo` from the first n samples the graph sees (silence after the
-   * source's end), `block` frames at most per run when audio allows. Afterwards the source
-   * may let go of the samples before the next frame (release).
+   * source's end), RUN_FRAMES at most per run: a frame has the same bits in every run. Afterwards
+   * the source may let go of the samples before the next frame (release).
    */
-  async _frames(frames, source, n, upTo, block) {
+  async _frames(frames, source, n, upTo) {
     const { ort, origin } = this, available = Math.floor((n - origin - N_FFT) / HOP_LENGTH);
     if (upTo > available) throw new Error(`frame ${upTo} needs more than ${n} samples`);
     while (frames.end <= upTo) {
-      const m0 = frames.end, m1 = Math.min(available, Math.max(upTo, m0 + block - 1));
+      const m0 = frames.end, m1 = Math.min(upTo, m0 + RUN_FRAMES - 1);
       const s0 = m0 * HOP_LENGTH + origin, s1 = m1 * HOP_LENGTH + origin + N_FFT;
       // Before the file start: the samples the graph's left pad puts there
       let piece = await readPadded(source, Math.max(0, s0), s1);
@@ -357,7 +359,7 @@ export class StreamGraph {
     for (let w = from; w < total;) {
       const k = Math.min(step, total - w);
       // Only the frames of these windows: a run that also computed the next ones would take longer than the others
-      await this._frames(frames, source, target, this._last(w + k - 1), k * WINDOW_FRAMES);
+      await this._frames(frames, source, target, this._last(w + k - 1));
       const { data, rows } = await this._detect(frames, w, k, conf);
       let kept = 0;
       for (let r = 0; r < rows; r++) {
@@ -394,7 +396,7 @@ export class StreamGraph {
       },
       async windows(conf, from, count) {
         if (from + count > readyWindows(n)) throw new Error(`windows ${from} to ${from + count - 1} are not ready in ${n} samples`);
-        await graph._frames(frames, sourceOf(audio.subarray(0, n)), n, graph._last(from + count - 1), WINDOW_FRAMES);
+        await graph._frames(frames, sourceOf(audio.subarray(0, n)), n, graph._last(from + count - 1));
         const { data, rows } = await graph._detect(frames, from, count, conf);
         for (let r = 0; r < rows; r++) data[r * 9 + 8] = NO_END;
         return { data, rows, next: from + count };
